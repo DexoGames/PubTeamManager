@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db888cb59d1a49143a0efb9f5208424d, type: 3}
+  m_Name: 2 (4-3-3)
+  m_EditorClassIdentifier: 
+  Name: 4-3-3
+  Positions:
+  - ID: 0
+    Location: {x: 0, y: 0}
+  - ID: 1
+    Location: {x: -3, y: 1}
+  - ID: 2
+    Location: {x: -1, y: 1}
+  - ID: 2
+    Location: {x: 1, y: 1}
+  - ID: 3
+    Location: {x: 3, y: 1}
+  - ID: 4
+    Location: {x: 0, y: 2}
+  - ID: 6
+    Location: {x: -2, y: 3}
+  - ID: 6
+    Location: {x: 2, y: 3}
+  - ID: 8
+    Location: {x: -3, y: 4}
+  - ID: 10
+    Location: {x: 3, y: 4}
+  - ID: 11
+    Location: {x: 0, y: 5}
+  Stats:
+    Complexity: 40
+    Intensity: 60
+    Control: 65
+    Threat: 65
+    Security: 35
+    Tempo: 35
+  Inferiors:
+  - {fileID: 11400000, guid: 3c22fa2de5d3574478742b04af2cfebd, type: 2}

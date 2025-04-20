@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d368c2b89264c2b498b4261e286ce322, type: 3}
+  m_Name: Southampton
+  m_EditorClassIdentifier: 
+  TeamName: Southampton
+  YearFounded: 1952
+  StadiumCapacity: 300
+  Players: []
+  Manager:
+    FirstName: 
+    Surname: 
+    Team: {fileID: 0}
+    Personality: 0
+    ManStats:
+      Skills:
+        Intelligence: 0
+        Teamwork: 0
+        Composure: 0
+        Agression: 0
+        Resilience: 0
+      Formation: {fileID: 0}
+  Formation: {fileID: 11400000, guid: 6c5bb2a7861c359459c07ab8fecc785a, type: 2}
