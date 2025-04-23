@@ -36,6 +36,8 @@ public class TeamDetailsUI : UIPage
 
         _managerText.text = $"Manager: {LinkBuilder.BuildLink(team.Manager)}";
 
+        _formationText.text = $"{team.Formation.Name}\n{team.Manager.ManStats.Template.templateName}";
+
         PopulateTeamUI(team);
         ShowAverageStats(team);
 

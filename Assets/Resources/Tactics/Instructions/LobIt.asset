@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d5f83aa929aa0c4ca7bb823e8957365, type: 3}
+  m_Name: LobIt
+  m_EditorClassIdentifier: 
+  tacticName: Lob It Into Box
+  description: 
+  statModifications: []
+  dependencies:
+  - stat: 4
+    group: 8
+    strength: 2
+  - stat: 5
+    group: 3
+    strength: 2
+  - stat: 18
+    group: 3
+    strength: 2
+  - stat: 14
+    group: 3
+    strength: 2
+  - stat: 13
+    group: 3
+    strength: 1
+  - stat: 3
+    group: 6
+    strength: -1
+  tacticDependencies: []
+  reliances: []
+  incompatibleInstructions:
+  - {fileID: 11400000, guid: 761ada6956ee83e4cb2dbc2cca60a701, type: 2}

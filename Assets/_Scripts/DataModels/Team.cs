@@ -19,6 +19,8 @@ public class Team : ScriptableObject
     public List<Player> Midfielders => Players.FindAll(player => player.IsPositionIn(Player.Position.CM, Player.Position.DM, Player.Position.AM, Player.Position.LM, Player.Position.RM));
     public List<Player> Attackers => Players.FindAll(player => player.IsPositionIn(Player.Position.ST, Player.Position.LW, Player.Position.RW, Player.Position.AM));
     public Player Goalkeeper => Players.Find(player => player.IsPositionIn(Player.Position.GK));
+    public List<Player> WidePlayers => Players.FindAll(player => player.IsPositionIn(Player.Position.LB, Player.Position.RB, Player.Position.LM, Player.Position.RM, Player.Position.LW, Player.Position.RW));
+
 
     public Manager Manager { get; private set; }
     public Tactic Tactic { get; private set; }
@@ -46,8 +48,6 @@ public class Team : ScriptableObject
             var newPlayer = new Player(this, Tactic.Formation.Positions, i);
             Players.Add(newPlayer);
         }
-
-        Debug.Log($"{TeamName}: {Tactic.Formation.Name}");
     }
 
     public int GetPlayerIndex(Player player)

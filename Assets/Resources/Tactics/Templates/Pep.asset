@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0da3d57fafcdee4ca2fada101af7701, type: 3}
+  m_Name: Pep
+  m_EditorClassIdentifier: 
+  templateName: Gegenpress
+  description: 
+  Formation: {fileID: 11400000, guid: 7a7d6f14144a75548bd37256e42528fc, type: 2}
+  Instructions:
+  - {fileID: 11400000, guid: a05273b356ba45647918f02c8837167e, type: 2}
+  - {fileID: 11400000, guid: 8da22ca32a0998f40a8f662168b4c70c, type: 2}

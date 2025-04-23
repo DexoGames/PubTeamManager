@@ -10,46 +10,48 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7d5f83aa929aa0c4ca7bb823e8957365, type: 3}
-  m_Name: CounterPressing
+  m_Name: LowBlock
   m_EditorClassIdentifier: 
-  tacticName: Counter Press
-  description: When lost possesion, you are more aggressive to gain the ball back
-    immediately
+  tacticName: Low Block
+  description: 
   statModifications:
   - stat: 0
+    value: 5
+  - stat: 5
     value: 15
   - stat: 4
-    value: 15
-  - stat: 1
-    value: 15
+    value: -20
   - stat: 2
-    value: 10
-  - stat: 10
-    value: 5
+    value: -10
   - stat: 3
     value: -5
-  dependencies:
+  - stat: 1
+    value: -5
   - stat: 8
-    group: 4
-    strength: 4
-  - stat: 7
-    group: 4
-    strength: 4
+    value: -5
+  dependencies:
   - stat: 6
-    group: 5
+    group: 1
     strength: 2
-  - stat: 16
-    group: 6
+  - stat: 18
+    group: 1
     strength: 1
+  - stat: 11
+    group: 5
+    strength: 1
+  - stat: 12
+    group: 1
+    strength: -2
+  - stat: 8
+    group: 6
+    strength: -1
   tacticDependencies:
-  - stat: 4
-    minimumValue: 70
+  - stat: 5
+    minimumValue: 65
     inverse: 0
-  - stat: 3
-    minimumValue: 50
-    inverse: 0
-  - stat: 2
-    minimumValue: 50
-    inverse: 0
+  - stat: 8
+    minimumValue: 40
+    inverse: 1
   reliances: []
-  incompatibleInstructions: []
+  incompatibleInstructions:
+  - {fileID: 11400000, guid: a05273b356ba45647918f02c8837167e, type: 2}

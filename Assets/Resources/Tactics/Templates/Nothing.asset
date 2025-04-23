@@ -9,13 +9,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c5f99819deb827349be9a2d98da9d33b, type: 3}
-  m_Name: HoofItLong
+  m_Script: {fileID: 11500000, guid: a0da3d57fafcdee4ca2fada101af7701, type: 3}
+  m_Name: Nothing
   m_EditorClassIdentifier: 
-  statModifications: []
-  dependencies:
-  - stat: 0
-    group: 0
-    strength: 0
-  tacticDependencies: []
-  reliances: []
+  templateName: Basic
+  description: 
+  Formation: {fileID: 11400000, guid: 6c5bb2a7861c359459c07ab8fecc785a, type: 2}
+  Instructions: []

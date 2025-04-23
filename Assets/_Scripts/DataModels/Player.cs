@@ -13,7 +13,7 @@ public enum PlayerStat
 }
 public enum PlayerGroup
 {
-    Goalkeeper, Defenders, Midfielders, Attackers, Outfield, DefenseAndMidfield, MidfieldAndAttack, GoalkeeperAndDefense
+    Goalkeeper, Defenders, Midfielders, Attackers, Outfield, DefenseAndMidfield, MidfieldAndAttack, GoalkeeperAndDefense, WidePlayers
 }
 
 [System.Serializable]

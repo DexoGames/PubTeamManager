@@ -9,39 +9,36 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c5f99819deb827349be9a2d98da9d33b, type: 3}
-  m_Name: CounterPressing
+  m_Script: {fileID: 11500000, guid: 7d5f83aa929aa0c4ca7bb823e8957365, type: 3}
+  m_Name: HoofItLong
   m_EditorClassIdentifier: 
+  tacticName: Hoof It Out
+  description: 
   statModifications:
   - stat: 0
+    value: -10
+  - stat: 5
     value: 10
-  - stat: 1
-    value: 15
-  - stat: 2
-    value: 5
-  - stat: 10
-    value: 5
+  - stat: 3
+    value: -5
   - stat: 4
-    value: 15
+    value: -5
   dependencies:
-  - stat: 8
-    group: 6
-    strength: 3
-  - stat: 7
-    group: 6
-    strength: 3
-  - stat: 6
-    group: 5
-    strength: 1
-  - stat: 16
-    group: 4
-    strength: 0.5
-  - stat: 10
-    group: 6
-    strength: 0.5
-  tacticDependencies:
   - stat: 4
-    minimumValue: 70
+    group: 7
+    strength: 1
+  - stat: 18
+    group: 3
+    strength: 0.5
+  - stat: 7
+    group: 1
+    strength: -1
+  tacticDependencies:
+  - stat: 3
+    minimumValue: 50
+    inverse: 1
   - stat: 2
     minimumValue: 50
+    inverse: 1
   reliances: []
+  incompatibleInstructions: []

@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0da3d57fafcdee4ca2fada101af7701, type: 3}
+  m_Name: Dyche
+  m_EditorClassIdentifier: 
+  templateName: Dycheball
+  description: 
+  Formation: {fileID: 11400000, guid: 6c5bb2a7861c359459c07ab8fecc785a, type: 2}
+  Instructions:
+  - {fileID: 11400000, guid: cad053182ae6534438035d69fc2621df, type: 2}
+  - {fileID: 11400000, guid: 8153e13b9dc37f34a8a95c1529d4ed33, type: 2}
+  - {fileID: 11400000, guid: cf3cd5a7996026247ab531514b5ffa54, type: 2}

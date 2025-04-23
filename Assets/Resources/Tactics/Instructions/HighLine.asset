@@ -10,46 +10,43 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7d5f83aa929aa0c4ca7bb823e8957365, type: 3}
-  m_Name: CounterPressing
+  m_Name: HighLine
   m_EditorClassIdentifier: 
-  tacticName: Counter Press
-  description: When lost possesion, you are more aggressive to gain the ball back
-    immediately
+  tacticName: High Line
+  description: 
   statModifications:
   - stat: 0
-    value: 15
+    value: 10
   - stat: 4
-    value: 15
+    value: 10
   - stat: 1
-    value: 15
+    value: 10
   - stat: 2
     value: 10
-  - stat: 10
-    value: 5
   - stat: 3
-    value: -5
-  dependencies:
-  - stat: 8
-    group: 4
-    strength: 4
+    value: 5
   - stat: 7
-    group: 4
-    strength: 4
-  - stat: 6
+    value: 5
+  dependencies:
+  - stat: 12
+    group: 1
+    strength: 3
+  - stat: 15
+    group: 1
+    strength: 1
+  - stat: 8
     group: 5
-    strength: 2
-  - stat: 16
-    group: 6
     strength: 1
   tacticDependencies:
+  - stat: 2
+    minimumValue: 60
+    inverse: 0
   - stat: 4
-    minimumValue: 70
+    minimumValue: 60
     inverse: 0
   - stat: 3
-    minimumValue: 50
-    inverse: 0
-  - stat: 2
-    minimumValue: 50
+    minimumValue: 60
     inverse: 0
   reliances: []
-  incompatibleInstructions: []
+  incompatibleInstructions:
+  - {fileID: 11400000, guid: 8153e13b9dc37f34a8a95c1529d4ed33, type: 2}

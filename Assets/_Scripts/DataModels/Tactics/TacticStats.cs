@@ -19,8 +19,8 @@ public class TacticStats
     public int Fouling = 50;
     public int Provoking = 50;
 
-    private List<TacticEffect.TeamDependency> TeamDependencies = new();
-    private List<TacticEffect.TacticDependency> TacticDependencies = new();
+    private List<TacticInstruction.TeamDependency> TeamDependencies = new();
+    private List<TacticInstruction.TacticDependency> TacticDependencies = new();
     private Dictionary<(int, TacticStat), float> Reliances = new();
 
     public ref int GetStatRef(TacticStat stat)
@@ -66,12 +66,12 @@ public class TacticStats
         s = value;
     }
 
-    public void AddTeamDependency(TacticEffect.TeamDependency dependency)
+    public void AddTeamDependency(TacticInstruction.TeamDependency dependency)
     {
         TeamDependencies.Add(dependency);
     }
 
-    public void AddTacticDependency(TacticEffect.TacticDependency dependency)
+    public void AddTacticDependency(TacticInstruction.TacticDependency dependency)
     {
         TacticDependencies.Add(dependency);
     }
@@ -91,7 +91,7 @@ public class TacticStats
 
     public void TacticDependencyModifier()
     {
-        var dependencyMap = new Dictionary<TacticStat, TacticEffect.TacticDependency>();
+        var dependencyMap = new Dictionary<TacticStat, TacticInstruction.TacticDependency>();
 
         foreach (var dependency in TacticDependencies)
         {

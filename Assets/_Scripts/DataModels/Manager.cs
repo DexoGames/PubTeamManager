@@ -12,7 +12,8 @@ public class Manager : Person
     {
         public Skills Skills;
         public Formation Formation;
-
+        public TacticInstruction[] Instructions;
+        public TacticTemplate Template;
 
         public int Tactics => (int)Game.Average(Skills.Intelligence, Skills.Intelligence, Skills.Teamwork);
         public int Motivation => (int)Game.Average(Skills.Agression, Skills.Resilience, Skills.Teamwork);
@@ -49,6 +50,10 @@ public class Manager : Person
         Team = team;
         Formation[] forms = Resources.LoadAll<Formation>("Formations/Usable");
         ManStats.Formation = forms[Random.Range(0, forms.Length)];
+
+        TacticTemplate[] tacs = Resources.LoadAll<TacticTemplate>("Tactics/Templates");
+        ManStats.Template = tacs[Random.Range(0, tacs.Length)];
+        ManStats.Instructions = ManStats.Template.Instructions;
 
         foreach (FieldInfo field in typeof(Skills).GetFields(BindingFlags.Public | BindingFlags.Instance))
         {
