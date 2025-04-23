@@ -126,7 +126,7 @@ public class Fixture
         float tacticalDefecit = home.Manager.TacticsMatch(home.Tactic.Formation, away.Tactic.Formation) - away.Manager.TacticsMatch(home.Tactic.Formation, away.Tactic.Formation);
         tacticalDefecit = SignedSquareRoot(tacticalDefecit);
 
-        float homeThreat = 5 + home.Tactic.Threat - away.Tactic.Security;
+        float homeThreat = 5 + home.Tactic.Threat - home.Tactic.Security;
         homeThreat = SignedSquareRoot(homeThreat, 0.65f);
 
         float awayThreat = 5 + away.Tactic.Threat - home.Tactic.Security;
@@ -154,163 +154,163 @@ public class Fixture
     }
 
     //Match sim logic:
-    internal IEnumerator AdvancedSimulateFixture()
-    {
-        // Initial setup for the match
-        Tactic currentPossessor = HomeTeam.Tactic;
-        Tactic opponent;
+    //    internal IEnumerator AdvancedSimulateFixture()
+    //    {
+    //        // Initial setup for the match
+    //        Tactic currentPossessor = HomeTeam.Tactic;
+    //        Tactic opponent;
 
-        Game.Score currentScore = new Game.Score();
+    //        Game.Score currentScore = new Game.Score();
 
-        for (int minute = 1; minute <= 90; minute++)
-        {
-            opponent = (currentPossessor == HomeTeam.Tactic) ? AwayTeam.Tactic : HomeTeam.Tactic;
+    //        for (int minute = 1; minute <= 90; minute++)
+    //        {
+    //            opponent = (currentPossessor == HomeTeam.Tactic) ? AwayTeam.Tactic : HomeTeam.Tactic;
 
-            yield return new WaitForSeconds(2.5f);
+    //            yield return new WaitForSeconds(2.5f);
 
-            // Simulate phases of play here
-            if (PossessionPhase(currentPossessor, opponent, minute))
-            {
-                minute++;
-                MatchSimPageUI.Instance.UpdateTimer(minute);
-                yield return new WaitForSeconds(1.5f);
+    //            // Simulate phases of play here
+    //            if (PossessionPhase(currentPossessor, opponent, minute))
+    //            {
+    //                minute++;
+    //                MatchSimPageUI.Instance.UpdateTimer(minute);
+    //                yield return new WaitForSeconds(1.5f);
 
-                if (AdvancementPhase(currentPossessor, minute))
-                {
-                    minute++;
-                    MatchSimPageUI.Instance.UpdateTimer(minute);
-                    yield return new WaitForSeconds(1.8f);
+    //                if (AdvancementPhase(currentPossessor, minute))
+    //                {
+    //                    minute++;
+    //                    MatchSimPageUI.Instance.UpdateTimer(minute);
+    //                    yield return new WaitForSeconds(1.8f);
 
-                    if (ChanceCreationPhase(currentPossessor, opponent, minute))
-                    {
-                        minute++;
-                        MatchSimPageUI.Instance.UpdateTimer(minute);
-                        yield return new WaitForSeconds(1.6f);
+    //                    if (ChanceCreationPhase(currentPossessor, opponent, minute))
+    //                    {
+    //                        minute++;
+    //                        MatchSimPageUI.Instance.UpdateTimer(minute);
+    //                        yield return new WaitForSeconds(1.6f);
 
-                        // Clear Chance Phase - Higher probability of scoring
-                        if (UnityEngine.Random.Range(0.1f, 1) < 0.3f)
-                        {
-                            minute++;
-                            MatchSimPageUI.Instance.UpdateTimer(minute);
-                            yield return new WaitForSeconds(2.5f);
+    //                        // Clear Chance Phase - Higher probability of scoring
+    //                        if (UnityEngine.Random.Range(0.1f, 1) < 0.3f)
+    //                        {
+    //                            minute++;
+    //                            MatchSimPageUI.Instance.UpdateTimer(minute);
+    //                            yield return new WaitForSeconds(2.5f);
 
-                            if (ClearChancePhase(currentPossessor, opponent, minute))
-                            {
-                                MatchSimPageUI.Instance.PrintEvent(minute, $"{currentPossessor.Team.TeamName} scores on a clear chance!");
+    //                            if (ClearChancePhase(currentPossessor, opponent, minute))
+    //                            {
+    //                                MatchSimPageUI.Instance.PrintEvent(minute, $"{currentPossessor.Team.TeamName} scores on a clear chance!");
 
-                                currentScore.home += (HomeTeam == currentPossessor.Team) ? 1 : 0;
-                                currentScore.away += (HomeTeam == currentPossessor.Team) ? 0 : 1;
-                            }
-                            else
-                            {
-                                MatchSimPageUI.Instance.PrintEvent(minute, $"{currentPossessor.Team.TeamName} misses the clear chance.");
-                            }
-                        }
-                        else if (ScoringAttemptPhase(currentPossessor, opponent, minute))
-                        {
-                            yield return new WaitForSeconds(2.2f);
-                            MatchSimPageUI.Instance.PrintEvent(minute, $"{currentPossessor.Team.TeamName} scores!");
+    //                                currentScore.home += (HomeTeam == currentPossessor.Team) ? 1 : 0;
+    //                                currentScore.away += (HomeTeam == currentPossessor.Team) ? 0 : 1;
+    //                            }
+    //                            else
+    //                            {
+    //                                MatchSimPageUI.Instance.PrintEvent(minute, $"{currentPossessor.Team.TeamName} misses the clear chance.");
+    //                            }
+    //                        }
+    //                        else if (ScoringAttemptPhase(currentPossessor, opponent, minute))
+    //                        {
+    //                            yield return new WaitForSeconds(2.2f);
+    //                            MatchSimPageUI.Instance.PrintEvent(minute, $"{currentPossessor.Team.TeamName} scores!");
 
-                            currentScore.home += (HomeTeam == currentPossessor.Team) ? 1 : 0;
-                            currentScore.away += (HomeTeam == currentPossessor.Team) ? 0 : 1;
-                        }
-                    }
-                }
-            }
+    //                            currentScore.home += (HomeTeam == currentPossessor.Team) ? 1 : 0;
+    //                            currentScore.away += (HomeTeam == currentPossessor.Team) ? 0 : 1;
+    //                        }
+    //                    }
+    //                }
+    //            }
 
-            // Switch possession if no clear chance or scoring attempt succeeds
-            currentPossessor = opponent;
+    //            // Switch possession if no clear chance or scoring attempt succeeds
+    //            currentPossessor = opponent;
 
-            Score = currentScore;
+    //            Score = currentScore;
 
-            MatchSimPageUI.Instance.UpdateMatchUI();
-        }
+    //            MatchSimPageUI.Instance.UpdateMatchUI();
+    //        }
 
-        BeenPlayed = true;
-    }
+    //        BeenPlayed = true;
+    //    }
 
-    bool PossessionPhase(Tactic team, Tactic opponent, int minute)
-    {
-        float possessionChance = (7 + team.Control + team.Team.AvgPhysical) - (opponent.Control + opponent.Team.AvgPhysical);
-        float randomRoll = UnityEngine.Random.Range(0f, 10f); // Random factor
-        if (randomRoll <= possessionChance)
-        {
-            MatchSimPageUI.Instance.PrintEvent(minute, $"{team.Team.TeamName} with some nice build up play.");
-            return true;
-        }
-        else
-        {
-            MatchSimPageUI.Instance.PrintEvent(minute, $"{team.Team.TeamName} loses possession.");
-            return false;
-        }
-    }
-
-
-    bool AdvancementPhase(Tactic team, int minute)
-    {
-        float advancementChance = team.Threat / 2 + team.Control;
-        float randomRoll = UnityEngine.Random.Range(0f, 10f); // Random factor
-        if (randomRoll <= advancementChance)
-        {
-            MatchSimPageUI.Instance.PrintEvent(minute, $"{team.Team.TeamName} are advancing into the opposition's half.");
-            return true;
-        }
-        else
-        {
-            MatchSimPageUI.Instance.PrintEvent(minute, $"{team.Team.TeamName} with a poor pass. They've lost possession!");
-            return false;
-        }
-    }
+    //    bool PossessionPhase(Tactic team, Tactic opponent, int minute)
+    //    {
+    //        float possessionChance = (7 + team.Control + team.Team.AvgPhysical) - (opponent.Control + opponent.Team.AvgPhysical);
+    //        float randomRoll = UnityEngine.Random.Range(0f, 10f); // Random factor
+    //        if (randomRoll <= possessionChance)
+    //        {
+    //            MatchSimPageUI.Instance.PrintEvent(minute, $"{team.Team.TeamName} with some nice build up play.");
+    //            return true;
+    //        }
+    //        else
+    //        {
+    //            MatchSimPageUI.Instance.PrintEvent(minute, $"{team.Team.TeamName} loses possession.");
+    //            return false;
+    //        }
+    //    }
 
 
-    bool ChanceCreationPhase(Tactic team, Tactic opponent, int minute)
-    {
-        float chanceCreationChance = (team.Threat / 2 + team.Control + 3) - opponent.Security;
-        float randomRoll = UnityEngine.Random.Range(0f, 10f); // Random factor
-        if (randomRoll <= chanceCreationChance)
-        {
-            MatchSimPageUI.Instance.PrintEvent(minute, $"This is a goal scoring chance for {team.Team.TeamName}");
-            return true;
-        }
-        else
-        {
-            MatchSimPageUI.Instance.PrintEvent(minute, $"{team.Team.TeamName} lose the ball!");
-            return false;
-        }
-    }
+    //    bool AdvancementPhase(Tactic team, int minute)
+    //    {
+    //        float advancementChance = team.Threat / 2 + team.Control;
+    //        float randomRoll = UnityEngine.Random.Range(0f, 10f); // Random factor
+    //        if (randomRoll <= advancementChance)
+    //        {
+    //            MatchSimPageUI.Instance.PrintEvent(minute, $"{team.Team.TeamName} are advancing into the opposition's half.");
+    //            return true;
+    //        }
+    //        else
+    //        {
+    //            MatchSimPageUI.Instance.PrintEvent(minute, $"{team.Team.TeamName} with a poor pass. They've lost possession!");
+    //            return false;
+    //        }
+    //    }
 
 
-    bool ScoringAttemptPhase(Tactic team, Tactic opponent, int minute)
-    {
-        float scoringChance = team.Threat * 0.8f - opponent.Security * 0.2f;
-        float randomRoll = UnityEngine.Random.Range(0f, 10f); // Random factor
-        if (randomRoll <= scoringChance)
-        {
-            MatchSimPageUI.Instance.PrintEvent(minute, $"GOAL FOR {team.Team.TeamName}!");
-            return true;
-        }
-        else
-        {
-            MatchSimPageUI.Instance.PrintEvent(minute, $"The shot by {team.Team.TeamName} is saved!");
-            return false;
-        }
-    }
+    //    bool ChanceCreationPhase(Tactic team, Tactic opponent, int minute)
+    //    {
+    //        float chanceCreationChance = (team.Threat / 2 + team.Control + 3) - opponent.Security;
+    //        float randomRoll = UnityEngine.Random.Range(0f, 10f); // Random factor
+    //        if (randomRoll <= chanceCreationChance)
+    //        {
+    //            MatchSimPageUI.Instance.PrintEvent(minute, $"This is a goal scoring chance for {team.Team.TeamName}");
+    //            return true;
+    //        }
+    //        else
+    //        {
+    //            MatchSimPageUI.Instance.PrintEvent(minute, $"{team.Team.TeamName} lose the ball!");
+    //            return false;
+    //        }
+    //    }
 
 
-    bool ClearChancePhase(Tactic team, Tactic opponent, int minute)
-    {
-        float clearChanceProbability = 0.75f; // High probability for clear chances
-        bool clearChanceResult = UnityEngine.Random.Range(0.1f, 1) < clearChanceProbability;
+    //    bool ScoringAttemptPhase(Tactic team, Tactic opponent, int minute)
+    //    {
+    //        float scoringChance = team.Threat * 0.8f - opponent.Security * 0.2f;
+    //        float randomRoll = UnityEngine.Random.Range(0f, 10f); // Random factor
+    //        if (randomRoll <= scoringChance)
+    //        {
+    //            MatchSimPageUI.Instance.PrintEvent(minute, $"GOAL FOR {team.Team.TeamName}!");
+    //            return true;
+    //        }
+    //        else
+    //        {
+    //            MatchSimPageUI.Instance.PrintEvent(minute, $"The shot by {team.Team.TeamName} is saved!");
+    //            return false;
+    //        }
+    //    }
 
-        if (clearChanceResult)
-        {
-            MatchSimPageUI.Instance.PrintEvent(minute, $"GOAL FOR {team.Team.TeamName}!!");
-        }
-        else
-        {
-            MatchSimPageUI.Instance.PrintEvent(minute, $"What a chance!! {team.Team.TeamName} waste a chance 1 on 1 with the keeper!");
-        }
 
-        return clearChanceResult;
-    }
+    //    bool ClearChancePhase(Tactic team, Tactic opponent, int minute)
+    //    {
+    //        float clearChanceProbability = 0.75f; // High probability for clear chances
+    //        bool clearChanceResult = UnityEngine.Random.Range(0.1f, 1) < clearChanceProbability;
+
+    //        if (clearChanceResult)
+    //        {
+    //            MatchSimPageUI.Instance.PrintEvent(minute, $"GOAL FOR {team.Team.TeamName}!!");
+    //        }
+    //        else
+    //        {
+    //            MatchSimPageUI.Instance.PrintEvent(minute, $"What a chance!! {team.Team.TeamName} waste a chance 1 on 1 with the keeper!");
+    //        }
+
+    //        return clearChanceResult;
+    //    }
 }

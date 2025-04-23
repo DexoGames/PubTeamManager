@@ -50,7 +50,7 @@ public class MatchSimPageUI : UIPage
 
     void SimMatch()
     {
-        StartCoroutine(_fixture.AdvancedSimulateFixture());
+        //StartCoroutine(_fixture.AdvancedSimulateFixture());
 
         UpdateMatchUI();
     }

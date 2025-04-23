@@ -4,11 +4,11 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
-public abstract class TacticElement : ScriptableObject
+public abstract class LegacyTacticElement : ScriptableObject
 {
     public int ID;
     public List<string> dependencies;
-    public UnityEvent<TacticStats> Action;
+    public UnityEvent<LegacyTacticStats> Action;
 
     public enum Dependency
     {

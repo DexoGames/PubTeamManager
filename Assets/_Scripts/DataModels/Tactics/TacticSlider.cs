@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [CreateAssetMenu(menuName = "Tactic Slider")]
-public class TacticSlider : TacticElement
+public class TacticSlider : LegacyTacticElement
 {
     int _value;
     public int Value

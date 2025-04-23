@@ -29,8 +29,8 @@ public class Team : ScriptableObject
 
     public void SetTeamId(int id) { teamId = id; }
     public int TeamId => teamId;
-    public int AvgAttacking => (int)WeightedAverage(((float)Players.Average(x => x.GetStats().Attacking), 1), ((float)Attackers.Average(x => x.GetStats().Attacking), 3));
-    public int AvgDefending => (int)WeightedAverage(((float)Players.Average(x => x.GetStats().Defending), 1), ((float)Defenders.Average(x => x.GetStats().Defending), 3), (Goalkeeper.GetStats().Goalkeeping, 2));
+    public int AvgAttacking => (int)WeightedAverage(((float)Players.Average(x => x.GetStats().Attacking), 0.5f), ((float)Attackers.Average(x => x.GetStats().Attacking), 3));
+    public int AvgDefending => (int)WeightedAverage(((float)Players.Average(x => x.GetStats().Defending), 0.5f), ((float)Defenders.Average(x => x.GetStats().Defending), 3), (Goalkeeper.GetStats().Goalkeeping, 2));
     public int AvgMental => (int)Players.Average(x => x.RawStats.Mental);
     public int AvgPhysical => (int)Players.Average(x => x.RawStats.Physical);
     public int AvgControl => (int)Players.Average(x => Average(x.GetStats().Skills.Intelligence, x.GetStats().Skills.Teamwork, x.GetStats().Skills.Passing));
