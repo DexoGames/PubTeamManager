@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d5f83aa929aa0c4ca7bb823e8957365, type: 3}
+  m_Name: BrexitTackles
+  m_EditorClassIdentifier: 
+  tacticName: Brexit Tackles
+  description: Just as Dyche would've wanted
+  statModifications:
+  - stat: 10
+    value: 25
+  - stat: 1
+    value: 5
+  - stat: 4
+    value: 5
+  - stat: 5
+    value: 5
+  - stat: 3
+    value: -5
+  dependencies:
+  - stat: 2
+    group: 5
+    strength: 1
+  - stat: 13
+    group: 5
+    strength: 1
+  tacticDependencies:
+  - stat: 2
+    minimumValue: 50
+    inverse: 1
+  reliances: []
+  incompatibleInstructions: []

@@ -15,8 +15,8 @@ public class FixtureUI : MonoBehaviour
 
         if (fixture.BeenPlayed || showNilNil)
         {
-            homeScore.text = fixture.Score.home.ToString();
-            awayScore.text = fixture.Score.away.ToString();
+            homeScore.text = fixture.Result.score.home.ToString();
+            awayScore.text = fixture.Result.score.away.ToString();
         }
         else
         {

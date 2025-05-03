@@ -10,49 +10,38 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7d5f83aa929aa0c4ca7bb823e8957365, type: 3}
-  m_Name: LowBlock
+  m_Name: OffsideTrap
   m_EditorClassIdentifier: 
-  tacticName: Low Block
+  tacticName: Offside Trap
   description: 
   statModifications:
   - stat: 0
     value: 5
-  - stat: 5
-    value: 15
-  - stat: 4
-    value: -20
-  - stat: 2
-    value: -10
-  - stat: 3
-    value: -5
   - stat: 1
-    value: -5
-  - stat: 8
-    value: -5
+    value: 10
+  - stat: 4
+    value: 10
+  - stat: 2
+    value: 10
+  - stat: 3
+    value: 5
   dependencies:
-  - stat: 6
-    group: 1
-    strength: 2
-  - stat: 18
-    group: 1
-    strength: 1
-  - stat: 11
-    group: 5
-    strength: 1
   - stat: 12
     group: 1
-    strength: -2
+    strength: 3
+  - stat: 6
+    group: 1
+    strength: 3
   - stat: 8
-    group: 6
-    strength: -1
+    group: 1
+    strength: 1
   tacticDependencies:
-  - stat: 5
-    minimumValue: 65
+  - stat: 2
+    minimumValue: 60
     inverse: 0
-  - stat: 8
-    minimumValue: 40
-    inverse: 1
+  - stat: 3
+    minimumValue: 60
+    inverse: 0
   reliances: []
   incompatibleInstructions:
-  - {fileID: 11400000, guid: a05273b356ba45647918f02c8837167e, type: 2}
-  - {fileID: 11400000, guid: af24ce5b5687db448a379d7eabbac38f, type: 2}
+  - {fileID: 11400000, guid: 8153e13b9dc37f34a8a95c1529d4ed33, type: 2}

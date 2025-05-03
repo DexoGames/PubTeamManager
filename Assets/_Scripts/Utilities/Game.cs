@@ -3,6 +3,83 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+public enum Card
+{
+    None, Yellow, Red, RedAndSuspension
+}
+public enum InjuryType
+{
+    None, Knock, Standard, Hamstring, ACL, Death
+}
+
+public enum Half
+{
+    First, Second, ExtraTime
+}
+
+public struct Minute : IComparable<Minute>, IEquatable<Minute>
+{
+    public int Base { get; private set;}
+    public int Stoppage { get; private set;}
+
+    public Minute(int baseMinute, int stoppageTime = 0)
+    {
+        Base = baseMinute;
+        Stoppage = stoppageTime;
+    }
+
+    public void Next()
+    {
+        if(Base == 45 || Base == 90 || Base == 120)
+        {
+            Stoppage++;
+        }
+        else{
+            Base++;
+        }
+        
+    }
+
+    public int TotalMinutes => Base + Stoppage;
+
+    public bool IsInStoppageTime => Stoppage > 0;
+
+    public override string ToString()
+    {
+        return IsInStoppageTime ? $"{Base}'+{Stoppage}" : $"{Base}'";
+    }
+
+    public int CompareTo(Minute other)
+    {
+        int baseComparison = Base.CompareTo(other.Base);
+        if (baseComparison != 0)
+            return baseComparison;
+
+        return Stoppage.CompareTo(other.Stoppage);
+    }
+
+
+    public bool Equals(Minute other)
+    {
+        return Base == other.Base && Stoppage == other.Stoppage;
+    }
+
+    public override bool Equals(object obj)
+    {
+        return obj is Minute other && Equals(other);
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Base, Stoppage);
+    }
+
+    public static bool operator ==(Minute left, Minute right) => left.Equals(right);
+    public static bool operator !=(Minute left, Minute right) => !(left == right);
+    public static bool operator <(Minute left, Minute right) => left.CompareTo(right) < 0;
+    public static bool operator >(Minute left, Minute right) => left.CompareTo(right) > 0;
+}
+
 public class Game : MonoBehaviour
 {
     [System.Serializable]

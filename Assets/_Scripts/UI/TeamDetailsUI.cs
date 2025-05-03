@@ -48,11 +48,10 @@ public class TeamDetailsUI : UIPage
     {
         Game.ClearContainer(_teamStatsContainer);
 
-        Instantiate(_teamStatsPrefab, _teamStatsContainer).SetText("Attacking", team.Tactic.Threat);
-        Instantiate(_teamStatsPrefab, _teamStatsContainer).SetText("Defending", team.Tactic.Security);
+        Instantiate(_teamStatsPrefab, _teamStatsContainer).SetText("Attacking", team.Threat);
+        Instantiate(_teamStatsPrefab, _teamStatsContainer).SetText("Defending", team.Security);
         Instantiate(_teamStatsPrefab, _teamStatsContainer).SetText("Mental", team.AvgMental);
         Instantiate(_teamStatsPrefab, _teamStatsContainer).SetText("Physical", team.AvgPhysical);
-        Instantiate(_teamStatsPrefab, _teamStatsContainer).SetText("Tactics", team.Manager.ManStats.Tactics);
     }
 
     private void PopulateTeamUI(Team team)

@@ -47,8 +47,8 @@ public class LeagueManager : MonoBehaviour
         }
 
         // Assuming Fixture has properties like HomeGoals, AwayGoals
-        int homeGoals = fixture.Score.home;
-        int awayGoals = fixture.Score.away;
+        int homeGoals = fixture.Result.score.home;
+        int awayGoals = fixture.Result.score.away;
 
         homeTeamEntry.goalsFor += homeGoals;
         homeTeamEntry.goalsAgainst += awayGoals;

@@ -10,7 +10,7 @@ public class Fixture
 {
     public Team HomeTeam;
     public Team AwayTeam;
-    public Game.Score Score;
+    public Match.Result Result;
     public DateTime Date;
     public List<Player> Goalscorers;
 
@@ -22,7 +22,7 @@ public class Fixture
     {
         HomeTeam = home;
         AwayTeam = away;
-        Score = new Game.Score(0, 0);
+        Result = new Match.Result();
         Date = date;
         this.matchWeek = matchWeek;
     }
@@ -30,7 +30,8 @@ public class Fixture
     internal void SimulateFixture()
     {
         //Debug.Log($"SIMULATING {HomeTeam.TeamName} VS {AwayTeam.TeamName}");
-        Score = CalculateScore(HomeTeam, AwayTeam);
+        Match match = new Match(HomeTeam, AwayTeam);
+        Result = match.SimulateMatch();
 
         //Debug.Log($"{Score.home}-{Score.away}");
 
@@ -43,16 +44,16 @@ public class Fixture
 
     public Team GetWinner()
     {
-        if (!BeenPlayed || Score.home == Score.away) return null;
+        if (!BeenPlayed || Result.score.home == Result.score.away) return null;
 
-        if (Score.home > Score.away) return HomeTeam;
+        if (Result.score.home > Result.score.away) return HomeTeam;
         return AwayTeam;
     }
     public Team GetLoser()
     {
-        if (!BeenPlayed || Score.home == Score.away) return null;
+        if (!BeenPlayed || Result.score.home == Result.score.away) return null;
 
-        if (Score.home > Score.away) return AwayTeam;
+        if (Result.score.home > Result.score.away) return AwayTeam;
         return HomeTeam;
     }
 
@@ -66,57 +67,10 @@ public class Fixture
     //    }
     //}
 
-    public static Player SelectWeightedRandomPlayer(List<Player> players)
-    {
-        if (players == null || players.Count == 0)
-            return null; // Handle empty lists
-
-        // Define position multipliers
-        Dictionary<Player.Position, double> positionWeights = new Dictionary<Player.Position, double>
-        {
-            { Player.Position.ST, 2.0 },  // Strikers are more likely
-            { Player.Position.LW, 1.8 }, { Player.Position.RW, 1.8 },
-            { Player.Position.AM, 1.8 },
-            { Player.Position.LM, 1.5 }, { Player.Position.RM, 1.5 },
-            { Player.Position.CM, 1.0 },
-            { Player.Position.DM, 0.8 },
-            { Player.Position.LB, 0.8 }, { Player.Position.RB, 0.8 },
-            { Player.Position.CB, 0.8 },
-            { Player.Position.GK, 0.1 }
-        };
-
-        // Calculate weights
-        var weightedPlayers = players.Select(p =>
-        {
-            int attacking = p.GetStats().Attacking;
-            Player.Position pos = p.GetPosition() ?? Player.Position.CM; // Default to CM if null
-
-            double positionWeight = positionWeights.ContainsKey(pos) ? positionWeights[pos] : 1.0;
-            double weight = attacking * positionWeight;
-
-            return new { Player = p, Weight = weight };
-        }).Where(p => p.Weight > 0).ToList();
-
-        if (weightedPlayers.Count == 0)
-            return null;
-
-        // Perform weighted random selection
-        double totalWeight = weightedPlayers.Sum(p => p.Weight);
-        double randomValue = UnityEngine.Random.Range(0, 1f) * totalWeight;
-
-        double cumulativeWeight = 0;
-        foreach (var entry in weightedPlayers)
-        {
-            cumulativeWeight += entry.Weight;
-            if (randomValue <= cumulativeWeight)
-                return entry.Player;
-        }
-
-        return weightedPlayers.Last().Player;
-    }
-
     public static Game.Score CalculateScore(Team home, Team away)
     {
+        Debug.Log($"{home.TeamName} vs {away.TeamName}:");
+
         float mentalDefecit = 10 + home.AvgMental - away.AvgMental;
         mentalDefecit = SignedSquareRoot(mentalDefecit) / 1.5f;
 
@@ -126,13 +80,15 @@ public class Fixture
         float tacticalDefecit = home.Manager.TacticsMatch(home.Tactic.Formation, away.Tactic.Formation) - away.Manager.TacticsMatch(home.Tactic.Formation, away.Tactic.Formation);
         tacticalDefecit = SignedSquareRoot(tacticalDefecit);
 
-        float homeThreat = 5 + home.Tactic.Threat - home.Tactic.Security;
+        float homeThreat = 15 + home.Threat - home.Security;
         homeThreat = SignedSquareRoot(homeThreat, 0.65f);
 
-        float awayThreat = 5 + away.Tactic.Threat - home.Tactic.Security;
+        float awayThreat = 15 + away.Threat - home.Security;
         awayThreat = SignedSquareRoot(awayThreat, 0.65f);
 
-        float threatDivider = 1.3f;
+        Debug.Log($"home threat = {homeThreat}");
+
+        float threatDivider = 1.1f;
         float defDivider = 1.5f;
         float avgDefecit = Game.WeightedAverage((mentalDefecit, 1), (physicalDefecit, 1), (tacticalDefecit, 0.5f));
         Game.Score score = new Game.Score(Mathf.RoundToInt((homeThreat / threatDivider) + avgDefecit / defDivider), Mathf.RoundToInt((awayThreat / threatDivider) - avgDefecit / defDivider));

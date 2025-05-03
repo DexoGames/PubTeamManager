@@ -71,7 +71,7 @@ public class MatchSimPageUI : UIPage
         Debug.Log("AYYYY");
         _fixture.SimulateFixture();
 
-        Debug.Log(_fixture.Score.home);
+        Debug.Log(_fixture.Result.home);
 
         UpdateMatchUI();
     }
