@@ -60,4 +60,20 @@ public class FixturesManager : MonoBehaviour
 
         return matchWeeks[i];
     }
+
+    private void Update()
+    {
+        if(Input.GetKeyDown(KeyCode.B))
+        {
+            Fixture fixture = GetMatchWeek(GameManager.Instance.MatchWeekNum).fixtures[0];
+            Match match = new Match(fixture.HomeTeam, fixture.AwayTeam);
+            match.Build(fixture.HomeTeam, fixture.AwayTeam);
+        }
+        if (Input.GetKeyDown(KeyCode.P))
+        {
+            Fixture fixture = GetMatchWeek(GameManager.Instance.MatchWeekNum).fixtures[0];
+            Match match = new Match(fixture.HomeTeam, fixture.AwayTeam);
+            match.Progress(fixture.HomeTeam, fixture.AwayTeam);
+        }
+    }
 }

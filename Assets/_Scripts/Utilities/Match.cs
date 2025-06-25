@@ -6,10 +6,26 @@ using static Game;
 
 public class Match
 {
-    public struct Goal
+    public enum State
     {
+        Build, Progress, Probe, Advance, Penetrate, Counter, Break
+    }
+
+    public enum ShotType
+    {
+        Strike, TapIn, Header, Solo, Stylish, Screamer, Penalty, FreeKick, Corner, OwnGoal, Deflection
+    }
+    public enum ShotOutcome
+    {
+        Goal, Saved, Post, Miss, BadMiss
+    }
+
+    public struct Shot
+    {
+        public ShotType type;
+        public ShotOutcome result;
         public Team team;
-        public Player scorer;
+        public Player shooter;
         public Player assister;
         public float xG;
         public Minute minute;
@@ -40,7 +56,7 @@ public class Match
     public struct TeamStats
     {
         public Team team;
-        public List<Goal> goals;
+        public List<Shot> goals;
         public List<Foul> fouls;
         public float possession;
     }
@@ -91,85 +107,29 @@ public class Match
         Team attackingTeam = Random.Range(0f, 1f) < possession ? home : away;
         Team defendingTeam = attackingTeam == home ? away : home;
 
-        SimulatePlay(attackingTeam, defendingTeam, currentMinute);
+        
     }
 
-    private void SimulatePlay(Team attackingTeam, Team defendingTeam, Minute currentMinute)
+    private float WeightedStat(int stat, float weight)
     {
-        PlayState state = PlayState.Build;
-        bool possessionLost = false;
-
-        while (!possessionLost)
-        {
-            switch (state)
-            {
-                case PlayState.Build:
-                    state = TransitionState(attackingTeam.Control, PlayState.Retain, ref possessionLost);
-                    break;
-
-                case PlayState.Retain:
-                    state = TransitionState(attackingTeam.Stability, PlayState.Probe, ref possessionLost);
-                    break;
-
-                case PlayState.Probe:
-                    if (Random.Range(0f, 1f) < attackingTeam.Creativity / 100f)
-                        state = PlayState.Advance;
-                    else if (Random.Range(0f, 1f) < defendingTeam.Pressure / 100f)
-                        possessionLost = true;
-                    else
-                        AttemptShot(attackingTeam, defendingTeam, currentMinute, 0.1f);
-                    break;
-
-                case PlayState.Advance:
-                    if (Random.Range(0f, 1f) < attackingTeam.Threat / 100f)
-                        state = PlayState.Attack;
-                    else if (Random.Range(0f, 1f) < defendingTeam.Pressure / 100f)
-                        possessionLost = true;
-                    else
-                        AttemptShot(attackingTeam, defendingTeam, currentMinute, 0.2f);
-                    break;
-
-                case PlayState.Attack:
-                    if (Random.Range(0f, 1f) < attackingTeam.Intensity / 100f)
-                        state = PlayState.Penetrate;
-                    else if (Random.Range(0f, 1f) < defendingTeam.Security / 100f)
-                        possessionLost = true;
-                    else
-                        AttemptShot(attackingTeam, defendingTeam, currentMinute, 0.3f);
-                    break;
-
-                case PlayState.Penetrate:
-                    AttemptShot(attackingTeam, defendingTeam, currentMinute, 0.5f);
-                    possessionLost = true;
-                    break;
-            }
-        }
+        return stat * weight;
     }
 
-    private PlayState TransitionState(int stat, PlayState nextState, ref bool possessionLost)
-    {
-        if (Random.Range(0f, 1f) < stat / 100f)
-            return nextState;
-        else
-        {
-            possessionLost = true;
-            return PlayState.Build; // Default fallback
-        }
-    }
-
-    private void AttemptShot(Team attackingTeam, Team defendingTeam, Minute currentMinute, float baseXG)
+    private void AttemptShot(ShotType type, Team attackingTeam, Team defendingTeam, Minute currentMinute, float baseXG)
     {
         Player scorer = SelectWeightedRandomPlayer(attackingTeam.StartingPlayers);
-        float xG = baseXG * (scorer.GetStats().Attacking / 100f);
+        float shootingModidifer = (scorer.GetStats().Shooting-25) * (1-baseXG) / 100f;
+        float composureModidifer = (scorer.GetStats().Composure-25) * (baseXG) / 100f;
+        float keeperModifier = (defendingTeam.Goalkeeper.GetStats().Goalkeeping-25) * (baseXG) / 200f;
+        float odds = baseXG + shootingModidifer + composureModidifer - keeperModifier;
+        odds = Mathf.Clamp(odds, 0.015f, 0.985f);
 
-        if (Random.Range(0f, 1f) < xG)
+        if (Random.Range(0f, 1f) < odds)
         {
-            // Goal scored
-            RecordGoal(attackingTeam, scorer, xG, currentMinute);
+            RecordShot(type, ShotOutcome.Goal, attackingTeam, scorer, baseXG, currentMinute);
         }
         else
         {
-            // Keeper saves or misses
             if (Random.Range(0f, 1f) < defendingTeam.Goalkeeper.GetStats().Goalkeeping / 100f)
             {
                 // Keeper saves
@@ -177,27 +137,25 @@ public class Match
         }
     }
 
-    private void RecordGoal(Team scoringTeam, Player scorer, float xG, Minute minute)
+    void RecordShot(ShotType type, ShotOutcome outcome, Team shootingTeam, Player shooter, float xG, Minute minute)
     {
-        if (scoringTeam == home)
+        Shot shot = new Shot
         {
-            result.home.goals.Add(new Goal
-            {
-                team = home,
-                scorer = scorer,
-                xG = xG,
-                minute = minute
-            });
+            type = ShotType.Strike,
+            result = ShotOutcome.Goal,
+            team = shootingTeam,
+            shooter = shooter,
+            xG = xG,
+            minute = minute,
+        };
+
+        if (shootingTeam == home)
+        {
+            result.home.goals.Add(shot);
         }
         else
         {
-            result.away.goals.Add(new Goal
-            {
-                team = away,
-                scorer = scorer,
-                xG = xG,
-                minute = minute
-            });
+            result.away.goals.Add(shot);
         }
     }
 
@@ -276,13 +234,132 @@ public class Match
         return home.Control / (float)(home.Control + away.Control);
     }
 
-    private enum PlayState
+    float CalculateRandomness()
     {
-        Build,
-        Retain,
-        Probe,
-        Advance,
-        Attack,
-        Penetrate
+        float randomRange = 5 + home.Tactic.Stability / 25f + away.Tactic.Stability / 100f*6f;
+        return Random.Range(-randomRange, randomRange);
+    }
+
+    public void Build(Team attacking, Team defending)
+    {
+        Player.Stats attackingStats = attacking.Defenders.AverageStats();
+        Player.Stats defendingStats = defending.Attackers.AverageStats();
+
+        int buildAbility = (int)WeightedAverage(
+            (attackingStats.Passing, 0.5f),
+            (attackingStats.Intelligence, 0.5f),
+            (attackingStats.Positioning, 0.2f),
+            (attackingStats.Composure, 0.2f)
+        );
+
+        int buildTactic = (int)WeightedAverage(
+            (attacking.Tactic.Control, 0.5f),
+            (attacking.Tactic.Stability, 0.3f),
+            (attacking.Tactic.Security, 0.15f)
+        );
+
+        int pressAbility = (int)WeightedAverage(
+            (defendingStats.Positioning, 0.5f),
+            (defendingStats.Intelligence, 0.3f),
+            (defendingStats.Teamwork, 0.2f),
+            (defendingStats.Tackling, 0.1f)
+        );
+
+        int pressTactic = (int)WeightedAverage(
+            (defending.Tactic.Pressure, 1f),
+            (defending.Tactic.Intensity, 0.2f)
+        );
+
+        float tacticDiff = buildTactic - pressTactic;
+        float abilityDiff = buildAbility - pressAbility;
+
+        float tacticInfluence = 1.0f - Mathf.Clamp01(Mathf.Abs(tacticDiff) / 100f);
+        float abilityWeight = tacticInfluence;
+        float tacticWeight = 1.0f - tacticInfluence;
+
+        float weightedTactic = tacticWeight * Mathf.Sign(tacticDiff) * Mathf.Pow(Mathf.Abs(tacticDiff), 1f);
+        float weightedAbility = abilityWeight * Mathf.Sign(abilityDiff) * Mathf.Pow(Mathf.Abs(abilityDiff), 0.75f);
+
+        float randomness = CalculateRandomness();
+        float buildScore = weightedTactic + weightedAbility + randomness;
+
+        float successThreshold = 5f;
+        float failThreshold = -5f;
+
+        float overflow = 0f;
+
+        Debug.Log($"buildAbility: {buildAbility}, buildTactic: {buildTactic}");
+        Debug.Log($"pressAbility: {pressAbility}, pressTactic: {pressTactic}");
+        Debug.Log($"tacticDiff: {tacticDiff}, abilityDiff: {abilityDiff}");
+        Debug.Log($"tacticInfluence: {tacticInfluence}, abilityWeight: {abilityWeight}, tacticWeight: {tacticWeight}");
+        Debug.Log($"weightedTactic: {weightedTactic}, weightedAbility: {weightedAbility}");
+        Debug.Log($"randomness: {randomness}");
+
+        Debug.Log($"BUILD SCORE {home.TeamName} vs {away.TeamName}: {buildScore}");
+    }
+
+    public void Progress(Team attacking, Team defending)
+    {
+        Player.Stats attackingStats = attacking.Midfielders.AverageStats();
+        Player.Stats defendingStats = defending.Midfielders.AverageStats();
+
+        int progressAbility = (int)WeightedAverage(
+            (attackingStats.Passing, 0.4f),
+            (attackingStats.Intelligence, 0.2f),
+            (attackingStats.Positioning, 0.2f),
+            (attackingStats.Creativity, 0.2f),
+            (attackingStats.Dribbling, 0.2f)
+        );
+
+        int progressTactic = (int)WeightedAverage(
+            (attacking.Tactic.Stability, 0.5f),
+            (attacking.Tactic.Control, 0.3f),
+            (attacking.Tactic.Security, 0.1f)
+        );
+
+        int pressAbility = (int)WeightedAverage(
+            (defendingStats.Positioning, 0.5f),
+            (defendingStats.Intelligence, 0.4f),
+            (defendingStats.Teamwork, 0.2f),
+            (defendingStats.Tackling, 0.1f)
+        );
+
+        int pressTactic = (int)WeightedAverage(
+            (defending.Tactic.Pressure, 1f),
+            (defending.Tactic.Intensity, 0.2f),
+            (defending.Tactic.Stability, 0.1f)
+        );
+
+        float tacticDiff = progressTactic - pressTactic;
+        float abilityDiff = progressAbility - pressAbility;
+
+        float tacticInfluence = 1.0f - Mathf.Clamp01(Mathf.Abs(tacticDiff) / 100f);
+        float abilityWeight = tacticInfluence;
+        float tacticWeight = 1.0f - tacticInfluence;
+
+        float weightedTactic = tacticWeight * Mathf.Sign(tacticDiff) * Mathf.Pow(Mathf.Abs(tacticDiff), 1f);
+        float weightedAbility = abilityWeight * Mathf.Sign(abilityDiff) * Mathf.Pow(Mathf.Abs(abilityDiff), 0.75f);
+
+        float randomness = CalculateRandomness();
+        float buildScore = weightedTactic + weightedAbility + randomness;
+
+        float successThreshold = 5f;
+        float failThreshold = -5f;
+
+        float overflow = 0f;
+
+        Debug.Log($"progressAbility: {progressAbility}, progressTactic: {progressTactic}");
+        Debug.Log($"pressAbility: {pressAbility}, pressTactic: {pressTactic}");
+        Debug.Log($"tacticDiff: {tacticDiff}, abilityDiff: {abilityDiff}");
+        Debug.Log($"tacticInfluence: {tacticInfluence}, abilityWeight: {abilityWeight}, tacticWeight: {tacticWeight}");
+        Debug.Log($"weightedTactic: {weightedTactic}, weightedAbility: {weightedAbility}");
+        Debug.Log($"randomness: {randomness}");
+
+        Debug.Log($"PROGRESS SCORE {home.TeamName} vs {away.TeamName}: {buildScore}");
+    }
+
+    void Counter(Team attacking, Team defending, float overflow)
+    {
+
     }
 }

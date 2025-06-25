@@ -181,4 +181,9 @@ public class Game : MonoBehaviour
 
         return Color.Lerp(colorArray[indexA], colorArray[indexB], localT);
     }
+
+    public static float KeepSignPow(float input, float power)
+    {
+        return Mathf.Abs(Mathf.Pow(input, power)) * Mathf.Sign(input);
+    }
 }

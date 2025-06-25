@@ -2,12 +2,13 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public enum PlayerStat
 {
     Shooting, Passing, Tackling, Dribbling, Crossing, Heading,
-    Positioning, Intelligence, Teamwork, Composure, Aggression, Resilience,
+    Positioning, Intelligence, Creativity, Teamwork, Composure, Aggression,
     Pace, Strength, Jumping, Agility, Stamina, Durability,
     Height
 }
@@ -19,8 +20,9 @@ public enum PlayerGroup
 [System.Serializable]
 public class Player : Person
 {
-    public Stats RawStats;
+    public const int SKILL_NO = 18;
 
+    public Stats RawStats;
     int teamIndex;
 
     public Player(Team team, Formation.Position[] teamPositions, int teamIndex)
@@ -31,16 +33,15 @@ public class Player : Person
         this.teamIndex = teamIndex;
 
         RawStats.Height = Random.Range(0, 100);
+        RawStats.Skills = new int[SKILL_NO];
 
-        foreach (FieldInfo field in typeof(Skills).GetFields(BindingFlags.Public | BindingFlags.Instance))
+        for(int i = 0; i < SKILL_NO; i++)
         {
-            if (field.FieldType == typeof(int))
-            {
-                field.SetValueDirect(__makeref(RawStats.Skills), UnityEngine.Random.Range(16, 85));
-            }
+            RawStats.Skills[i] = Random.Range(10, 90);
         }
 
-        RawStats.Skills = PersonalityModifier(RawStats.Skills, Personality);
+        Debug.Log("eyyyy");
+        RawStats = PersonalityModifier(RawStats, Personality);
 
         Position bestPosition = (Position)Random.Range(0, Game.GetEnumLength<Position>());
         if (teamIndex < teamPositions.Length && Random.Range(0, 3) == 0)
@@ -66,13 +67,52 @@ public class Player : Person
         }
     }
 
+    [System.Serializable]
+    public struct Stats
+    {
+        public int[] Skills;
+        public Dictionary<Position, PositionStrength> Positions;
+        public int Height;
+
+        public int Shooting { get => Skills[0]; set => Skills[0] = value; }
+        public int Passing { get => Skills[1]; set => Skills[1] = value; }
+        public int Tackling { get => Skills[2]; set => Skills[2] = value; }
+        public int Dribbling { get => Skills[3]; set => Skills[3] = value; }
+        public int Crossing { get => Skills[4]; set => Skills[4] = value; }
+        public int Heading { get => Skills[5]; set => Skills[5] = value; }
+
+        public int Positioning { get => Skills[6]; set => Skills[6] = value; }
+        public int Intelligence { get => Skills[7]; set => Skills[7] = value; }
+        public int Creativity { get => Skills[8]; set => Skills[8] = value; }
+        public int Teamwork { get => Skills[9]; set => Skills[9] = value; }
+        public int Composure { get => Skills[10]; set => Skills[10] = value; }
+        public int Aggression { get => Skills[11]; set => Skills[11] = value; }
+
+        public int Pace { get => Skills[12]; set => Skills[12] = value; }
+        public int Strength { get => Skills[13]; set => Skills[13] = value; }
+        public int Jumping { get => Skills[14]; set => Skills[14] = value; }
+        public int Agility { get => Skills[15]; set => Skills[15] = value; }
+        public int Stamina { get => Skills[16]; set => Skills[16] = value; }
+        public int Durability { get => Skills[17]; set => Skills[17] = value; }
+
+        public int Attacking => (int)Game.Average(Shooting, Shooting, Dribbling, Composure, Creativity);
+        public int Midfield => (int)Game.Average(Passing, Intelligence, Positioning, Crossing, Dribbling, Creativity);
+        public int Defending => (int)Game.Average(Tackling, Tackling, Positioning, Positioning, Strength, Passing);
+        public int Mental => (int)Game.Average(Intelligence, Teamwork, Composure);
+        public int Physical => (int)Game.Average(Pace, Strength, Stamina, Durability);
+        public int Goalkeeping => (int)Game.Average(Jumping, Aggression, Composure, Positioning);
+    }
+
     public Stats GetStats()
     {
         Stats newStats = RawStats;
 
-        if (GetTeamIndex() < Team.Formation.Positions.Length) newStats = GetStatsFor(Team.Formation.Positions[GetTeamIndex()].ID);
+        if (GetTeamIndex() < Team.Formation.Positions.Length)
+        {
+            newStats = GetStatsFor(Team.Formation.Positions[GetTeamIndex()].ID);
+        }
 
-        newStats.Skills = MoraleModifier(newStats.Skills, Morale);
+        newStats = MoraleModifier(newStats, Morale);
 
         return newStats;
     }
@@ -80,61 +120,55 @@ public class Player : Person
     public Stats GetStatsFor(Position position)
     {
         Stats newStats = RawStats;
+        newStats.Skills = new int[SKILL_NO];
+        PositionStrength strength = newStats.Positions[position];
 
-        foreach (FieldInfo field in typeof(Skills).GetFields(BindingFlags.Public | BindingFlags.Instance))
+        for (int i = 0; i < SKILL_NO; i++)
         {
-            if (field.FieldType == typeof(int))
-            {
-                int skill = (int)field.GetValue(newStats.Skills);
-                PositionStrength strength = newStats.Positions[position];
-                field.SetValueDirect(__makeref(newStats.Skills), (int)(skill / (1+(4 - (float)strength)/3f)) );
-            }
+            if(i >= (int)PlayerStat.Pace && i <= (int)PlayerStat.Durability) continue;
+
+            int skill = RawStats.Skills[i];
+            newStats.Skills[i] = (int)(skill / (1 + (4 - (int)strength) / 3f));
         }
+
 
         return newStats;
     }
 
-    [System.Serializable]
-    public struct Skills
+    //public Dictionary<PlayerStat, int> GetRawStatsDictionary()
+    //{
+    //    Dictionary<PlayerStat, int> dict = new Dictionary<PlayerStat, int>();
+
+    //    dict.Add(PlayerStat.Shooting, RawStats.Skills.Shooting);
+    //    dict.Add(PlayerStat.Passing, RawStats.Skills.Passing);
+    //    dict.Add(PlayerStat.Tackling, RawStats.Skills.Tackling);
+    //    dict.Add(PlayerStat.Dribbling, RawStats.Skills.Dribbling);
+    //    dict.Add(PlayerStat.Crossing, RawStats.Skills.Crossing);
+    //    dict.Add(PlayerStat.Heading, RawStats.Skills.Heading);
+
+    //    dict.Add(PlayerStat.Positioning, RawStats.Skills.Positioning);
+    //    dict.Add(PlayerStat.Intelligence, RawStats.Skills.Intelligence);
+    //    dict.Add(PlayerStat.Teamwork, RawStats.Skills.Teamwork);
+    //    dict.Add(PlayerStat.Composure, RawStats.Skills.Composure);
+    //    dict.Add(PlayerStat.Aggression, RawStats.Skills.Aggression);
+    //    dict.Add(PlayerStat.Resilience, RawStats.Skills.Resilience);
+
+    //    dict.Add(PlayerStat.Pace, RawStats.Skills.Pace);
+    //    dict.Add(PlayerStat.Strength, RawStats.Skills.Strength);
+    //    dict.Add(PlayerStat.Jumping, RawStats.Skills.Jumping);
+    //    dict.Add(PlayerStat.Agility, RawStats.Skills.Agility);
+    //    dict.Add(PlayerStat.Stamina, RawStats.Skills.Stamina);
+    //    dict.Add(PlayerStat.Durability, RawStats.Skills.Durability);
+
+    //    dict.Add(PlayerStat.Height, RawStats.Height);
+
+    //    return dict;
+    //}
+
+
+    public static Stats PersonalityModifier(Stats player, PersonalityType personality)
     {
-        public int Shooting, Passing, Tackling, Dribbling, Crossing, Heading;
-        public int Positioning, Intelligence, Teamwork, Composure, Aggression, Resilience;
-        public int Pace, Strength, Jumping, Agility, Stamina, Durability;
-    }
-
-    public Dictionary<PlayerStat, int> GetRawStatsDictionary()
-    {
-        Dictionary<PlayerStat, int> dict = new Dictionary<PlayerStat, int>();
-
-        dict.Add(PlayerStat.Shooting, RawStats.Skills.Shooting);
-        dict.Add(PlayerStat.Passing, RawStats.Skills.Passing);
-        dict.Add(PlayerStat.Tackling, RawStats.Skills.Tackling);
-        dict.Add(PlayerStat.Dribbling, RawStats.Skills.Dribbling);
-        dict.Add(PlayerStat.Crossing, RawStats.Skills.Crossing);
-        dict.Add(PlayerStat.Heading, RawStats.Skills.Heading);
-
-        dict.Add(PlayerStat.Positioning, RawStats.Skills.Positioning);
-        dict.Add(PlayerStat.Intelligence, RawStats.Skills.Intelligence);
-        dict.Add(PlayerStat.Teamwork, RawStats.Skills.Teamwork);
-        dict.Add(PlayerStat.Composure, RawStats.Skills.Composure);
-        dict.Add(PlayerStat.Aggression, RawStats.Skills.Aggression);
-        dict.Add(PlayerStat.Resilience, RawStats.Skills.Resilience);
-
-        dict.Add(PlayerStat.Pace, RawStats.Skills.Pace);
-        dict.Add(PlayerStat.Strength, RawStats.Skills.Strength);
-        dict.Add(PlayerStat.Jumping, RawStats.Skills.Jumping);
-        dict.Add(PlayerStat.Agility, RawStats.Skills.Agility);
-        dict.Add(PlayerStat.Stamina, RawStats.Skills.Stamina);
-        dict.Add(PlayerStat.Durability, RawStats.Skills.Durability);
-
-        dict.Add(PlayerStat.Height, RawStats.Height);
-
-        return dict;
-    }
-
-
-    public static Skills PersonalityModifier(Skills player, PersonalityType personality)
-    {
+        Debug.Log("personality");
         int bigChange = 15;
         //int smallChange = 10;
 
@@ -149,15 +183,16 @@ public class Player : Person
                 return player;
 
             case PersonalityType.Cautious:
-                player.Composure -= bigChange;
+                player.Creativity -= bigChange;
                 return player;
 
             case PersonalityType.Cocky:
                 player.Teamwork -= bigChange;
+                player.Creativity += bigChange;
                 return player;
 
             case PersonalityType.Driven:
-                player.Resilience += bigChange;
+                player.Teamwork += bigChange;
                 return player;
 
             case PersonalityType.Kind:
@@ -169,11 +204,11 @@ public class Player : Person
                 return player;
 
             case PersonalityType.Shy:
-                player.Resilience -= bigChange;
+                player.Teamwork -= bigChange;
                 return player;
 
             case PersonalityType.Silly:
-                player.Teamwork += bigChange;
+                player.Creativity += bigChange;
                 return player;
 
             case PersonalityType.Smart:
@@ -185,8 +220,10 @@ public class Player : Person
         }
     }
 
-    public static Skills MoraleModifier(Skills player, int morale)
+    public static Stats MoraleModifier(Stats player, int morale)
     {
+        Debug.Log("morale");
+
         if (morale == 50) return player;
 
         int bigChange = (int)((morale / 100f - 0.5f) * 30f);
@@ -194,7 +231,6 @@ public class Player : Person
 
         player.Teamwork += bigChange;
         player.Aggression -= bigChange;
-        player.Resilience -= smallChange;
         player.Composure += smallChange;
         player.Strength -= smallChange;
         player.Dribbling += smallChange;
@@ -241,21 +277,6 @@ public class Player : Person
             default:
                 return "Null";
         }
-    }
-
-    [System.Serializable]
-    public struct Stats
-    {
-        public Skills Skills;
-        public Dictionary<Position, PositionStrength> Positions;
-        public int Height;
-
-        public int Attacking => (int)Game.Average(Skills.Shooting, Skills.Shooting, Skills.Dribbling, Skills.Composure);
-        public int Midfield => (int)Game.Average(Skills.Passing, Skills.Intelligence, Skills.Positioning, Skills.Crossing, Skills.Dribbling);
-        public int Defending => (int)Game.Average(Skills.Tackling, Skills.Tackling, Skills.Positioning, Skills.Positioning, Skills.Strength, Skills.Passing);
-        public int Mental => (int)Game.Average(Skills.Intelligence, Skills.Teamwork, Skills.Resilience, Skills.Composure);
-        public int Physical => (int)Game.Average(Skills.Pace, Skills.Strength, Skills.Stamina, Skills.Durability);
-        public int Goalkeeping => (int)Game.Average(Skills.Jumping, Skills.Aggression, Skills.Composure, Skills.Positioning);
     }
 
     public int GetAverage(Position position)
@@ -400,5 +421,51 @@ public class Player : Person
         float inches = totalInches % 12;
 
         return $"{feet}'{(int)inches}\"";
+    }
+}
+
+public static class PlayerExtensions
+{
+    public static Player.Stats AverageStats(this Player[] players){
+        return AverageStats(players.ToList());
+    }
+
+    public static Player.Stats AverageStats(this List<Player> players)
+    {
+        Player.Stats avgStats = new Player.Stats
+        {
+            Skills = new int[Player.SKILL_NO],
+            Positions = new Dictionary<Player.Position, Player.PositionStrength>(),
+            Height = 0
+        };
+
+        int count = players.Count;
+        if (count == 0) return avgStats;
+
+        var avgSkills = new int[Player.SKILL_NO];
+        var totalSkills = new int[Player.SKILL_NO];
+        float totalHeight = 0f;
+
+        for (int i = 0; i < count; i++)
+        {
+            var stats = players[i].GetStats();
+
+            for (int j = 0; j < Player.SKILL_NO; j++)
+            {
+                totalSkills[j] += stats.Skills[j];
+            }
+
+            totalHeight += stats.Height;
+        }
+
+        for(int i = 0; i < Player.SKILL_NO; i++)
+        {
+            avgSkills[i] = totalSkills[i] / count;
+        }
+
+        avgStats.Height = Mathf.RoundToInt(totalHeight);
+        avgStats.Skills = avgSkills;
+
+        return avgStats;
     }
 }

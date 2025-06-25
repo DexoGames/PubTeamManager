@@ -14,9 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   description: <1> just had a child!
   discussion: Hey boss! Me and my partner have a new addition to the family!
-  odds: 0.103
+  odds: 0.07
   noAffected: 1
   moraleChange: 20
-  bestCaseMorale: 25
-  worseCaseMorale: -20
   severity: 6

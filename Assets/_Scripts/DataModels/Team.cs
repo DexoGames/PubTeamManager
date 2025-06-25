@@ -50,7 +50,7 @@ public class Team : ScriptableObject
     public int AvgDefending => (int)WeightedAverage(((float)Players.Average(x => x.GetStats().Defending), 0.5f), ((float)Defenders.Average(x => x.GetStats().Defending), 3), (Goalkeeper.GetStats().Goalkeeping, 2));
     public int AvgMental => (int)Players.Average(x => x.RawStats.Mental);
     public int AvgPhysical => (int)Players.Average(x => x.RawStats.Physical);
-    public int AvgControl => (int)Players.Average(x => Average(x.GetStats().Skills.Intelligence, x.GetStats().Skills.Teamwork, x.GetStats().Skills.Passing));
+    public int AvgControl => (int)Players.Average(x => Average(x.GetStats().Intelligence, x.GetStats().Teamwork, x.GetStats().Passing));
     public Formation Formation => Tactic.Formation;
 
     public void GenerateTeam()
@@ -87,4 +87,49 @@ public class Team : ScriptableObject
 
         return ordered;
     }
+
+    public Player.Stats AverageStartingStats()
+    {
+        return StartingPlayers.AverageStats();
+    }
+
+    public List<Player> GetGroup(PlayerGroup group)
+    {
+        switch (group)
+        {
+            case PlayerGroup.Goalkeeper:
+                return Goalkeeper != null ? new List<Player> { Goalkeeper } : new List<Player>();
+
+            case PlayerGroup.Defenders:
+                return Defenders;
+
+            case PlayerGroup.Midfielders:
+                return Midfielders;
+
+            case PlayerGroup.Attackers:
+                return Attackers;
+
+            case PlayerGroup.Outfield:
+                return StartingPlayers.FindAll(p => p != Goalkeeper);
+
+            case PlayerGroup.DefenseAndMidfield:
+                return Defenders.Union(Midfielders).ToList();
+
+            case PlayerGroup.MidfieldAndAttack:
+                return Midfielders.Union(Attackers).ToList();
+
+            case PlayerGroup.GoalkeeperAndDefense:
+                var result = new List<Player>();
+                if (Goalkeeper != null) result.Add(Goalkeeper);
+                result.AddRange(Defenders);
+                return result;
+
+            case PlayerGroup.WidePlayers:
+                return WidePlayers;
+
+            default:
+                return new List<Player>();
+        }
+    }
+
 }

@@ -63,15 +63,12 @@ public class PlayerDetailsUI : UIPage
 
     void PopulateStats(Player player)
     {
-        foreach (FieldInfo field in typeof(Player.Skills).GetFields(BindingFlags.Public | BindingFlags.Instance))
+        for(int i = 0; i < Player.SKILL_NO; i++)
         {
-            if (field.FieldType == typeof(int))
-            {
-                int value = (int)field.GetValue(player.RawStats.Skills);
-                string stat = field.Name;
+            int value = player.RawStats.Skills[i];
+            string stat = $"Stat {i + 1}";
 
-                Instantiate(statPrefab, statsContainer).SetText(stat, value);
-            }
+            Instantiate(statPrefab, statsContainer).SetText(stat, value);
         }
     }
 }
