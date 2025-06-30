@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public enum Card
@@ -137,6 +138,29 @@ public class Game : MonoBehaviour
 
         return weightedSum / totalWeight;
     }
+
+    public static float WeightedAverage(List<(float value, float weight)> values)
+    {
+        float totalWeight = values.Sum(v => v.weight);
+        return totalWeight == 0 ? 0 : values.Sum(v => v.value * v.weight) / totalWeight;
+    }
+
+    public static T WeightedRandom<T>(List<(T item, float weight)> options)
+    {
+        float total = options.Sum(x => x.weight);
+        float rand = UnityEngine.Random.Range(0f, total);
+        float current = 0f;
+
+        foreach (var (item, weight) in options)
+        {
+            current += weight;
+            if (rand <= current)
+                return item;
+        }
+
+        return options[0].item;
+    }
+
 
     public static T RandomEnumValue<T>() where T : Enum
     {

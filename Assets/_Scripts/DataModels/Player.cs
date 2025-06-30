@@ -40,7 +40,6 @@ public class Player : Person
             RawStats.Skills[i] = Random.Range(10, 90);
         }
 
-        Debug.Log("eyyyy");
         RawStats = PersonalityModifier(RawStats, Personality);
 
         Position bestPosition = (Position)Random.Range(0, Game.GetEnumLength<Position>());
@@ -95,12 +94,12 @@ public class Player : Person
         public int Stamina { get => Skills[16]; set => Skills[16] = value; }
         public int Durability { get => Skills[17]; set => Skills[17] = value; }
 
-        public int Attacking => (int)Game.Average(Shooting, Shooting, Dribbling, Composure, Creativity);
-        public int Midfield => (int)Game.Average(Passing, Intelligence, Positioning, Crossing, Dribbling, Creativity);
-        public int Defending => (int)Game.Average(Tackling, Tackling, Positioning, Positioning, Strength, Passing);
+        public int Attacking => (int)Game.WeightedAverage((Shooting, 1f), (Composure, 0.5f), (Dribbling, 0.2f), (Creativity, 0.2f), (Pace, 0.2f));
+        public int Midfield => (int)Game.WeightedAverage((Passing, 1f), (Positioning, 0.5f), (Crossing, 0.2f), (Creativity, 0.2f), (Intelligence, 0.2f));
+        public int Defending => (int)Game.WeightedAverage((Positioning, 1f), (Tackling, 0.5f), (Strength, 0.2f), (Pace, 0.2f));
         public int Mental => (int)Game.Average(Intelligence, Teamwork, Composure);
-        public int Physical => (int)Game.Average(Pace, Strength, Stamina, Durability);
-        public int Goalkeeping => (int)Game.Average(Jumping, Aggression, Composure, Positioning);
+        public int Physical => (int)Game.WeightedAverage((Pace, 1f), (Strength, 0.5f));
+        public int Goalkeeping => (int)Game.Average(Jumping, Aggression, Composure, Positioning, Height);
     }
 
     public Stats GetStats()
@@ -112,7 +111,7 @@ public class Player : Person
             newStats = GetStatsFor(Team.Formation.Positions[GetTeamIndex()].ID);
         }
 
-        newStats = MoraleModifier(newStats, Morale);
+        //newStats = MoraleModifier(newStats, Morale);
 
         return newStats;
     }
@@ -168,7 +167,6 @@ public class Player : Person
 
     public static Stats PersonalityModifier(Stats player, PersonalityType personality)
     {
-        Debug.Log("personality");
         int bigChange = 15;
         //int smallChange = 10;
 
@@ -222,8 +220,6 @@ public class Player : Person
 
     public static Stats MoraleModifier(Stats player, int morale)
     {
-        Debug.Log("morale");
-
         if (morale == 50) return player;
 
         int bigChange = (int)((morale / 100f - 0.5f) * 30f);

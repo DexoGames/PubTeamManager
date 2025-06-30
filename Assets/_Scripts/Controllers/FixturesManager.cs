@@ -63,17 +63,41 @@ public class FixturesManager : MonoBehaviour
 
     private void Update()
     {
-        if(Input.GetKeyDown(KeyCode.B))
+        //if(Input.GetKeyDown(KeyCode.B))
+        //{
+        //    Fixture fixture = GetMatchWeek(GameManager.Instance.MatchWeekNum).fixtures[0];
+        //    Match match = new Match(fixture.HomeTeam, fixture.AwayTeam);
+        //    match.BreakLogic(fixture.HomeTeam, fixture.AwayTeam, 0, true);
+        //}
+        //if (Input.GetKeyDown(KeyCode.P))
+        //{
+        //    Fixture fixture = GetMatchWeek(GameManager.Instance.MatchWeekNum).fixtures[0];
+        //    Match match = new Match(fixture.HomeTeam, fixture.AwayTeam);
+        //    match.ProgressLogic(fixture.HomeTeam, fixture.AwayTeam, 0, true);
+        //}
+        //if (Input.GetKeyDown(KeyCode.C))
+        //{
+        //    Fixture fixture = GetMatchWeek(GameManager.Instance.MatchWeekNum).fixtures[0];
+        //    Match match = new Match(fixture.HomeTeam, fixture.AwayTeam);
+        //    match.CounterLogic(fixture.HomeTeam, fixture.AwayTeam, 0, true);
+        //}
+        if (Input.GetKeyDown(KeyCode.Space))
         {
             Fixture fixture = GetMatchWeek(GameManager.Instance.MatchWeekNum).fixtures[0];
             Match match = new Match(fixture.HomeTeam, fixture.AwayTeam);
-            match.Build(fixture.HomeTeam, fixture.AwayTeam);
+            match.SimulateProbabilites(0.2f);
         }
-        if (Input.GetKeyDown(KeyCode.P))
+        if (Input.GetKeyDown(KeyCode.S))
         {
             Fixture fixture = GetMatchWeek(GameManager.Instance.MatchWeekNum).fixtures[0];
             Match match = new Match(fixture.HomeTeam, fixture.AwayTeam);
-            match.Progress(fixture.HomeTeam, fixture.AwayTeam);
+            match.SimulateProbabilites(0.04f);
+        }
+        if (Input.GetKeyDown(KeyCode.L))
+        {
+            Fixture fixture = GetMatchWeek(GameManager.Instance.MatchWeekNum).fixtures[0];
+            Match match = new Match(fixture.HomeTeam, fixture.AwayTeam);
+            match.SimulateProbabilites(0.7f);
         }
     }
 }

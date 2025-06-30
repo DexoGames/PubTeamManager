@@ -8,7 +8,7 @@ public class PlayerDetailsUI : UIPage
 {
     public static PlayerDetailsUI Instance { get; private set; }
 
-    [SerializeField] TextMeshProUGUI playerText, teamName, personality, bestPosition;
+    [SerializeField] TextMeshProUGUI playerText, teamName, height, personality, bestPosition;
     [SerializeField] Transform statsContainer;
     [SerializeField] StatUI statPrefab;
     [SerializeField] PositionStrengthUI positionStrengths;
@@ -35,7 +35,8 @@ public class PlayerDetailsUI : UIPage
 
         playerText.text = player.FullName;
         teamName.text = $"Plays For {LinkBuilder.BuildLink(player.Team)}";
-        personality.text = $"Personality: {player.Personality.ToString()}";
+        personality.text = $"{player.Personality.ToString()}";
+        height.text = $"{Player.CmToFeet(player.HeightToCm())}";
 
         bestPosition.text = "";
         foreach(Player.Position pos in player.BestPositions())
@@ -66,7 +67,7 @@ public class PlayerDetailsUI : UIPage
         for(int i = 0; i < Player.SKILL_NO; i++)
         {
             int value = player.RawStats.Skills[i];
-            string stat = $"Stat {i + 1}";
+            string stat = ((PlayerStat)i).ToString();
 
             Instantiate(statPrefab, statsContainer).SetText(stat, value);
         }

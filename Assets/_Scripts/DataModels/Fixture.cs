@@ -67,47 +67,47 @@ public class Fixture
     //    }
     //}
 
-    public static Game.Score CalculateScore(Team home, Team away)
-    {
-        Debug.Log($"{home.TeamName} vs {away.TeamName}:");
+    //public static Game.Score CalculateScore(Team home, Team away)
+    //{
+    //    Debug.Log($"{home.TeamName} vs {away.TeamName}:");
 
-        float mentalDefecit = 10 + home.AvgMental - away.AvgMental;
-        mentalDefecit = SignedSquareRoot(mentalDefecit) / 1.5f;
+    //    float mentalDefecit = 10 + home.AvgMental - away.AvgMental;
+    //    mentalDefecit = SignedSquareRoot(mentalDefecit) / 1.5f;
 
-        float physicalDefecit = 2 + home.AvgPhysical - away.AvgPhysical;
-        physicalDefecit = SignedSquareRoot(physicalDefecit) / 1.5f;
+    //    float physicalDefecit = 2 + home.AvgPhysical - away.AvgPhysical;
+    //    physicalDefecit = SignedSquareRoot(physicalDefecit) / 1.5f;
 
-        float tacticalDefecit = home.Manager.TacticsMatch(home.Tactic.Formation, away.Tactic.Formation) - away.Manager.TacticsMatch(home.Tactic.Formation, away.Tactic.Formation);
-        tacticalDefecit = SignedSquareRoot(tacticalDefecit);
+    //    float tacticalDefecit = home.Manager.TacticsMatch(home.Tactic.Formation, away.Tactic.Formation) - away.Manager.TacticsMatch(home.Tactic.Formation, away.Tactic.Formation);
+    //    tacticalDefecit = SignedSquareRoot(tacticalDefecit);
 
-        float homeThreat = 15 + home.Threat - home.Security;
-        homeThreat = SignedSquareRoot(homeThreat, 0.65f);
+    //    float homeThreat = 15 + home.Threat - home.Security;
+    //    homeThreat = SignedSquareRoot(homeThreat, 0.65f);
 
-        float awayThreat = 15 + away.Threat - home.Security;
-        awayThreat = SignedSquareRoot(awayThreat, 0.65f);
+    //    float awayThreat = 15 + away.Threat - home.Security;
+    //    awayThreat = SignedSquareRoot(awayThreat, 0.65f);
 
-        Debug.Log($"home threat = {homeThreat}");
+    //    Debug.Log($"home threat = {homeThreat}");
 
-        float threatDivider = 1.1f;
-        float defDivider = 1.5f;
-        float avgDefecit = Game.WeightedAverage((mentalDefecit, 1), (physicalDefecit, 1), (tacticalDefecit, 0.5f));
-        Game.Score score = new Game.Score(Mathf.RoundToInt((homeThreat / threatDivider) + avgDefecit / defDivider), Mathf.RoundToInt((awayThreat / threatDivider) - avgDefecit / defDivider));
-        score.home = Mathf.Max(score.home, 0);
-        score.away = Mathf.Max(score.away, 0);
+    //    float threatDivider = 1.1f;
+    //    float defDivider = 1.5f;
+    //    float avgDefecit = Game.WeightedAverage((mentalDefecit, 1), (physicalDefecit, 1), (tacticalDefecit, 0.5f));
+    //    Game.Score score = new Game.Score(Mathf.RoundToInt((homeThreat / threatDivider) + avgDefecit / defDivider), Mathf.RoundToInt((awayThreat / threatDivider) - avgDefecit / defDivider));
+    //    score.home = Mathf.Max(score.home, 0);
+    //    score.away = Mathf.Max(score.away, 0);
 
-        score.home = Mathf.Max( UnityEngine.Random.Range(0, 2), Mathf.Max(score.home + UnityEngine.Random.Range(-1, 2), 0));
-        score.away = Mathf.Max(UnityEngine.Random.Range(0, 2), Mathf.Max(score.away + UnityEngine.Random.Range(-1, 2), 0));
+    //    score.home = Mathf.Max( UnityEngine.Random.Range(0, 2), Mathf.Max(score.home + UnityEngine.Random.Range(-1, 2), 0));
+    //    score.away = Mathf.Max(UnityEngine.Random.Range(0, 2), Mathf.Max(score.away + UnityEngine.Random.Range(-1, 2), 0));
 
-        return score;
-    }
-    public static float SignedSquareRoot(float input)
-    {
-        return Mathf.Pow(Mathf.Abs(input), 0.5f) * Mathf.Sign(input);
-    }
-    public static float SignedSquareRoot(float input, float power)
-    {
-        return Mathf.Pow(Mathf.Abs(input), power) * Mathf.Sign(input);
-    }
+    //    return score;
+    //}
+    //public static float SignedSquareRoot(float input)
+    //{
+    //    return Mathf.Pow(Mathf.Abs(input), 0.5f) * Mathf.Sign(input);
+    //}
+    //public static float SignedSquareRoot(float input, float power)
+    //{
+    //    return Mathf.Pow(Mathf.Abs(input), power) * Mathf.Sign(input);
+    //}
 
     //Match sim logic:
     //    internal IEnumerator AdvancedSimulateFixture()
