@@ -113,7 +113,7 @@ public class Tactic
             foreach (var mod in instruction.statModifications)
             {
                 ModifyStat(mod.stat, mod.value);
-                if (mod.stat == TacticStat.Stability) Debug.Log($"Stability now {Stability}");
+                //if (mod.stat == TacticStat.Stability) Debug.Log($"Stability now {Stability}");
             }
 
             foreach(var tacDep in instruction.tacticDependencies)
@@ -124,11 +124,11 @@ public class Tactic
 
         ApplyTacticDependencies(tacticDependencies);
 
-        Debug.Log("NEW TACTIC STATS");
-        foreach(TacticStat stat in Enum.GetValues(typeof(TacticStat)))
-        {
-            Debug.Log($"{stat.ToString()}: {GetStat(stat)}");
-        }
+        //Debug.Log("NEW TACTIC STATS");
+        //foreach(TacticStat stat in Enum.GetValues(typeof(TacticStat)))
+        //{
+        //    Debug.Log($"{stat.ToString()}: {GetStat(stat)}");
+        //}
     }
 
     private void ApplyTacticDependencies(List<TacticInstruction.TacticDependency> tacticDependencies)
@@ -169,15 +169,15 @@ public class Tactic
             ref int stat = ref GetStatRef(dep.stat);
             if (stat < dep.minimumValue && !dep.inverse)
             {
-                Debug.Log($"minimum for {dep.stat.ToString()} not reached, gone from {stat}");
+                //Debug.Log($"minimum for {dep.stat.ToString()} not reached, gone from {stat}");
                 stat -= (dep.minimumValue - stat);
-                Debug.Log($"to {stat}");
+                //Debug.Log($"to {stat}");
             }
             if (dep.inverse && stat > dep.minimumValue)
             {
-                Debug.Log($"maximum for {dep.stat.ToString()} exceeded, gone from {stat}");
+                //Debug.Log($"maximum for {dep.stat.ToString()} exceeded, gone from {stat}");
                 stat = stat + (dep.minimumValue - stat);
-                Debug.Log($"to {stat}");
+                //Debug.Log($"to {stat}");
             }
         }
     }

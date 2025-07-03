@@ -53,7 +53,7 @@ public class CalenderManager : MonoBehaviour
 
     private static string GetDaySuffix(int day)
     {
-        if (day >= 11 && day <= 13) return "th"; // Special case for 11th, 12th, 13th
+        if (day >= 11 && day <= 13) return "th";
 
         int ending = day % 10;
 

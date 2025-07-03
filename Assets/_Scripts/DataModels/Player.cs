@@ -23,14 +23,23 @@ public class Player : Person
     public const int SKILL_NO = 18;
 
     public Stats RawStats;
+    public Stats GetRawStats()
+    {
+        return new Stats
+        {
+            Skills = (int[])RawStats.Skills.Clone(),
+            Positions = new Dictionary<Position, PositionStrength>(RawStats.Positions),
+            Height = RawStats.Height
+        };
+    }
+
     int teamIndex;
 
-    public Player(Team team, Formation.Position[] teamPositions, int teamIndex)
+    public Player(Team team, Formation.Position[] teamPositions)
     {
         GeneratePerson();
 
         Team = team;
-        this.teamIndex = teamIndex;
 
         RawStats.Height = Random.Range(0, 100);
         RawStats.Skills = new int[SKILL_NO];
@@ -102,37 +111,38 @@ public class Player : Person
         public int Goalkeeping => (int)Game.Average(Jumping, Aggression, Composure, Positioning, Height);
     }
 
-    public Stats GetStats()
+    public Stats GetStats(bool ignoreMorale = false)
     {
-        Stats newStats = RawStats;
+        Stats newStats = GetRawStats();
 
         if (GetTeamIndex() < Team.Formation.Positions.Length)
         {
             newStats = GetStatsFor(Team.Formation.Positions[GetTeamIndex()].ID);
         }
 
-        //newStats = MoraleModifier(newStats, Morale);
+        if(!ignoreMorale) newStats = MoraleModifier(newStats, Morale);
 
         return newStats;
     }
 
+
     public Stats GetStatsFor(Position position)
     {
-        Stats newStats = RawStats;
-        newStats.Skills = new int[SKILL_NO];
+        Stats newStats = GetRawStats();
+
         PositionStrength strength = newStats.Positions[position];
 
         for (int i = 0; i < SKILL_NO; i++)
         {
-            if(i >= (int)PlayerStat.Pace && i <= (int)PlayerStat.Durability) continue;
+            if (i >= (int)PlayerStat.Pace && i <= (int)PlayerStat.Durability) continue;
 
-            int skill = RawStats.Skills[i];
+            int skill = newStats.Skills[i];
             newStats.Skills[i] = (int)(skill / (1 + (4 - (int)strength) / 3f));
         }
 
-
         return newStats;
     }
+
 
     //public Dictionary<PlayerStat, int> GetRawStatsDictionary()
     //{

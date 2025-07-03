@@ -63,24 +63,6 @@ public class FixturesManager : MonoBehaviour
 
     private void Update()
     {
-        //if(Input.GetKeyDown(KeyCode.B))
-        //{
-        //    Fixture fixture = GetMatchWeek(GameManager.Instance.MatchWeekNum).fixtures[0];
-        //    Match match = new Match(fixture.HomeTeam, fixture.AwayTeam);
-        //    match.BreakLogic(fixture.HomeTeam, fixture.AwayTeam, 0, true);
-        //}
-        //if (Input.GetKeyDown(KeyCode.P))
-        //{
-        //    Fixture fixture = GetMatchWeek(GameManager.Instance.MatchWeekNum).fixtures[0];
-        //    Match match = new Match(fixture.HomeTeam, fixture.AwayTeam);
-        //    match.ProgressLogic(fixture.HomeTeam, fixture.AwayTeam, 0, true);
-        //}
-        //if (Input.GetKeyDown(KeyCode.C))
-        //{
-        //    Fixture fixture = GetMatchWeek(GameManager.Instance.MatchWeekNum).fixtures[0];
-        //    Match match = new Match(fixture.HomeTeam, fixture.AwayTeam);
-        //    match.CounterLogic(fixture.HomeTeam, fixture.AwayTeam, 0, true);
-        //}
         if (Input.GetKeyDown(KeyCode.Space))
         {
             Fixture fixture = GetMatchWeek(GameManager.Instance.MatchWeekNum).fixtures[0];

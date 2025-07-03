@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 [System.Serializable]
@@ -24,20 +25,21 @@ public class MatchWeek
     {
         foreach(Fixture fixture in fixtures)
         {
-            //if(fixture == fixtures[0])
-            //{
-            //    fixtureToWatch = fixture;
-            //    continue;
-            //}
+            fixture.SimulateFixture();
+
+            LeagueManager.Instance.UpdateStandings(fixture);
+        }
+    }
+    public void SimulateWeekExcept(params Fixture[] fixtures)
+    {
+        foreach(Fixture fixture in fixtures)
+        {
+            if (fixtures.ToList().Contains(fixture)) continue;
 
             fixture.SimulateFixture();
 
             LeagueManager.Instance.UpdateStandings(fixture);
-
-            fixture.BeenPlayed = true;
         }
-
-        //UIManager.Instance.ShowMatchSimPage(fixtureToWatch);
     }
 
     public bool FullyPlayed()

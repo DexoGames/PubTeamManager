@@ -720,10 +720,10 @@ MonoBehaviour:
   draggable: {fileID: 2455623907691516192}
   fader: {fileID: 2093444988339402688}
   StrengthColors:
-  - {r: 0.5471698, g: 0.10608158, b: 0.062517315, a: 1}
-  - {r: 0.7316562, g: 0.30290022, b: 0.08666371, a: 1}
-  - {r: 0.84313726, g: 0.5086699, b: 0.14117646, a: 1}
-  - {r: 0.9287212, g: 0.8363523, b: 0.29691815, a: 1}
+  - {r: 0.6519916, g: 0.14067067, b: 0.09089607, a: 1}
+  - {r: 0.769392, g: 0.38953918, b: 0.07177766, a: 1}
+  - {r: 0.87840664, g: 0.647181, b: 0.14087656, a: 1}
+  - {r: 0.9077568, g: 0.79504114, b: 0.43865398, a: 1}
   - {r: 1, g: 1, b: 1, a: 1}
   player:
     PersonID: 0
@@ -732,25 +732,7 @@ MonoBehaviour:
     Team: {fileID: 0}
     Personality: 0
     RawStats:
-      Skills:
-        Shooting: 0
-        Passing: 0
-        Tackling: 0
-        Dribbling: 0
-        Crossing: 0
-        Heading: 0
-        Positioning: 0
-        Intelligence: 0
-        Teamwork: 0
-        Composure: 0
-        Agression: 0
-        Resilience: 0
-        Pace: 0
-        Strength: 0
-        Jumping: 0
-        Agility: 0
-        Stamina: 0
-        Durability: 0
+      Skills: 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
       Height: 0
   Position:
     ID: 0

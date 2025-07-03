@@ -11,7 +11,11 @@ public class MatchSimPageUI : UIPage
     [SerializeField] Transform _eventsContainer;
     [SerializeField] MatchEventUI _matchEventPrefab;
 
+    Queue<Highlight> highlights = new Queue<Highlight>();
+    bool isProcessing = false;
+
     Fixture _fixture;
+    Match match;
     int _currentMinute;
 
     public static MatchSimPageUI Instance { get; private set; }
@@ -40,7 +44,7 @@ public class MatchSimPageUI : UIPage
     {
         _fixtureUI.SetFixtureText(_fixture, true);
 
-        UpdateTimer(_currentMinute);
+        UpdateTimer(match.currentMin.Base);
     }
 
     public void UpdateTimer(int minute)
@@ -50,33 +54,51 @@ public class MatchSimPageUI : UIPage
 
     void SimMatch()
     {
-        //StartCoroutine(_fixture.AdvancedSimulateFixture());
+        match = new Match(_fixture.HomeTeam, _fixture.AwayTeam, true);
+        match.BroadcastHighlight.AddListener(AddHighlight);
 
-        UpdateMatchUI();
+        StartCoroutine(SimulateHalf(Half.First));
+        StartCoroutine(SimulateHalf(Half.Second));
     }
 
-    IEnumerator SimulateHalf(int startingMinute)
+    void AddHighlight(Highlight highlight)
     {
-        for (int i = 0; i < 45; i++)
+        highlights.Enqueue(highlight);
+
+        if (!isProcessing)
         {
-            _currentMinute = startingMinute + i;
+            StartCoroutine(ProcessHighlights());
+        }
+    }
 
-            PrintEvent(_currentMinute, $"Match is at minute {_currentMinute}");
+    IEnumerator ProcessHighlights()
+    {
+        isProcessing = true;
 
-            UpdateMatchUI();
-
-            yield return new WaitForSeconds(0.2f);
+        while (highlights.Count > 0)
+        {
+            Highlight highlight = highlights.Dequeue();
+            PrintEvent(highlight.Describe());
+            yield return new WaitForSeconds(0.8f);
         }
 
-        Debug.Log("AYYYY");
-        _fixture.SimulateFixture();
-
-        Debug.Log(_fixture.Result.home);
-
-        UpdateMatchUI();
+        isProcessing = false;
     }
 
-    public void PrintEvent(int minute, string text)
+    IEnumerator SimulateHalf(Half half)
+    {
+        while (match.HalfConditions(half))
+        {
+            match.SimulateMinute();
+            _fixture.Result = match.result;
+
+            yield return new WaitUntil(() => highlights.Count == 0);
+            UpdateMatchUI();
+            yield return new WaitForSeconds(1.6f);
+        }
+    }
+
+    public void PrintEvent(string text)
     {
         Instantiate(_matchEventPrefab, _eventsContainer).SetText(text);
     }

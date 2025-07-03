@@ -22,7 +22,7 @@ public class Fixture
     {
         HomeTeam = home;
         AwayTeam = away;
-        Result = new Match.Result();
+        Result = new Match.Result(home, away);
         Date = date;
         this.matchWeek = matchWeek;
     }

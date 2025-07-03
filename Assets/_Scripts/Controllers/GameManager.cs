@@ -32,25 +32,36 @@ public class GameManager : MonoBehaviour
     void NewDay(DateTime date)
     {
         List<Fixture> allFixtures = FixturesManager.Instance.GetAllFixtures();
+        Fixture myFixture = null;
         for (int i  = 0; i < allFixtures.Count; i++)
         {
-            if (!allFixtures[i].BeenPlayed)
+            if (!allFixtures[i].BeenPlayed && allFixtures[i].Date < CalenderManager.Instance.CurrentDay)
             {
-                if (allFixtures[i].Date < CalenderManager.Instance.CurrentDay)
+                if (myFixture == null && (allFixtures[i].HomeTeam == TeamManager.Instance.MyTeam || allFixtures[i].AwayTeam == TeamManager.Instance.MyTeam))
+                {
+                    myFixture = allFixtures[i];
+                }
+                else
                 {
                     allFixtures[i].SimulateFixture();
                 }
             }
         }
 
-        UpdateMatchWeek();
+        if (myFixture != null)
+        {
+            UIManager.Instance.ShowMatchSimPage(myFixture);
+        }
+        else
+        {
+            UpdateMatchWeek();
+        }
 
         CalenderManager.Instance.RespondToAdvance();
     }
 
     void UpdateMatchWeek()
     {
-        //Debug.Log("MATCH WEEK NUM " + matchWeekNum);
         MatchWeek week = FixturesManager.Instance.GetMatchWeek(matchWeekNum-1);
 
         UIManager.Instance.ShowHomePage();
@@ -60,21 +71,4 @@ public class GameManager : MonoBehaviour
             matchWeekNum = Mathf.Min(matchWeekNum + 1, FixturesManager.Instance.GetMatchWeeks().Count);
         }
     }
-
-    public void SimulateMatchWeek()
-    {
-        MatchWeek matchWeek = FixturesManager.Instance.GetMatchWeek(matchWeekNum);
-        int matchWeekLength = FixturesManager.Instance.GetMatchWeeks().Count;
-
-        if (matchWeekNum < matchWeekLength)
-        {
-            matchWeek.SimulateWeek();
-
-            matchWeekNum = Mathf.Min(matchWeekNum+1, matchWeekLength);
-        }
-
-        UIManager.Instance.ShowHomePage();
-
-        //UIManager.Instance.ShowMatchSimPage(matchWeek.fixtures[0]);
-    } // DEPRECATED
 }

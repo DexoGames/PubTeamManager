@@ -8,7 +8,7 @@ public class PlayerDetailsUI : UIPage
 {
     public static PlayerDetailsUI Instance { get; private set; }
 
-    [SerializeField] TextMeshProUGUI playerText, teamName, height, personality, bestPosition;
+    [SerializeField] TextMeshProUGUI playerText, teamName, height, personality, bestPosition, statTitle;
     [SerializeField] Transform statsContainer;
     [SerializeField] StatUI statPrefab;
     [SerializeField] PositionStrengthUI positionStrengths;
@@ -57,6 +57,8 @@ public class PlayerDetailsUI : UIPage
 
         playerText.text = manager.FullName;
         teamName.text = $"Manages {LinkBuilder.BuildLink(manager.Team)}";
+        height.gameObject.SetActive(false);
+        statTitle.gameObject.SetActive(false);
         personality.text = $"Personality: {manager.Personality.ToString()}";
 
         bestPosition.text = "";
