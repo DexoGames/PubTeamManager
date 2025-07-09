@@ -10,35 +10,25 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7d5f83aa929aa0c4ca7bb823e8957365, type: 3}
-  m_Name: HoofItLong
+  m_Name: RiskyPasses
   m_EditorClassIdentifier: 
-  tacticName: Hoof It Out
+  tacticName: Risky Passes
   description: 
   statModifications:
-  - stat: 0
-    value: -10
-  - stat: 5
+  - stat: 7
     value: 10
   - stat: 3
-    value: -10
-  - stat: 4
     value: -5
   dependencies:
-  - stat: 4
-    group: 7
-    strength: 1
-  - stat: 18
-    group: 3
-    strength: 1
+  - stat: 8
+    group: 2
+    strength: 4
+  - stat: 1
+    group: 2
+    strength: 2
   - stat: 7
-    group: 1
-    strength: -1
-  tacticDependencies:
-  - stat: 3
-    minimumValue: 50
-    inverse: 1
-  - stat: 2
-    minimumValue: 50
-    inverse: 1
+    group: 2
+    strength: 1
+  tacticDependencies: []
   reliances: []
   incompatibleInstructions: []

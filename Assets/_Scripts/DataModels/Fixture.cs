@@ -35,6 +35,11 @@ public class Fixture
 
         //Debug.Log($"{Score.home}-{Score.away}");
 
+        FinaliseResult();
+    }
+
+    public void FinaliseResult()
+    {
         LeagueManager.Instance.UpdateStandings(this);
         BeenPlayed = true;
 

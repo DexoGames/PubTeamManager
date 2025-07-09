@@ -10,25 +10,23 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7d5f83aa929aa0c4ca7bb823e8957365, type: 3}
-  m_Name: LobItTo
+  m_Name: DribbleMore
   m_EditorClassIdentifier: 
-  tacticName: Lob It To
+  tacticName: Dribble More
   description: 
-  statModifications: []
+  statModifications:
+  - stat: 1
+    value: 3
   dependencies:
-  - stat: 4
-    group: 8
-    strength: 1
-  - stat: 18
-    group: 3
-    strength: 1
+  - stat: 3
+    group: 4
+    strength: 5
+  - stat: 15
+    group: 4
+    strength: 2
+  - stat: 1
+    group: 4
+    strength: -3
   tacticDependencies: []
-  reliances:
-  - position: 0
-    stat: 6
-    strength: 2
-  - position: 0
-    stat: 7
-    strength: 2
-  incompatibleInstructions:
-  - {fileID: 11400000, guid: 9aebde892a4c9754eb688aeea6e65e2b, type: 2}
+  reliances: []
+  incompatibleInstructions: []

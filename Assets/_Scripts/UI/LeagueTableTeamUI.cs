@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
-public class LeagueStandingUI : MonoBehaviour
+public class LeagueTableTeamUI : MonoBehaviour
 {
     [SerializeField] TextMeshProUGUI standing, teamName, points;
 

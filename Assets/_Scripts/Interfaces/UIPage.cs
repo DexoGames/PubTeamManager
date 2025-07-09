@@ -11,31 +11,37 @@ public abstract class UIPage : MonoBehaviour
     {
         DisplayUI();
         OnShow();
+        SetupUI();
     }
     public void Show(Player player)
     {
         DisplayUI();
         OnShow(player);
+        SetupUI();
     }
     public void Show(Manager manager)
     {
         DisplayUI();
         OnShow(manager);
+        SetupUI();
     }
     public void Show(Team team)
     {
         DisplayUI();
         OnShow(team);
+        SetupUI();
     }
     public void Show(Fixture fixture)
     {
         DisplayUI();
         OnShow(fixture);
+        SetupUI();
     }
     public void Show(Event @event, Person person)
     {
         DisplayUI();
         OnShow(@event, person);
+        SetupUI();
     }
 
     protected virtual void OnShow() { }
@@ -49,6 +55,20 @@ public abstract class UIPage : MonoBehaviour
     public void DisplayUI()
     {
         Elements.gameObject.SetActive(true);
+    }
+    public void SetupUI()
+    {
+        UIObject[] uiObjects = Elements.GetComponentsInChildren<UIObject>(true);
+        foreach (UIObject uiObject in uiObjects)
+        {
+            uiObject.Setup();
+        }
+        ExtraSetup();
+    }
+
+    public virtual void ExtraSetup()
+    {
+
     }
 
     public void Hide()

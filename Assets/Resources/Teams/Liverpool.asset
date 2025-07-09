@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   TeamName: liVARpool
   YearFounded: 0
-  StadiumCapacity: 0
+  TeamColor: {r: 0.9245283, g: 0.30265576, b: 0.15214981, a: 1}
   Players: []

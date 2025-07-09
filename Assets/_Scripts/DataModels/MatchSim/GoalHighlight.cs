@@ -4,10 +4,13 @@ using UnityEngine;
 
 public class GoalHighlight : ShotHighlight
 {
+    public override float Duration => 0.8f;
+
+
     public Player Assister { get; set; }
 
-    public GoalHighlight(Team team, Player shooter, Player goalkeeper, ShotType shotType, ShotOutcome outcome, Player assister = null)
-        : base(team, shooter, goalkeeper, shotType, outcome)
+    public GoalHighlight(Team team, Minute minute, Player shooter, Player goalkeeper, ShotType shotType, ShotOutcome outcome, Player assister = null)
+        : base(team, minute, shooter, goalkeeper, shotType, outcome)
     {
         Assister = assister;
     }

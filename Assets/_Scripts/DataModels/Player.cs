@@ -33,8 +33,6 @@ public class Player : Person
         };
     }
 
-    int teamIndex;
-
     public Player(Team team, Formation.Position[] teamPositions)
     {
         GeneratePerson();
@@ -52,9 +50,9 @@ public class Player : Person
         RawStats = PersonalityModifier(RawStats, Personality);
 
         Position bestPosition = (Position)Random.Range(0, Game.GetEnumLength<Position>());
-        if (teamIndex < teamPositions.Length && Random.Range(0, 3) == 0)
+        if (GetTeamIndex() >= 0 && GetTeamIndex() < teamPositions.Length && Random.Range(0, 3) == 0)
         {
-            bestPosition = teamPositions[teamIndex].ID;
+            bestPosition = teamPositions[GetTeamIndex()].ID;
         }
         RawStats.Positions = new Dictionary<Position, PositionStrength>();
         RawStats.Positions.Add(bestPosition, PositionStrength.Natural);

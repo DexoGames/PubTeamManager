@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   TeamName: Scunthorpe
   YearFounded: 1803
-  StadiumCapacity: 0
+  TeamColor: {r: 0.51781964, g: 0.15252334, b: 0.24024542, a: 1}
   Players: []

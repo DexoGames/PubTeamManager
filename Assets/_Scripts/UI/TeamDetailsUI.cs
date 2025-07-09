@@ -32,7 +32,6 @@ public class TeamDetailsUI : UIPage
         Game.ClearContainer(_teamContainer);
 
         _teamTitleText.text = team.TeamName;
-        _stadiumCapacityText.text = $"Stadium Capacity: {team.StadiumCapacity}";
 
         _managerText.text = $"Manager: {LinkBuilder.BuildLink(team.Manager)}";
 

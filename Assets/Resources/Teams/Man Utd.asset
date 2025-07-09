@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   TeamName: Man Utd
   YearFounded: 2001
-  StadiumCapacity: 911
+  TeamColor: {r: 0.6226415, g: 0, b: 0, a: 1}
   Players: []

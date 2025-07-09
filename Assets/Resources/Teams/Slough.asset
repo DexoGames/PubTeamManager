@@ -14,19 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   TeamName: Slough
   YearFounded: 1803
-  StadiumCapacity: 0
+  TeamColor: {r: 0.22706337, g: 0.25611794, b: 0.42557657, a: 1}
   Players: []
-  Manager:
-    FirstName: 
-    Surname: 
-    Team: {fileID: 0}
-    Personality: 0
-    ManStats:
-      Skills:
-        Intelligence: 0
-        Teamwork: 0
-        Composure: 0
-        Agression: 0
-        Resilience: 0
-      Formation: {fileID: 0}
-  Formation: {fileID: 0}

@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   TeamName: Yeovill
   YearFounded: 1803
-  StadiumCapacity: 0
+  TeamColor: {r: 0.5331641, g: 0.97064984, b: 0.40799844, a: 1}
   Players: []

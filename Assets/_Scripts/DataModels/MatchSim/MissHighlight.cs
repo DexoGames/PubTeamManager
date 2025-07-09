@@ -4,8 +4,10 @@ using UnityEngine;
 
 public class MissHighlight : ShotHighlight
 {
-    public MissHighlight(Team team, Player shooter, Player goalkeeper, ShotType shotType, ShotOutcome outcome)
-        : base(team, shooter, goalkeeper, shotType, outcome)
+    public override float Duration => 0.8f;
+
+    public MissHighlight(Team team, Minute minute, Player shooter, Player goalkeeper, ShotType shotType, ShotOutcome outcome)
+        : base(team, minute, shooter, goalkeeper, shotType, outcome)
     {
 
     }

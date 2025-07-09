@@ -59,7 +59,8 @@ public class Person
     {
         string[] names = new string[] { "James", "Oliver", "Ethan", "Liam", "Alexander", "Noah", "Lucas", "Mason", "Logan", "Samuel", "Daniel", "Michael", "Dexter", "Rory", "Callum", "Gerald", "Javier", "Yash", "Indigo", "Ollie",
             "Ivo", "Alan", "Joe", "Kirk", "Cole", "Ivan", "Son", "Josh", "Walter", "Mike", "Jesse", "Gus", "Hank", "Hikmat", "Alex", "Max", "Lewis", "Charles", "Sergio", "David", "Luke", "Mark", "Jeremy", "Alex", "Brent", "Magnus",
-            "James", "Will", "Ben", "Zayn", "Albert", "Jack", "Tom", "Seb", "Sebby", "Zac", "Ed", "Fred", "Freddie", "Brian", "Troy", "Mario", "Luigi", "Karl", "Darwin", "Tim", "John", "Tyler", "Harry", "Victor", "Jayce", "Ange"};
+            "James", "Will", "Ben", "Zayn", "Albert", "Jack", "Tom", "Seb", "Sebby", "Zac", "Ed", "Fred", "Freddie", "Brian", "Troy", "Mario", "Luigi", "Karl", "Darwin", "Tim", "John", "Tyler", "Harry", "Victor", "Jayce", "Ange",
+            "Cody", "Mal", "Billy", "Cole", "Ivan", "Kale", "Adrian", "Dylan", "Nathdaniel", "Oran", "Nat", "Rono", "Bradley", "Rene", "Aidan", "Adam", "Indy"};
         var rnd = UnityEngine.Random.Range(0, names.Length);
 
         return names[rnd];
@@ -72,7 +73,9 @@ public class Person
             "Schrader", "Cum", "Black", "John", "Harrison", "Lennon", "McCartney" ,"Starkey", "Preston", "Martin", "Perez", "Hamilton", "Russell", "Norris", "Piastri", "Goldbridge", "Maguire", "Binotto", "Walker", "McCoy",
             "Marriott", "Doyle", "Kite", "Rigby", "Pepper", "Mustard", "Green", "Nicolle", "Hudson", "Dover", "Malik", "Halsey", "Black", "Carpenter", "Simons", "Manifold", "Marsh", "Guetta", "Sheeran", "Perry", "Swift", 
             "Miranda", "Burr", "Schuyler", "Groff", "Jefferson", "Wecht", "Bellingham", "Gallagher", "Bolton", "Montez", "Evans", "Mario", "Mangione", "Marx", "Tralala", "Gusini", "Pork", "Cheese", "Angrave", "Thompson",
-            "Wood", "Mainoo", "Shaw", "Trundle", "Lukather"};
+            "Wood", "Mainoo", "Shaw", "Trundle", "Lukather", "Jota", "Shears", "Eastman", "Ashdown", "Sterry", "Hart", "Marlene", "Marsden", "Rainsford", "Bending", "Dylan", "Tye", "Flowers", "Ronald", "Hornsey", "Crisp",
+            "Withell", "Leung", "Barrie", "Ellwood", "Keating", "Manley", "Gouldstone", "Caldow", "Bolt", "Pise", "Price", "Borman", "Spencer", "Sunderland", "Heaton", "Morgan", "Edge-Morgan", "Maldonado", "Trifinov", "Reeves",
+            "Aston", "Cox", "Nolan"};
         var rnd = UnityEngine.Random.Range(0, names.Length);
 
         return names[rnd];

@@ -66,7 +66,7 @@ public class Match
     Team home;
     Team away;
     public Result result { get; private set; }
-    public Minute currentMin { get; private set; }
+    public Minute currentMin { get; set; }
 
     bool trackHighlights;
     public UnityEvent<Highlight> BroadcastHighlight = new UnityEvent<Highlight>();
@@ -128,6 +128,7 @@ public class Match
         if (Random.Range(0, 10f + home.Tactic.Stability + away.Tactic.Stability) <= 10)
         {
             int i = Random.Range(0, 3);
+            AddHighlight(new MistakeHighlight(attacking, currentMin, attacking.StartingPlayers[Random.Range(0, attacking.StartingPlayers.Count)]));
             switch (i)
             {
                 case 0:
@@ -157,7 +158,7 @@ public class Match
 
     void Build(Team attacking, Team defending)
     {
-        AddHighlight(new PossessionHighlight(attacking, Phase.Type.Build));
+        AddHighlight(new PossessionHighlight(attacking, currentMin, Phase.Type.Build));
 
         float result = BuildLogic(attacking, defending);
         if(result > 0)
@@ -170,13 +171,20 @@ public class Match
         }
         else
         {
-            if (Random.Range(0, 3) == 0) Build(attacking, defending);
+            if (Random.Range(0, 3) == 0)
+            {
+                Build(attacking, defending);
+            }
+            else
+            {
+                AddHighlight(new PossessionFailHighlight(attacking, currentMin, Phase.Type.Build));
+            }
         }
     }
 
     void Progress(Team attacking, Team defending, float overflow)
     {
-        AddHighlight(new PossessionHighlight(attacking, Phase.Type.Progress));
+        //AddHighlight(new PossessionHighlight(attacking, currentMin, Phase.Type.Progress));
 
         float result = ProgressLogic(attacking, defending, overflow);
         if (result > 0)
@@ -189,17 +197,23 @@ public class Match
         }
         else
         {
-            if (Random.Range(0, 3) == 0) Build(attacking, defending);
+            if (Random.Range(0, 3) == 0)
+            {
+                Build(attacking, defending);
+            }
+            else
+            {
+                AddHighlight(new PossessionFailHighlight(attacking, currentMin, Phase.Type.Progress));
+            }
         }
     }
     void Probe(Team attacking, Team defending, float overflow)
     {
-        AddHighlight(new PossessionHighlight(attacking, Phase.Type.Probe));
+        AddHighlight(new PossessionHighlight(attacking, currentMin, Phase.Type.Probe));
 
         float result = ProbeLogic(attacking, defending, overflow);
-        if (result > 0)
+        if (result > 0 && !WinningComplacency(attacking))
         {
-            if (WinningComplacency(attacking)) return;
             AttemptShot(Phase.Type.Probe, attacking, defending, currentMin, Random.Range(0.2f, 0.8f));
         }
         else if (result < 0)
@@ -208,13 +222,20 @@ public class Match
         }
         else
         {
-            if (Random.Range(0, 2) == 0) Progress(attacking, defending, 0);
+            if (Random.Range(0, 3) == 0)
+            {
+                Progress(attacking, defending, 0);
+            }
+            else
+            {
+                AddHighlight(new PossessionFailHighlight(attacking, currentMin, Phase.Type.Probe));
+            }
         }
     }
 
     void Advance(Team attacking, Team defending, float overflow)
     {
-        AddHighlight(new PossessionHighlight(attacking, Phase.Type.Advance));
+        AddHighlight(new PossessionHighlight(attacking, currentMin, Phase.Type.Advance));
 
         float result = AdvanceLogic(attacking, defending, overflow);
         if (result > 0)
@@ -227,18 +248,24 @@ public class Match
         }
         else
         {
-            if (Random.Range(0, 6) == 0) Advance(attacking, defending, 0);
+            if (Random.Range(0, 6) == 0)
+            {
+                Advance(attacking, defending, 0);
+            }
+            else
+            {
+                AddHighlight(new PossessionFailHighlight(attacking, currentMin, Phase.Type.Advance));
+            }
         }
     }
 
     void Penetrate(Team attacking, Team defending, float overflow)
     {
-        AddHighlight(new PossessionHighlight(attacking, Phase.Type.Penetrate));
+        AddHighlight(new PossessionHighlight(attacking, currentMin, Phase.Type.Penetrate));
 
         float result = PenetrateLogic(attacking, defending, overflow);
-        if (result > 0)
+        if (result > 0 && !WinningComplacency(attacking))
         {
-            if (WinningComplacency(attacking)) return;
             AttemptShot(Phase.Type.Penetrate, attacking, defending, currentMin, Random.Range(0.05f, 0.5f));
         }
         else if (result < 0)
@@ -247,13 +274,20 @@ public class Match
         }
         else
         {
-            if (Random.Range(0, 6) == 0) Penetrate(attacking, defending, 0);
+            if (Random.Range(0, 7) == 0)
+            {
+                Penetrate(attacking, defending, 0);
+            }
+            else
+            {
+                AddHighlight(new PossessionFailHighlight(attacking, currentMin, Phase.Type.Penetrate));
+            }
         }
     }
 
     void Counter(Team attacking, Team defending, float overflow)
     {
-        AddHighlight(new PossessionHighlight(attacking, Phase.Type.Counter));
+        AddHighlight(new PossessionHighlight(attacking, currentMin, Phase.Type.Counter));
 
         float result = CounterLogic(attacking, defending, overflow);
         if (result > 0)
@@ -266,18 +300,24 @@ public class Match
         }
         else
         {
-            if (Random.Range(0, 4) == 0) Advance(attacking, defending, 0);
+            if (Random.Range(0, 4) == 0)
+            {
+                Advance(attacking, defending, 0);
+            }
+            else
+            {
+                AddHighlight(new PossessionFailHighlight(attacking, currentMin, Phase.Type.Counter));
+            }
         }
     }
 
     void Break(Team attacking, Team defending, float overflow)
     {
-        AddHighlight(new PossessionHighlight(attacking, Phase.Type.Break));
+        AddHighlight(new PossessionHighlight(attacking, currentMin, Phase.Type.Break));
 
         float result = BreakLogic(attacking, defending, overflow);
-        if (result > 0)
+        if (result > 0 && !WinningComplacency(attacking))
         {
-            if (WinningComplacency(attacking)) return;
             AttemptShot(Phase.Type.Break, attacking, defending, currentMin, Random.Range(0.02f, 0.3f));
         }
         else if (result < 0)
@@ -286,7 +326,14 @@ public class Match
         }
         else
         {
-            if (Random.Range(0, 6) == 0) Advance(attacking, defending, 0);
+            if (Random.Range(0, 7) == 0)
+            {
+                Advance(attacking, defending, 0);
+            }
+            else
+            {
+                AddHighlight(new PossessionFailHighlight(attacking, currentMin, Phase.Type.Break));
+            }
         }
     }
 
@@ -303,12 +350,14 @@ public class Match
             difference = result.score.away - result.score.home;
         }
 
-        float min = 3;
-        if (difference < min) return false;
+        float min = 2;
+        if (difference <= min) return false;
+        if (difference >= Random.Range(5, 14)) return true;
 
-        float exp = 1.5f;
+        bool complacent = Random.Range(min, difference) < min + 0.4f;
+        //Debug.Log($"Complacent?? {complacent}");
 
-        return Random.Range(0f, Mathf.Pow(difference, exp)) <= Mathf.Pow(min-1, exp);
+        return complacent;
     }
 
     public bool AttemptShot(Phase.Type phase, Team attackingTeam, Team defendingTeam, Minute currentMinute, float baseXG)
@@ -332,11 +381,13 @@ public class Match
         float finalGoalChance = AdjustForKeeper(onTargetChance, keeper);
         finalGoalChance = Mathf.Clamp(finalGoalChance, 0.015f, 0.98f);
 
-        // Deflection/Own Goal override logic
         if (shotType == ShotType.Deflection)
-            finalGoalChance = Mathf.Clamp(baseXG * 2f, 0.01f, 0.99f);
+            finalGoalChance = Mathf.Clamp(baseXG * 4f, 0.01f, 0.9f);
         else if (shotType == ShotType.Own_Goal)
-            finalGoalChance = Mathf.Clamp(baseXG * 3f, 0.01f, 0.99f);
+        {
+            finalGoalChance = Mathf.Clamp(baseXG * 8f, 0.01f, 0.9f);
+            shooter = defendingTeam.StartingPlayers[Random.Range(0, defendingTeam.StartingPlayers.Count)];
+        }
 
         temp = finalGoalChance;
 
@@ -467,7 +518,7 @@ public class Match
 
     void RecordShot(ShotType type, ShotOutcome outcome, Team shootingTeam, Player shooter, Player goalkeeper, float xG, Minute minute)
     {
-        AddHighlight(new ShotHighlight(shootingTeam, shooter, goalkeeper, type, outcome));
+        AddHighlight(new ShotHighlight(shootingTeam, currentMin, shooter, goalkeeper, type, outcome));
 
         Shot shot = new Shot
         {
@@ -481,7 +532,7 @@ public class Match
 
         if(outcome == ShotOutcome.Goal)
         {
-            AddHighlight(new GoalHighlight(shootingTeam, shooter, goalkeeper, type, outcome));
+            AddHighlight(new GoalHighlight(shootingTeam, currentMin, shooter, goalkeeper, type, outcome));
 
             if (shootingTeam == home)
             {
@@ -494,7 +545,7 @@ public class Match
         }
         else
         {
-            AddHighlight(new MissHighlight(shootingTeam, shooter, goalkeeper, type, outcome));
+            AddHighlight(new MissHighlight(shootingTeam, currentMin, shooter, goalkeeper, type, outcome));
         }
 
         Debug.LogWarning($"{shootingTeam.TeamName} - {outcome}! {shooter.Surname} ({type}) with xG: {xG:F2} and chance: {temp:F2}.");

@@ -10,7 +10,7 @@ public class Team : ScriptableObject
 {
     public string TeamName;
     public int YearFounded;
-    public int StadiumCapacity;
+    public Color TeamColor;
 
     int teamId;
 

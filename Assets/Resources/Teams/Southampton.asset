@@ -14,19 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   TeamName: Southampton
   YearFounded: 1952
-  StadiumCapacity: 300
+  TeamColor: {r: 0.9161425, g: 0.27753168, b: 0.47220406, a: 1}
   Players: []
-  Manager:
-    FirstName: 
-    Surname: 
-    Team: {fileID: 0}
-    Personality: 0
-    ManStats:
-      Skills:
-        Intelligence: 0
-        Teamwork: 0
-        Composure: 0
-        Agression: 0
-        Resilience: 0
-      Formation: {fileID: 0}
-  Formation: {fileID: 11400000, guid: 6c5bb2a7861c359459c07ab8fecc785a, type: 2}

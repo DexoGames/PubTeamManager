@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   TeamName: VARsenal
   YearFounded: 0
-  StadiumCapacity: 0
+  TeamColor: {r: 0.802935, g: 0.1826383, b: 0.1826383, a: 1}
   Players: []

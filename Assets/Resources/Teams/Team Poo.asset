@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   TeamName: Team Poo
   YearFounded: 0
-  StadiumCapacity: 0
+  TeamColor: {r: 0.23689729, g: 0.16960762, b: 0.1254016, a: 1}
   Players: []

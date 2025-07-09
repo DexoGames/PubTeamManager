@@ -1,8 +1,11 @@
 using UnityEngine;
+using UnityEngine.UI;
 
 public class UIManager : MonoBehaviour
 {
     public static UIManager Instance { get; private set; }
+
+    public GameObject[] hideForMatchSim;
 
     private PlayerDetailsUI playerDetailsUI;
     private TeamDetailsUI clubDetailsUI;
@@ -107,6 +110,14 @@ public class UIManager : MonoBehaviour
         matchSimPageUI.Hide();
         tacticsPageUI.Hide();
         discussionPageUI.Hide();
+    }
+
+    public void ShowNavigationButtons(bool show)
+    {
+        foreach (var obj in hideForMatchSim)
+        {
+            obj.SetActive(show);
+        }
     }
 
     public void Exit()

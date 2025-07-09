@@ -1,31 +1,78 @@
-using System.Collections;
-using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 
-public class TacticsToggle : Toggle
+[RequireComponent(typeof(Toggle))]
+public class TacticsToggle : MonoBehaviour
 {
-    // Start is called before the first frame update
-    new void Start()
+    public TacticInstruction instruction { get; private set; }
+    public Toggle toggle { get; private set; }
+    private TextMeshProUGUI text;
+
+    public readonly UnityEvent OnToggleChange = new UnityEvent();
+
+    [Header("UI Style")]
+    public Color selectedColor = Color.white;
+    public Color unselectedColor = Color.grey;
+
+    void Awake()
     {
-        base.Start();
-        this.onValueChanged.AddListener(SetOnOff);
+        toggle = GetComponent<Toggle>();
+        text = GetComponentInChildren<TextMeshProUGUI>();
+
+        // Subscribe to the event once
+        toggle.onValueChanged.AddListener(HandleToggleValueChanged);
+    }
+
+    // Called by TacticGridLayout after instantiating.
+    public void Create(TacticInstruction newInstruction)
+    {
+        instruction = newInstruction;
+        if (text != null)
+        {
+            text.text = instruction != null ? instruction.tacticName : "Unnamed";
+        }
+    }
+
+    // Called when the toggle's value changes (either by user or code).
+    private void HandleToggleValueChanged(bool isOn)
+    {
+        UpdateColor(isOn);
+        OnToggleChange.Invoke(); // Notify listeners like TacticGridLayout
     }
 
     public void Set(bool newState)
     {
-        this.isOn = newState;
+        // Setting toggle.isOn will trigger onValueChanged, so no need to call HandleToggleValueChanged manually.
+        toggle.isOn = newState;
     }
 
-    void SetOnOff(bool state)
+    private void UpdateColor(bool isOn)
     {
-        if (state)
+        if (toggle.targetGraphic != null)
         {
-            image.color = Color.white;
+            toggle.targetGraphic.color = isOn ? selectedColor : unselectedColor;
         }
-        else
+    }
+
+    public void SetInteractable(bool isInteractable)
+    {
+        toggle.interactable = isInteractable;
+        float alpha = isInteractable ? 1.0f : 0.5f;
+        if (text != null)
         {
-            image.color = Color.gray;
+            text.alpha = alpha;
+        }
+    }
+
+    // Good Practice: Clean up listeners when the object is destroyed.
+    void OnDestroy()
+    {
+        OnToggleChange.RemoveAllListeners();
+        if (toggle != null)
+        {
+            toggle.onValueChanged.RemoveAllListeners();
         }
     }
 }

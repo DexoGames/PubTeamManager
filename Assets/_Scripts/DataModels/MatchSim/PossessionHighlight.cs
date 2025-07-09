@@ -5,9 +5,10 @@ using UnityEngine;
 public class PossessionHighlight : Highlight
 {
     public Phase.Type PhaseType { get; set; }
+    public override float Duration => 0.5f;
 
-    public PossessionHighlight(Team team, Phase.Type phase)
-        : base(team)
+    public PossessionHighlight(Team team, Minute minute, Phase.Type phase)
+        : base(team, minute)
     {
         PhaseType = phase;
     }

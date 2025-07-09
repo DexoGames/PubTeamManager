@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   TeamName: Luton
   YearFounded: 0
-  StadiumCapacity: 0
+  TeamColor: {r: 1, g: 0.47854245, b: 0.13102722, a: 1}
   Players: []

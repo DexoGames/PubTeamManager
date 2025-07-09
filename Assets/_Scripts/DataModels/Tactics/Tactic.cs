@@ -42,13 +42,6 @@ public class Tactic
         ResetStats();
         Instructions = manager.ManStats.Instructions.ToList();
 
-        if (Team.TeamName != "Man Utd")
-        {
-            ResetInstructions();
-            Instructions.Add(Resources.Load<TacticInstruction>("Tactics/Instructions/HoofItLong"));
-            Instructions.Add(Resources.Load<TacticInstruction>("Tactics/Instructions/LowBlock"));
-        }
-
         RecalculateStats();
     }
 
@@ -59,7 +52,17 @@ public class Tactic
 
     public void AddInstruction(TacticInstruction instruction)
     {
+        if(Instructions.Contains(instruction))
+        {
+            return;
+        }
+
         Instructions.Add(instruction);
+        RecalculateStats();
+    }
+    public void RemoveInstruction(TacticInstruction instruction)
+    {
+        Instructions.RemoveAll(i => i == instruction);
         RecalculateStats();
     }
 
@@ -70,8 +73,10 @@ public class Tactic
 
     private void ResetStats()
     {
-        Complexity = Intensity = Control = Stability = Pressure = Security =
+        Intensity = Control = Stability = Pressure = Security =
         Threat = Creativity = DefensiveWidth = AttackingWidth = Fouling = Provoking = 50;
+
+        Complexity = 25;
     }
 
     public int GetStat(TacticStat stat) => GetStatRef(stat);
