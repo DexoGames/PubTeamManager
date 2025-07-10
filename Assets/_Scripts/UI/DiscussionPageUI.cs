@@ -25,6 +25,7 @@ public class DiscussionPageUI : UIPage
         }
     }
 
+
     protected override void OnShow(Event @event, Person person)
     {
         base.OnShow(@event, person);
@@ -44,6 +45,8 @@ public class DiscussionPageUI : UIPage
         int moraleChange = person.NewMorale(thisEvent.type.moraleChange, reaction, thisEvent.type.severity);
         dialogue.UpdatePerson(ReactionToDialogue(reaction));
         responseManager.MakeDialogue(response);
+
+        EventsManager.Instance.Events.Remove(thisEvent);
     }
 
     public static string ReactionToDialogue(Event.Reaction reaction)

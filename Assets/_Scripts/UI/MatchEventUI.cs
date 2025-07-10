@@ -24,6 +24,16 @@ public class MatchEventUI : MonoBehaviour
         backgorund.color = team.TeamColor;
     }
 
+    public void InstantShow()
+    {
+        if (TryGetComponent(out OnStartUI onStartUI))
+        {
+            onStartUI.ResetUI();
+            onStartUI.SetFinalState();
+            onStartUI.enabled = false;
+        }
+    }
+
     public static Color GetContrastingTextColor(Color background)
     {
         float luminance = 0.2126f * background.r + 0.7152f * background.g + 0.0722f * background.b;

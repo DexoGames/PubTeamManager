@@ -11,7 +11,8 @@ public class UIStatDisplay : MonoBehaviour
         Age,
         KitNumber,
         Morale,
-        Strength,
+        Fatigue,
+        Intelligence,
         OtherPositions // New type for the bench UI
     }
 

@@ -14,6 +14,15 @@ public class PlayerEventUI : MonoBehaviour
 
     public void Setup(Event _event, Person person)
     {
+        if (_event.affected.Count > 0 && _event.affected[0] != person)
+        {
+            if (_event.affected.Contains(person))
+            {
+                _event.affected.Remove(person);
+                _event.affected.Insert(0, person);
+            }
+        }
+
         this.person = person;
         playerEvent = _event;
         date.text = CalenderManager.Instance.DaysAgo(playerEvent.date);

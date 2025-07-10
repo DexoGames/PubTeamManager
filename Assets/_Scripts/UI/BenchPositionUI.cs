@@ -12,30 +12,6 @@ public class BenchPositionUI : PositionUI
         Setup(player, position, id, form, container);
     }
 
-    public override void UpdateValues(Formation.Position position, Player player)
-    {
-        this.player = player;
-        name = "BenchPlayer " + player.FullName;
-
-        UpdateTextStat(StatType.Position, player.BestPosition().ToString());
-        UpdateTextStat(StatType.Surname, LinkBuilder.BuildLink(player, player.Surname));
-        UpdateTextStat(StatType.Rating, player.GetRating(player.BestPosition()).ToString());
-        UpdateImageColor(StatType.Morale, player.GetMoraleColor());
-
-        string[] list = player.ListBestPositions().Split(' ');
-        string newString = "";
-        for (int i = 1; i < list.Length; i++)
-        {
-            if (!string.IsNullOrEmpty(list[i]))
-            {
-                newString += list[i] + " ";
-            }
-        }
-        newString = newString.Trim();
-
-        UpdateTextStat(StatType.OtherPositions, newString);
-    }
-
     public override void Move(Formation.Position position)
     {
 

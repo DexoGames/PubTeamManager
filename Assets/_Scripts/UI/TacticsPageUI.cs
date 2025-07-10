@@ -14,6 +14,7 @@ public class TacticsPageUI : UIPage
     [SerializeField] FormationInteractableUI formationUI;
     [SerializeField] TabController tabController;
     [SerializeField] BenchManager benchManager;
+    [SerializeField] FormationDisplayModeControl displayModeControl;
     [SerializeField] TextMeshProUGUI teamName;
 
     Team team;
@@ -62,5 +63,6 @@ public class TacticsPageUI : UIPage
         tabsRT.offsetMin = new Vector2(25, 0);
 
         formationUI.SetFormations(team);
+        displayModeControl.SetDisplayMode(displayModeControl.GetCurrentDisplayModeIndex());
     }
 }

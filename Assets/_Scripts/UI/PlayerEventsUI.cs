@@ -2,28 +2,40 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class PlayerEventsUI : MonoBehaviour
+public class PlayerEventsUI : UIObject
 {
     [SerializeField] PlayerEventUI playerEventPrfab;
     [SerializeField] Transform container;
+    public bool allPlayers;
+    bool ignoreBasicEvents;
 
-    public void ShowEvents(Player player)
+    public override void Setup()
+    {
+        if (!allPlayers) return;
+
+        ignoreBasicEvents = true;
+        ShowEvents(TeamManager.Instance.MyTeam.Players);
+    }
+
+    public void ShowEvents(List<Player> players)
     {
         Game.ClearContainer(container);
 
         List<Event> playerEvents = new List<Event>();
         foreach(Event e in EventsManager.Instance.Events)
         {
-            if (e.affected.Contains(player))
+            foreach(Player player in players)
             {
-                playerEvents.Add(e);
-            }
-        }
+                if (e.affected.Contains(player))
+                {
+                    if (ignoreBasicEvents && e.type.tag == EventType.Tag.Basic) continue;
 
-        foreach(Event e in playerEvents)
-        {
-            PlayerEventUI playerEvent = Instantiate(playerEventPrfab, container);
-            playerEvent.Setup(e, player);
+                    playerEvents.Add(e);
+
+                    PlayerEventUI playerEvent = Instantiate(playerEventPrfab, container);
+                    playerEvent.Setup(e, player);
+                }
+            }
         }
     }
 }

@@ -18,3 +18,4 @@ MonoBehaviour:
   noAffected: 100
   moraleChange: 4
   severity: 5
+  tag: 0

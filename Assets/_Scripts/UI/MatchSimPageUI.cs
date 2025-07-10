@@ -6,6 +6,8 @@ using UnityEngine.UI;
 
 public class MatchSimPageUI : UIPage
 {
+    public const float FAST_FORWARD_TIME = 0.02f;
+
     [SerializeField] FixtureUI _fixtureUI;
     [SerializeField] TextMeshProUGUI _timerText;
     [SerializeField] Button _advanceButton, _pauseButton;
@@ -142,7 +144,7 @@ public class MatchSimPageUI : UIPage
             {
                 Highlight h = highlights.Dequeue();
                 PrintEvent(h.Team, h.Describe(), match.currentMin.Base);
-                yield return new WaitForSeconds(0.05f);
+                yield return new WaitForSeconds(FAST_FORWARD_TIME);
             }
 
             UpdateMatchUI();
@@ -258,5 +260,10 @@ public class MatchSimPageUI : UIPage
     {
         MatchEventUI matchEvent = Instantiate(_matchEventPrefab, _eventsContainer);
         matchEvent.SetText(team, text, minute);
+
+        if (_isFastForwarding)
+        {
+            matchEvent.InstantShow();
+        }
     }
 }

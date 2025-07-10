@@ -59,6 +59,14 @@ public class FormationUI : MonoBehaviour
         }
     }
 
+    public void SetDisplayMode(DisplayMode displayMode)
+    {
+        foreach (PositionUI pos in allPositions)
+        {
+            pos.SetDisplayMode(displayMode);
+        }
+    }
+
     public virtual void SetupInteractable(PositionUI newPos)
     {
         

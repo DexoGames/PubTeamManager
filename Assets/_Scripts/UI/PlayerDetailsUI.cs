@@ -48,7 +48,7 @@ public class PlayerDetailsUI : UIPage
         PopulateStats(player);
 
         positionStrengths.SetPositionStrengths(player, player.Team);
-        playerEvents.ShowEvents(player);
+        playerEvents.ShowEvents(new() { player });
     }
     protected override void OnShow(Manager manager)
     {

@@ -33,6 +33,8 @@ public class Player : Person
         };
     }
 
+    public int Fatigue { get; private set; }
+
     public Player(Team team, Formation.Position[] teamPositions)
     {
         GeneratePerson();

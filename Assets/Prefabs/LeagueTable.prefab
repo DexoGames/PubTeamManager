@@ -169,11 +169,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 717207735694364780, guid: d3a5ea2eaee52d249abb0c74f8a985b6, type: 3}
       propertyPath: m_Padding.m_Left
-      value: 30
+      value: 15
       objectReference: {fileID: 0}
     - target: {fileID: 717207735694364780, guid: d3a5ea2eaee52d249abb0c74f8a985b6, type: 3}
       propertyPath: m_ChildScaleWidth
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 717207735694364780, guid: d3a5ea2eaee52d249abb0c74f8a985b6, type: 3}
+      propertyPath: m_Padding.m_Right
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 717207735694364780, guid: d3a5ea2eaee52d249abb0c74f8a985b6, type: 3}
+      propertyPath: m_Padding.m_Bottom
+      value: 15
       objectReference: {fileID: 0}
     - target: {fileID: 2260848410339462709, guid: d3a5ea2eaee52d249abb0c74f8a985b6, type: 3}
       propertyPath: m_Name
@@ -263,8 +271,15 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents:
-    - {fileID: 6367617148207240088, guid: d3a5ea2eaee52d249abb0c74f8a985b6, type: 3}
+    - target: {fileID: 5188706497615931621, guid: d3a5ea2eaee52d249abb0c74f8a985b6, type: 3}
+      propertyPath: m_Spacing
+      value: 19.25
+      objectReference: {fileID: 0}
+    - target: {fileID: 5188706497615931621, guid: d3a5ea2eaee52d249abb0c74f8a985b6, type: 3}
+      propertyPath: m_Padding.m_Bottom
+      value: 104
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:

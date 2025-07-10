@@ -51,7 +51,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9ca9f501e7a4aa48be3e102a2cbf68c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  statToDisplay: 8
+  statToDisplay: 9
 --- !u!222 &8169504844992642731
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -205,6 +205,10 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: -0.0000019073486
       objectReference: {fileID: 0}
+    - target: {fileID: 2704706303802540728, guid: 99901a0b7e0579b47b630a3c4f4e898e, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 3487503363800399519, guid: 99901a0b7e0579b47b630a3c4f4e898e, type: 3}
       propertyPath: m_fontSize
       value: 26.85
@@ -305,6 +309,10 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 7290830752870147667, guid: 99901a0b7e0579b47b630a3c4f4e898e, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 8143440398833726871, guid: 99901a0b7e0579b47b630a3c4f4e898e, type: 3}
       propertyPath: m_IsActive
       value: 0
@@ -343,9 +351,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   defaultDisplay: {fileID: 6067313631315784930}
-  personalDisplay: {fileID: 0}
-  kitNumberDisplay: {fileID: 0}
-  tacticalDisplay: {fileID: 0}
+  physicalDisplay: {fileID: 4329350320598083605}
+  tacticalDisplay: {fileID: 5493676745483332516}
+  displayDisplay: {fileID: 1482909577531805705}
   draggable: {fileID: 6029828940711307130}
   StrengthColors: []
   id: 0
@@ -362,6 +370,21 @@ MonoBehaviour:
   Position:
     ID: 0
     Location: {x: 0, y: 0}
+--- !u!1 &1482909577531805705 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7290830752870147667, guid: 99901a0b7e0579b47b630a3c4f4e898e, type: 3}
+  m_PrefabInstance: {fileID: 8194969775749690970}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &4329350320598083605 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5597570516008803919, guid: 99901a0b7e0579b47b630a3c4f4e898e, type: 3}
+  m_PrefabInstance: {fileID: 8194969775749690970}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &5493676745483332516 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4433534843158322686, guid: 99901a0b7e0579b47b630a3c4f4e898e, type: 3}
+  m_PrefabInstance: {fileID: 8194969775749690970}
+  m_PrefabAsset: {fileID: 0}
 --- !u!114 &6029828940711307130 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 2455623907691516192, guid: 99901a0b7e0579b47b630a3c4f4e898e, type: 3}

@@ -25,7 +25,7 @@ public class OnStartUI : MonoBehaviour
         fadeCoroutine = StartCoroutine(FadeInRoutine());
     }
 
-    private void ResetUI()
+    public void ResetUI()
     {
         canvasGroup.alpha = 0;
         canvasGroup.interactable = false;
@@ -57,7 +57,11 @@ public class OnStartUI : MonoBehaviour
             yield return null; // Wait one frame
         }
 
-        // Ensure final state
+        SetFinalState();
+    }
+
+    public void SetFinalState()
+    {
         canvasGroup.alpha = 1f;
         canvasGroup.interactable = true;
         transform.localScale = originalScale;

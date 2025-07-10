@@ -120,7 +120,11 @@ public class Match
 
         StartingPhase(attackingTeam, defendingTeam);
 
-        currentMin = AdvanceMinute(currentMin);
+        do
+        {
+            currentMin = AdvanceMinute(currentMin);
+        }
+        while (Random.Range(0, 4) == 0);
     }
 
     void StartingPhase(Team attacking, Team defending)

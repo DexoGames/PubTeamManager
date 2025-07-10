@@ -3,22 +3,23 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using static UIStatDisplay;
 
 public enum DisplayMode
 {
     Default,
-    Personal,
+    Physical,
+    Tactical,
     Display,
-    Tactical
 }
 
 public class PositionUI : MonoBehaviour
 {
     [Header("Display Mode Objects")]
     public GameObject defaultDisplay;
-    public GameObject personalDisplay;
-    public GameObject kitNumberDisplay;
+    public GameObject physicalDisplay;
     public GameObject tacticalDisplay;
+    public GameObject displayDisplay;
 
     [Header("Configuration")]
     [SerializeField] private DraggableUI draggable;
@@ -67,13 +68,28 @@ public class PositionUI : MonoBehaviour
         this.player = player;
         name = "StartingPlayer " + player.FullName;
 
-        UpdateTextStat(UIStatDisplay.StatType.Position, position.ID.ToString(), StrengthColors[(int)player.RawStats.Positions[position.ID]]);
+        UpdateTextStat(UIStatDisplay.StatType.Position, position.ID.ToString(), player.GetTeamIndex() < 11 ? StrengthColors[(int)player.RawStats.Positions[position.ID]] : null);
         UpdateTextStat(UIStatDisplay.StatType.Surname, LinkBuilder.BuildLink(player, player.Surname));
         UpdateTextStat(UIStatDisplay.StatType.Rating, player.GetRating(Position.ID).ToString());
         UpdateTextStat(UIStatDisplay.StatType.KitNumber, player.GetKitNumber().ToString());
         UpdateTextStat(UIStatDisplay.StatType.Age, player.AgeYears().ToString());
+        UpdateTextStat(UIStatDisplay.StatType.Fatigue, player.Fatigue.ToString(), Color.Lerp(Color.green, Color.red, player.Fatigue/100f));
+        UpdateTextStat(UIStatDisplay.StatType.Intelligence, player.RawStats.Intelligence.ToString(), Color.Lerp(Color.red, Color.green, player.RawStats.Intelligence / 100f));
 
         UpdateImageColor(UIStatDisplay.StatType.Morale, player.GetMoraleColor());
+
+        string[] list = player.ListBestPositions().Split(' ');
+        string newString = "";
+        for (int i = 1; i < list.Length; i++)
+        {
+            if (!string.IsNullOrEmpty(list[i]))
+            {
+                newString += list[i] + " ";
+            }
+        }
+        newString = newString.Trim();
+
+        UpdateTextStat(StatType.OtherPositions, newString);
     }
 
     protected void UpdateTextStat(UIStatDisplay.StatType statType, string value, Color? color = null)
@@ -118,9 +134,9 @@ public class PositionUI : MonoBehaviour
     public void SetDisplayMode(DisplayMode mode)
     {
         if (defaultDisplay != null) defaultDisplay.SetActive(mode == DisplayMode.Default);
-        if (personalDisplay != null) personalDisplay.SetActive(mode == DisplayMode.Personal);
-        if (kitNumberDisplay != null) kitNumberDisplay.SetActive(mode == DisplayMode.Display);
+        if (physicalDisplay != null) physicalDisplay.SetActive(mode == DisplayMode.Physical);
         if (tacticalDisplay != null) tacticalDisplay.SetActive(mode == DisplayMode.Tactical);
+        if (displayDisplay != null) displayDisplay.SetActive(mode == DisplayMode.Display);
     }
 
     public void TweenTo(Vector2 pos)
