@@ -1,38 +1,126 @@
 using DG.Tweening;
-using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
+
+public enum DisplayMode
+{
+    Default,
+    Personal,
+    Display,
+    Tactical
+}
 
 public class PositionUI : MonoBehaviour
 {
-    public int id;
-    public TextMeshProUGUI position, surname, rating;
-    public Image morale, strength;
-    [SerializeField] DraggableUI draggable;
-    public CanvasGroup fader;
-    [SerializeField] Color[] StrengthColors;
-    protected RectTransform rt;
-    RectTransform container;
-    FormationUI manager;
-    [HideInInspector] public Player player;
+    [Header("Display Mode Objects")]
+    public GameObject defaultDisplay;
+    public GameObject personalDisplay;
+    public GameObject kitNumberDisplay;
+    public GameObject tacticalDisplay;
 
+    [Header("Configuration")]
+    [SerializeField] private DraggableUI draggable;
+    [SerializeField] private Color[] StrengthColors;
+
+    public int id;
+    public CanvasGroup fader;
+
+    [HideInInspector] public Player player;
     [HideInInspector] public Formation.Position Position;
+
+    protected Dictionary<UIStatDisplay.StatType, List<Component>> uiDisplays;
+
+    protected RectTransform rt;
+    protected RectTransform container;
+    protected FormationUI manager;
+
+    private void Awake()
+    {
+        uiDisplays = new Dictionary<UIStatDisplay.StatType, List<Component>>();
+        UIStatDisplay[] allDisplays = GetComponentsInChildren<UIStatDisplay>(true);
+
+        foreach (UIStatDisplay display in allDisplays)
+        {
+            UIStatDisplay.StatType statType = display.statToDisplay;
+
+            if (!uiDisplays.ContainsKey(statType))
+            {
+                uiDisplays[statType] = new List<Component>();
+            }
+
+            if (display.TryGetComponent<TextMeshProUGUI>(out var textComponent))
+            {
+                uiDisplays[statType].Add(textComponent);
+            }
+            else if (display.TryGetComponent<Image>(out var imageComponent))
+            {
+                uiDisplays[statType].Add(imageComponent);
+            }
+        }
+    }
+
+    public virtual void UpdateValues(Formation.Position position, Player player)
+    {
+        Position = position;
+        this.player = player;
+        name = "StartingPlayer " + player.FullName;
+
+        UpdateTextStat(UIStatDisplay.StatType.Position, position.ID.ToString(), StrengthColors[(int)player.RawStats.Positions[position.ID]]);
+        UpdateTextStat(UIStatDisplay.StatType.Surname, LinkBuilder.BuildLink(player, player.Surname));
+        UpdateTextStat(UIStatDisplay.StatType.Rating, player.GetRating(Position.ID).ToString());
+        UpdateTextStat(UIStatDisplay.StatType.KitNumber, player.GetKitNumber().ToString());
+        UpdateTextStat(UIStatDisplay.StatType.Age, player.AgeYears().ToString());
+
+        UpdateImageColor(UIStatDisplay.StatType.Morale, player.GetMoraleColor());
+    }
+
+    protected void UpdateTextStat(UIStatDisplay.StatType statType, string value, Color? color = null)
+    {
+        if (uiDisplays.TryGetValue(statType, out var components))
+        {
+            foreach (var component in components)
+            {
+                var textComponent = (TextMeshProUGUI)component;
+                textComponent.text = value;
+                if (color.HasValue)
+                {
+                    textComponent.color = color.Value;
+                }
+            }
+        }
+    }
+
+    protected void UpdateImageColor(UIStatDisplay.StatType statType, Color color)
+    {
+        if (uiDisplays.TryGetValue(statType, out var components))
+        {
+            foreach (var component in components)
+            {
+                ((Image)component).color = color;
+            }
+        }
+    }
 
     public virtual void Setup(Player player, Formation.Position position, int id, FormationUI formationManager, RectTransform container)
     {
         draggable.SetInteractable(false);
         this.id = id;
         rt = GetComponent<RectTransform>();
-        //rt.anchoredPosition = CoordToPos(position.Location, container.rect.size, rt.rect.size);
-        //rt.DOAnchorPos(CoordToPos(position.Location, container.rect.size, rt.rect.size), 0.5f);
         this.container = container;
         manager = formationManager;
         UpdateValues(position, player);
-
         Move(position);
+        SetDisplayMode(DisplayMode.Default);
+    }
+
+    public void SetDisplayMode(DisplayMode mode)
+    {
+        if (defaultDisplay != null) defaultDisplay.SetActive(mode == DisplayMode.Default);
+        if (personalDisplay != null) personalDisplay.SetActive(mode == DisplayMode.Personal);
+        if (kitNumberDisplay != null) kitNumberDisplay.SetActive(mode == DisplayMode.Display);
+        if (tacticalDisplay != null) tacticalDisplay.SetActive(mode == DisplayMode.Tactical);
     }
 
     public void TweenTo(Vector2 pos)
@@ -55,42 +143,7 @@ public class PositionUI : MonoBehaviour
     public void Reassign(Formation.Position position, Player player)
     {
         TweenTo(CoordToPos(position.Location, container.rect.size, rt.rect.size));
-
         UpdateValues(position, player);
-    }
-
-    public virtual void UpdateValues(Formation.Position position, Player player)
-    {
-        Position = position;
-        this.player = player;
-
-        this.position.text = position.ID.ToString();
-        //this.position.text = player.Team.Formation.Subposition(player.GetFormationIndex());
-        surname.text = LinkBuilder.BuildLink(player, player.Surname);
-
-        this.position.color = StrengthColors[(int)player.RawStats.Positions[position.ID]];
-        if (player.GetTeamIndex() < 11)
-        {
-            Player.PositionStrength posStrength = player.RawStats.Positions[position.ID];
-
-            if(posStrength != Player.PositionStrength.Natural)
-            {
-                strength.enabled = false;
-                strength.color = StrengthColors[(int)posStrength];
-            }
-            else
-            {
-                strength.enabled = false;
-            }
-
-        }
-        else
-        {
-            strength.enabled = false;
-        }
-        morale.color = player.GetMoraleColor();
-        rating.text = player.GetRating(Position.ID).ToString();
-        name = "StartingPlayer " + player.FullName;
     }
 
     public RectTransform GetRect()
@@ -103,7 +156,6 @@ public class PositionUI : MonoBehaviour
         return new Vector2(coord.x / 6f * (rectSize.x - positionSize.x), VerticalIncrease(coord.y, rectSize.y - positionSize.y));
     }
 
-
     static float VerticalIncrease(int y, float length)
     {
         float min = length / -2;
@@ -112,10 +164,10 @@ public class PositionUI : MonoBehaviour
 
         float[] multipliers = { 0f, 0.28f, 0.49f, 0.58f, 0.79f, 1f };
 
-        if(y < multipliers.Length && y >= 0)
+        if (y < multipliers.Length && y >= 0)
         {
             mult = multipliers[y];
-        }    
+        }
 
         return min + length * mult;
     }
@@ -127,13 +179,11 @@ public class PositionUI : MonoBehaviour
             draggable.SetBeingDragged(false);
             return;
         }
-        ((FormationInteractableUI)manager).PositionClicked(this);
-        //transform.SetParent(((FormationInteractableUI)manager).GetGlobalParent());
+      ((FormationInteractableUI)manager).PositionClicked(this);
     }
 
     public virtual void OnPointerUp()
     {
-        //transform.SetParent(container);
         ((FormationInteractableUI)manager).PositionReleased(this);
     }
 

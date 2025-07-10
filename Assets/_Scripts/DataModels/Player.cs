@@ -141,38 +141,6 @@ public class Player : Person
         return newStats;
     }
 
-
-    //public Dictionary<PlayerStat, int> GetRawStatsDictionary()
-    //{
-    //    Dictionary<PlayerStat, int> dict = new Dictionary<PlayerStat, int>();
-
-    //    dict.Add(PlayerStat.Shooting, RawStats.Skills.Shooting);
-    //    dict.Add(PlayerStat.Passing, RawStats.Skills.Passing);
-    //    dict.Add(PlayerStat.Tackling, RawStats.Skills.Tackling);
-    //    dict.Add(PlayerStat.Dribbling, RawStats.Skills.Dribbling);
-    //    dict.Add(PlayerStat.Crossing, RawStats.Skills.Crossing);
-    //    dict.Add(PlayerStat.Heading, RawStats.Skills.Heading);
-
-    //    dict.Add(PlayerStat.Positioning, RawStats.Skills.Positioning);
-    //    dict.Add(PlayerStat.Intelligence, RawStats.Skills.Intelligence);
-    //    dict.Add(PlayerStat.Teamwork, RawStats.Skills.Teamwork);
-    //    dict.Add(PlayerStat.Composure, RawStats.Skills.Composure);
-    //    dict.Add(PlayerStat.Aggression, RawStats.Skills.Aggression);
-    //    dict.Add(PlayerStat.Resilience, RawStats.Skills.Resilience);
-
-    //    dict.Add(PlayerStat.Pace, RawStats.Skills.Pace);
-    //    dict.Add(PlayerStat.Strength, RawStats.Skills.Strength);
-    //    dict.Add(PlayerStat.Jumping, RawStats.Skills.Jumping);
-    //    dict.Add(PlayerStat.Agility, RawStats.Skills.Agility);
-    //    dict.Add(PlayerStat.Stamina, RawStats.Skills.Stamina);
-    //    dict.Add(PlayerStat.Durability, RawStats.Skills.Durability);
-
-    //    dict.Add(PlayerStat.Height, RawStats.Height);
-
-    //    return dict;
-    //}
-
-
     public static Stats PersonalityModifier(Stats player, PersonalityType personality)
     {
         int bigChange = 15;
@@ -411,6 +379,15 @@ public class Player : Person
         text += ListBestPositions();
         text += ")";
         return text;
+    }
+
+    public int GetKitNumber()
+    {
+        if (Team.KitNumbers.TryGetValue(this, out int kitNumber))
+        {
+            return kitNumber;
+        }
+        return 0;
     }
 
     public int HeightToCm()

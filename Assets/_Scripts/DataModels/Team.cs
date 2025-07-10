@@ -23,6 +23,8 @@ public class Team : ScriptableObject
     public List<Player> StartingPlayers => Players.GetRange(0, 11);
     public List<Player> Substitutes => Players.GetRange(11, Players.Count - 11);
 
+    public Dictionary<Player, int> KitNumbers;
+
     public Manager Manager { get; private set; }
     public Tactic Tactic { get; private set; }
     public void SetTactic(Tactic newTactic)
@@ -57,11 +59,13 @@ public class Team : ScriptableObject
     {
         Manager = new Manager(this);
         Tactic = new Tactic(this, Manager);
+        KitNumbers = new Dictionary<Player, int>();
 
         for (int i = 0; i < 21; i++)
         {
             var newPlayer = new Player(this, Tactic.Formation.Positions);
             Players.Add(newPlayer);
+            KitNumbers.Add(newPlayer, i + 1);
         }
     }
 

@@ -1,16 +1,10 @@
-using DG.Tweening;
-using System.Collections;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Xml.Linq;
-using TMPro;
 using UnityEngine;
+using static UIStatDisplay;
 
 public class BenchPositionUI : PositionUI
 {
-    BenchManager benchManager;
-    Vector2 originalPosition;
-    [SerializeField] TextMeshProUGUI otherPositions;
+    private BenchManager benchManager;
+    private Vector2 originalPosition;
 
     public void BenchSetup(Player player, Formation.Position position, int id, FormationUI form, RectTransform container, BenchManager manager)
     {
@@ -21,27 +15,30 @@ public class BenchPositionUI : PositionUI
     public override void UpdateValues(Formation.Position position, Player player)
     {
         this.player = player;
-        this.position.text = player.BestPosition().ToString();
-        string[] list = player.ListBestPositions().Split(' ');
+        name = "BenchPlayer " + player.FullName;
 
+        UpdateTextStat(StatType.Position, player.BestPosition().ToString());
+        UpdateTextStat(StatType.Surname, LinkBuilder.BuildLink(player, player.Surname));
+        UpdateTextStat(StatType.Rating, player.GetRating(player.BestPosition()).ToString());
+        UpdateImageColor(StatType.Morale, player.GetMoraleColor());
+
+        string[] list = player.ListBestPositions().Split(' ');
         string newString = "";
         for (int i = 1; i < list.Length; i++)
         {
-            newString += list[i] + "  ";
-            newString = newString.Substring(0, newString.Length - 2);
+            if (!string.IsNullOrEmpty(list[i]))
+            {
+                newString += list[i] + " ";
+            }
         }
-        this.otherPositions.text = newString;
+        newString = newString.Trim();
 
-        //this.position.text = player.Team.Formation.Subposition(player.GetFormationIndex());
-        morale.color = player.GetMoraleColor();
-        rating.text = player.GetRating(player.BestPosition()).ToString();
-        surname.text = LinkBuilder.BuildLink(player, player.Surname);
-        name = "BenchPlayer " + player.FullName;
+        UpdateTextStat(StatType.OtherPositions, newString);
     }
 
     public override void Move(Formation.Position position)
     {
-        
+
     }
 
     public void ReassignBench(Player player)
@@ -49,6 +46,7 @@ public class BenchPositionUI : PositionUI
         TweenTo(originalPosition);
         UpdateValues(new Formation.Position(), player);
     }
+
     public void SwapTo(Vector2 pos)
     {
         TweenTo(pos);
@@ -80,6 +78,7 @@ public class BenchPositionUI : PositionUI
     {
         return originalPosition;
     }
+
     public void SetOriginalPos()
     {
         originalPosition = rt.anchoredPosition;
