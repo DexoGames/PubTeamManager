@@ -1,5 +1,6 @@
 using DG.Tweening;
 using System.Collections.Generic;
+using System.Text;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -31,7 +32,7 @@ public class PositionUI : MonoBehaviour
     [HideInInspector] public Player player;
     [HideInInspector] public Formation.Position Position;
 
-    protected Dictionary<UIStatDisplay.StatType, List<Component>> uiDisplays;
+    protected Dictionary<StatType, List<Component>> uiDisplays;
 
     protected RectTransform rt;
     protected RectTransform container;
@@ -39,12 +40,12 @@ public class PositionUI : MonoBehaviour
 
     private void Awake()
     {
-        uiDisplays = new Dictionary<UIStatDisplay.StatType, List<Component>>();
+        uiDisplays = new Dictionary<StatType, List<Component>>();
         UIStatDisplay[] allDisplays = GetComponentsInChildren<UIStatDisplay>(true);
 
         foreach (UIStatDisplay display in allDisplays)
         {
-            UIStatDisplay.StatType statType = display.statToDisplay;
+            StatType statType = display.statToDisplay;
 
             if (!uiDisplays.ContainsKey(statType))
             {
@@ -62,37 +63,107 @@ public class PositionUI : MonoBehaviour
         }
     }
 
-    public virtual void UpdateValues(Formation.Position position, Player player)
+    public void UpdateValues(Formation.Position position, Player player)
     {
         Position = position;
         this.player = player;
         name = "StartingPlayer " + player.FullName;
 
-        UpdateTextStat(UIStatDisplay.StatType.Position, position.ID.ToString(), player.GetTeamIndex() < 11 ? StrengthColors[(int)player.RawStats.Positions[position.ID]] : null);
-        UpdateTextStat(UIStatDisplay.StatType.Surname, LinkBuilder.BuildLink(player, player.Surname));
-        UpdateTextStat(UIStatDisplay.StatType.Rating, player.GetRating(Position.ID).ToString());
-        UpdateTextStat(UIStatDisplay.StatType.KitNumber, player.GetKitNumber().ToString());
-        UpdateTextStat(UIStatDisplay.StatType.Age, player.AgeYears().ToString());
-        UpdateTextStat(UIStatDisplay.StatType.Fatigue, player.Fatigue.ToString(), Color.Lerp(Color.green, Color.red, player.Fatigue/100f));
-        UpdateTextStat(UIStatDisplay.StatType.Intelligence, player.RawStats.Intelligence.ToString(), Color.Lerp(Color.red, Color.green, player.RawStats.Intelligence / 100f));
-
-        UpdateImageColor(UIStatDisplay.StatType.Morale, player.GetMoraleColor());
-
-        string[] list = player.ListBestPositions().Split(' ');
-        string newString = "";
-        for (int i = 1; i < list.Length; i++)
-        {
-            if (!string.IsNullOrEmpty(list[i]))
-            {
-                newString += list[i] + " ";
-            }
-        }
-        newString = newString.Trim();
-
-        UpdateTextStat(StatType.OtherPositions, newString);
+        UpdatePosition(position);
+        UpdateSurname(player);
+        UpdateRating(player);
+        UpdateKitNumber(player);
+        UpdateAge(player);
+        UpdateFatigue(player);
+        UpdateIntelligence(player);
+        UpdateMorale(player);
+        UpdateOtherPositions(player);
     }
 
-    protected void UpdateTextStat(UIStatDisplay.StatType statType, string value, Color? color = null)
+    protected virtual void UpdatePosition(Formation.Position position)
+    {
+        var positionId = position.ID;
+        int strengthIndex = (int)player.RawStats.Positions[positionId];
+        Color color = StrengthColors[strengthIndex];
+
+        UpdateTextStat(StatType.Position, positionId.ToString(), color);
+    }
+
+    protected virtual void UpdateSurname(Player player)
+    {
+        string surnameLink = LinkBuilder.BuildLink(player, player.Surname);
+
+        UpdateTextStat(StatType.Surname, surnameLink);
+    }
+
+    protected virtual void UpdateRating(Player player)
+    {
+        var rating = player.GetRating(Position.ID);
+
+        UpdateTextStat(StatType.Rating, rating.ToString());
+    }
+
+    protected virtual void UpdateKitNumber(Player player)
+    {
+        int kitNumber = player.GetKitNumber();
+
+        UpdateTextStat(StatType.KitNumber, kitNumber.ToString());
+    }
+
+    protected virtual void UpdateAge(Player player)
+    {
+        int age = player.AgeYears();
+
+        UpdateTextStat(StatType.Age, age.ToString());
+    }
+
+    protected virtual void UpdateFatigue(Player player)
+    {
+        float fatigueValue = player.Fatigue;
+        Color fatigueColor = Color.Lerp(Color.green, Color.red, fatigueValue / 100f);
+
+        UpdateTextStat(StatType.Fatigue, fatigueValue.ToString(), fatigueColor);
+    }
+
+    protected virtual void UpdateIntelligence(Player player)
+    {
+        float intelligenceValue = player.RawStats.Intelligence;
+        Color intelligenceColor = Color.Lerp(Color.red, Color.green, intelligenceValue / 100f);
+
+        UpdateTextStat(StatType.Intelligence, intelligenceValue.ToString(), intelligenceColor);
+    }
+
+    protected virtual void UpdateMorale(Player player)
+    {
+        Color moraleColor = player.GetMoraleColor();
+
+        UpdateImageColor(StatType.Morale, moraleColor);
+    }
+
+    protected virtual void UpdateOtherPositions(Player player)
+    {
+        string[] bestPositions = player.ListBestPositions().Split(' ');
+        StringBuilder formatted = new StringBuilder();
+
+        for (int i = 1; i < bestPositions.Length; i++)
+        {
+            string pos = bestPositions[i];
+
+            if (!string.IsNullOrEmpty(pos))
+            {
+                formatted.Append(pos);
+                formatted.Append(' ');
+            }
+        }
+
+        string trimmed = formatted.ToString().Trim();
+
+        UpdateTextStat(StatType.OtherPositions, trimmed);
+    }
+
+
+
+    protected void UpdateTextStat(StatType statType, string value, Color? color = null)
     {
         if (uiDisplays.TryGetValue(statType, out var components))
         {
@@ -108,7 +179,7 @@ public class PositionUI : MonoBehaviour
         }
     }
 
-    protected void UpdateImageColor(UIStatDisplay.StatType statType, Color color)
+    protected void UpdateImageColor(StatType statType, Color color)
     {
         if (uiDisplays.TryGetValue(statType, out var components))
         {
@@ -195,7 +266,7 @@ public class PositionUI : MonoBehaviour
             draggable.SetBeingDragged(false);
             return;
         }
-      ((FormationInteractableUI)manager).PositionClicked(this);
+        ((FormationInteractableUI)manager).PositionClicked(this);
     }
 
     public virtual void OnPointerUp()

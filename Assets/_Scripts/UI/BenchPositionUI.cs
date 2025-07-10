@@ -12,9 +12,13 @@ public class BenchPositionUI : PositionUI
         Setup(player, position, id, form, container);
     }
 
-    public override void Move(Formation.Position position)
-    {
+    public override void Move(Formation.Position position) { }
 
+    protected override void UpdatePosition(Formation.Position position)
+    {
+        var bestPosition = player.BestPosition();
+
+        UpdateTextStat(StatType.Position, bestPosition.ToString(), null);
     }
 
     public void ReassignBench(Player player)
