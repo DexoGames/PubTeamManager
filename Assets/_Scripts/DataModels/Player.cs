@@ -35,7 +35,7 @@ public class Player : Person
 
     public int Fatigue { get; private set; }
 
-    public Player(Team team, Formation.Position[] teamPositions)
+    public Player(Team team, Formation.Position[] teamPositions, int index)
     {
         GeneratePerson();
 
@@ -52,12 +52,18 @@ public class Player : Person
         RawStats = PersonalityModifier(RawStats, Personality);
 
         Position bestPosition = (Position)Random.Range(0, Game.GetEnumLength<Position>());
-        if (GetTeamIndex() >= 0 && GetTeamIndex() < teamPositions.Length && Random.Range(0, 3) == 0)
+        if (index >= 0 && index < teamPositions.Length)
         {
-            bestPosition = teamPositions[GetTeamIndex()].ID;
+            if(team != TeamManager.Instance.MyTeam || Random.Range(0, 3) == 0)
+            {
+                bestPosition = teamPositions[index].ID;
+            }
         }
-        RawStats.Positions = new Dictionary<Position, PositionStrength>();
-        RawStats.Positions.Add(bestPosition, PositionStrength.Natural);
+        RawStats.Positions = new Dictionary<Position, PositionStrength>
+        {
+            { bestPosition, PositionStrength.Natural }
+        };
+
 
         int length = Game.GetEnumLength<Position>();
 

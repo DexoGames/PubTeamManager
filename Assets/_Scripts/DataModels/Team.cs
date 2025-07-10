@@ -63,7 +63,7 @@ public class Team : ScriptableObject
 
         for (int i = 0; i < 21; i++)
         {
-            var newPlayer = new Player(this, Tactic.Formation.Positions);
+            var newPlayer = new Player(this, Tactic.Formation.Positions, i);
             Players.Add(newPlayer);
             KitNumbers.Add(newPlayer, i + 1);
         }

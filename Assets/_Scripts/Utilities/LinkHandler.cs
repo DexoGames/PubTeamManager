@@ -68,7 +68,7 @@ public class LinkHandler : MonoBehaviour, IPointerClickHandler
                     break;
                 case "tactics":
                     var team = TeamManager.Instance.GetTeam(result);
-                    UIManager.Instance.ShowTactics(team);
+                    UIManager.Instance.ShowTactics();
                     Debug.Log($"Clicked club with id: {id}");
                     break;
                 case "manager":

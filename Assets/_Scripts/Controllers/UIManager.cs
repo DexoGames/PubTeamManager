@@ -68,11 +68,17 @@ public class UIManager : MonoBehaviour
         clubDetailsUI.Show(team);
     }
 
-    public void ShowTactics(Team team)
+    public void ShowTactics()
     {
         HideAllUI();
 
         tacticsPageUI.Show(TeamManager.Instance.MyTeam);
+    }
+    public void ShowMyTeam()
+    {
+        HideAllUI();
+
+        ShowTeamDetails(TeamManager.Instance.MyTeam.TeamId);
     }
 
     public void ShowDiscussion(int eventIndex, int playerIndex)
