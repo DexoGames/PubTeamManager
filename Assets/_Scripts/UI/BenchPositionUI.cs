@@ -21,6 +21,18 @@ public class BenchPositionUI : PositionUI
         UpdateTextStat(StatType.Position, bestPosition.ToString(), null);
     }
 
+    protected override void UpdateCurrentRating(Player player)
+    {
+        var rating = player.GetRating(player.BestPosition());
+
+        UpdateImage(StatType.CurrentRating, null, GetRatingSprite(rating));
+    }
+
+    protected override void UpdateOtherPositions(Player player, bool includeBest = false)
+    {
+        base.UpdateOtherPositions(player, false);
+    }
+
     public void ReassignBench(Player player)
     {
         TweenTo(originalPosition);

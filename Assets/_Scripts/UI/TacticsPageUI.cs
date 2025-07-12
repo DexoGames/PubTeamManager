@@ -15,7 +15,6 @@ public class TacticsPageUI : UIPage
     [SerializeField] TabController tabController;
     [SerializeField] BenchManager benchManager;
     [SerializeField] FormationDisplayModeControl displayModeControl;
-    [SerializeField] TextMeshProUGUI teamName;
 
     Team team;
 
@@ -40,7 +39,6 @@ public class TacticsPageUI : UIPage
         formationUI.SetFormations(team);
         benchManager.ClearContainer();
         benchManager.Setup(formationUI, team);
-        teamName.text = LinkBuilder.BuildLink(team) + " Tactics";
     }
 
     public void SetSizes(int index)

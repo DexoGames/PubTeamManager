@@ -52,7 +52,7 @@ public class FormationInteractableUI : FormationUI
             if (p == pos) continue;
 
             CanvasGroup group = p.fader;
-            Player.Position position = p.Position.ID;
+            Player.Position position = p.playerPosition.ID;
 
             group.alpha = 0.4f - (int)pos.player.RawStats.Positions[position] * 0.1f;
             p.transform.DOScale(Vector3.one * (0.75f + (int)pos.player.RawStats.Positions[position] * 0.1f), 0.25f).SetEase(Ease.InOutQuad);
@@ -82,8 +82,8 @@ public class FormationInteractableUI : FormationUI
 
             if (pos.GetType() == typeof(PositionUI) && closest.GetType() == typeof(PositionUI))
             {
-                Formation.Position oldPos = pos.Position;
-                pos.Reassign(closest.Position, pos.player);
+                Formation.Position oldPos = pos.playerPosition;
+                pos.Reassign(closest.playerPosition, pos.player);
                 closest.Reassign(oldPos, closest.player);
             }
             else if(pos.GetType() == typeof(PositionUI) || closest.GetType() == typeof(PositionUI))
@@ -105,7 +105,7 @@ public class FormationInteractableUI : FormationUI
                 Vector2 temp = starting.GetRect().position;
                 starting.GetRect().position = benchPlayer.GetRect().position;
                 benchPlayer.GetRect().position = temp;
-                starting.Reassign(starting.Position, benchPlayer.player);
+                starting.Reassign(starting.playerPosition, benchPlayer.player);
                 benchPlayer.ReassignBench(startingPlayer);
             }
             else
@@ -123,7 +123,7 @@ public class FormationInteractableUI : FormationUI
             }
             else
             {
-                pos.Reassign(pos.Position, pos.player);
+                pos.Reassign(pos.playerPosition, pos.player);
             }
         }
     }

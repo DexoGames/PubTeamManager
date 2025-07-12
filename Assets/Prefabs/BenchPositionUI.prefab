@@ -51,7 +51,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9ca9f501e7a4aa48be3e102a2cbf68c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  statToDisplay: 9
+  statToDisplay: 10
 --- !u!222 &8169504844992642731
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -315,10 +315,6 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7290830752870147667, guid: 99901a0b7e0579b47b630a3c4f4e898e, type: 3}
       propertyPath: m_IsActive
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7414607409783337473, guid: 99901a0b7e0579b47b630a3c4f4e898e, type: 3}
-      propertyPath: statToDisplay
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8143440398833726871, guid: 99901a0b7e0579b47b630a3c4f4e898e, type: 3}

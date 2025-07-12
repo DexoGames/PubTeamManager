@@ -30,7 +30,7 @@ public class PositionUI : MonoBehaviour
     public CanvasGroup fader;
 
     [HideInInspector] public Player player;
-    [HideInInspector] public Formation.Position Position;
+    [HideInInspector] public Formation.Position playerPosition;
 
     protected Dictionary<StatType, List<Component>> uiDisplays;
 
@@ -65,13 +65,14 @@ public class PositionUI : MonoBehaviour
 
     public void UpdateValues(Formation.Position position, Player player)
     {
-        Position = position;
+        playerPosition = position;
         this.player = player;
         name = "StartingPlayer " + player.FullName;
 
         UpdatePosition(position);
         UpdateSurname(player);
-        UpdateRating(player);
+        UpdateBestRating(player);
+        UpdateCurrentRating(player);
         UpdateKitNumber(player);
         UpdateAge(player);
         UpdateFatigue(player);
@@ -96,11 +97,18 @@ public class PositionUI : MonoBehaviour
         UpdateTextStat(StatType.Surname, surnameLink);
     }
 
-    protected virtual void UpdateRating(Player player)
+    protected virtual void UpdateBestRating(Player player)
     {
-        var rating = player.GetRating(Position.ID);
+        var rating = player.GetRating(player.BestPosition());
 
-        UpdateTextStat(StatType.Rating, rating.ToString());
+        UpdateImage(StatType.BestRating, null, GetRatingSprite(rating));
+    }
+
+    protected virtual void UpdateCurrentRating(Player player)
+    {
+        var rating = player.GetRating(playerPosition.ID);
+
+        UpdateImage(StatType.CurrentRating, null, GetRatingSprite(rating));
     }
 
     protected virtual void UpdateKitNumber(Player player)
@@ -137,15 +145,15 @@ public class PositionUI : MonoBehaviour
     {
         Color moraleColor = player.GetMoraleColor();
 
-        UpdateImageColor(StatType.Morale, moraleColor);
+        UpdateImage(StatType.Morale, moraleColor);
     }
 
-    protected virtual void UpdateOtherPositions(Player player)
+    protected virtual void UpdateOtherPositions(Player player, bool includeBest = true)
     {
         string[] bestPositions = player.ListBestPositions().Split(' ');
         StringBuilder formatted = new StringBuilder();
 
-        for (int i = 1; i < bestPositions.Length; i++)
+        for (int i = includeBest? 0:1; i < bestPositions.Length; i++)
         {
             string pos = bestPositions[i];
 
@@ -157,8 +165,15 @@ public class PositionUI : MonoBehaviour
         }
 
         string trimmed = formatted.ToString().Trim();
+        Color? optionalColor = null;
 
-        UpdateTextStat(StatType.OtherPositions, trimmed);
+        if(trimmed.Length <= 1)
+        {
+            trimmed = "No others";
+            optionalColor = Color.grey;
+        }
+
+        UpdateTextStat(StatType.OtherPositions, trimmed, optionalColor);
     }
 
 
@@ -179,13 +194,14 @@ public class PositionUI : MonoBehaviour
         }
     }
 
-    protected void UpdateImageColor(StatType statType, Color color)
+    protected void UpdateImage(StatType statType, Color? color = null, Sprite sprite = null)
     {
         if (uiDisplays.TryGetValue(statType, out var components))
         {
             foreach (var component in components)
             {
-                ((Image)component).color = color;
+                if(color.HasValue) ((Image)component).color = color.Value;
+                if(sprite != null) ((Image)component).sprite = sprite;
             }
         }
     }
