@@ -41,6 +41,7 @@ public class TacticsPageUI : UIPage
         benchManager.Setup(formationUI, team);
     }
 
+
     public void SetSizes(int index)
     {
         RectTransform formationRT = formationUI.GetComponent<RectTransform>();
