@@ -47,7 +47,7 @@ public class BenchPositionUI : PositionUI
 
     public override void OnPointerDown()
     {
-        originalPosition = GetRect().anchoredPosition;
+        originalPosition = rt.anchoredPosition;
         benchManager.OnPointerDown(this);
     }
 

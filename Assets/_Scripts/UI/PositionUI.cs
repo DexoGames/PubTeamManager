@@ -38,7 +38,7 @@ public class PositionUI : MonoBehaviour
     protected RectTransform container;
     protected FormationUI manager;
 
-    private void Awake()
+    public void Setup(Player player, Formation.Position position, int id, FormationUI formationManager, RectTransform container)
     {
         uiDisplays = new Dictionary<StatType, List<Component>>();
         UIStatDisplay[] allDisplays = GetComponentsInChildren<UIStatDisplay>(true);
@@ -61,6 +61,15 @@ public class PositionUI : MonoBehaviour
                 uiDisplays[statType].Add(imageComponent);
             }
         }
+
+        draggable.SetInteractable(false);
+        this.id = id;
+        rt = GetComponent<RectTransform>();
+        this.container = container;
+        manager = formationManager;
+        UpdateValues(position, player);
+        Move(position);
+        SetDisplayMode(DisplayMode.Default);
     }
 
     public void UpdateValues(Formation.Position position, Player player)
@@ -204,18 +213,6 @@ public class PositionUI : MonoBehaviour
                 if(sprite != null) ((Image)component).sprite = sprite;
             }
         }
-    }
-
-    public virtual void Setup(Player player, Formation.Position position, int id, FormationUI formationManager, RectTransform container)
-    {
-        draggable.SetInteractable(false);
-        this.id = id;
-        rt = GetComponent<RectTransform>();
-        this.container = container;
-        manager = formationManager;
-        UpdateValues(position, player);
-        Move(position);
-        SetDisplayMode(DisplayMode.Default);
     }
 
     public void SetDisplayMode(DisplayMode mode)
