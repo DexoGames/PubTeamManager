@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d368c2b89264c2b498b4261e286ce322, type: 3}
   m_Name: Yeovill
   m_EditorClassIdentifier: 
-  TeamName: Yeovill
+  Name: Yeovill
   YearFounded: 1803
   TeamColor: {r: 0.5331641, g: 0.97064984, b: 0.40799844, a: 1}
   Players: []

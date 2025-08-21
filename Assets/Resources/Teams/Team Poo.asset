@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d368c2b89264c2b498b4261e286ce322, type: 3}
   m_Name: Team Poo
   m_EditorClassIdentifier: 
-  TeamName: Team Poo
+  Name: Team Poo
   YearFounded: 0
   TeamColor: {r: 0.23689729, g: 0.16960762, b: 0.1254016, a: 1}
   Players: []

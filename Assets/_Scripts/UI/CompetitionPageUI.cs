@@ -1,11 +1,13 @@
+using System.Linq;
 using TMPro;
 using UnityEngine;
 
-public class FixtureListUI : UIPage
+public class CompetitionPageUI : UIPage
 {
-    public static FixtureListUI Instance { get; private set; }
+    public static CompetitionPageUI Instance { get; private set; }
 
-    private int weekFocus = 0;
+    Competition competition;
+    private int roundFocus = 0;
 
     [SerializeField] private TextMeshProUGUI gameWeek;
 
@@ -27,26 +29,27 @@ public class FixtureListUI : UIPage
 
     public void ChangeWeekFocus(int amount)
     {
-        weekFocus = weekFocus + amount < 0 ? 0 : weekFocus + amount > FixturesManager.Instance.GetMatchWeeks().Count - 1 ? weekFocus : weekFocus + amount;
+        roundFocus = roundFocus + amount;
+        roundFocus = Mathf.Clamp(roundFocus, 0, competition.Rounds.Length-1);
 
         SetupFixturesPanel();
     }
 
-    protected override void OnShow()
+    protected override void OnShow(Competition competition)
     {
-        weekFocus = Mathf.Max(GameManager.Instance.MatchWeekNum-2, 0);
+        this.competition = competition;
+        roundFocus = Mathf.Max(competition.GetMostRecentRound(), 0);
 
         SetupFixturesPanel();
     }
 
     private void SetupFixturesPanel()
     {
-        gameWeek.text = $"Game Week {(weekFocus+1).ToString()} Fixtures";
+        gameWeek.text = $"Game Week {(roundFocus+1).ToString()} Fixtures";
 
         Game.ClearContainer(fixtureContainer);
 
-        // Set up Results panel
-        foreach (Fixture f in FixturesManager.Instance.GetMatchWeek(weekFocus).fixtures)
+        foreach (Fixture f in competition.Rounds[roundFocus])
         {
             var obj = Instantiate(fixturePrefab, fixtureContainer);
             obj.SetFixtureText(f, false);

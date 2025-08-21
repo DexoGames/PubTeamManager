@@ -1,14 +1,17 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class FixturesManager : MonoBehaviour
 {
-    List<MatchWeek> matchWeeks = new List<MatchWeek>();
     List<Fixture> allFixtures = new List<Fixture>();
 
-    public static FixturesManager Instance { get; private set; }
+    Dictionary<Team, List<Fixture>> fixturesByTeam = new Dictionary<Team, List<Fixture>>();
+    public List<Competition> Competitions { get; private set; } = new List<Competition>();
 
+    public static FixturesManager Instance { get; private set; }
 
     public void Awake()
     {
@@ -20,66 +23,73 @@ public class FixturesManager : MonoBehaviour
         {
             Instance = this;
         }
-
-        //matchWeeks = FixtureGenerator.GenerateFixtures(TeamManager.Instance.GetAllTeams());
     }
 
-    public List<MatchWeek> GetMatchWeeks()
+    public void AddComps()
     {
-        if(matchWeeks.Count < 1)
-        {
-            matchWeeks = FixtureGenerator.GenerateFixtures(TeamManager.Instance.GetAllTeams(), CalenderManager.Instance.CurrentDay);
-        }
+        League league = new("Scunthorpe Suburbs Regional", TeamManager.Instance.GetAllTeams(), CalenderManager.Instance.CurrentDay.AddDays(7));
+        Cup cup = new("Scunthorpe Papa Johns Cup", TeamManager.Instance.GetAllTeams(), CalenderManager.Instance.CurrentDay.AddDays(10));
 
-        return matchWeeks;
+        Competitions.Add(league);
+        Competitions.Add(cup);
+    }
+
+    public void RegisterFixtures(List<Fixture> fixtures)
+    {
+        Debug.Log($"Registering {fixtures.Count} fixtures");
+
+        foreach (Fixture fixture in fixtures)
+        {
+            if (allFixtures.Contains(fixture)) continue;
+            allFixtures.Add(fixture);
+
+            if (!fixturesByTeam.ContainsKey(fixture.HomeTeam))
+                fixturesByTeam[fixture.HomeTeam] = new List<Fixture>();
+            fixturesByTeam[fixture.HomeTeam].Add(fixture);
+
+            if (!fixturesByTeam.ContainsKey(fixture.AwayTeam))
+                fixturesByTeam[fixture.AwayTeam] = new List<Fixture>();
+            fixturesByTeam[fixture.AwayTeam].Add(fixture);
+        }
     }
 
     public List<Fixture> GetAllFixtures()
     {
-        if (allFixtures.Count < 1)
-        {
-            List<MatchWeek> weeks = GetMatchWeeks();
-
-            foreach(MatchWeek week in weeks)
-            {
-                foreach(Fixture f in week.fixtures)
-                {
-                    allFixtures.Add(f);
-                }
-            }
-        }
-
         return allFixtures;
     }
 
-    public MatchWeek GetMatchWeek(int i)
+    public List<Fixture> GetAllUpcomingFixtures(int daysAhead = 1000)
     {
-        if (matchWeeks.Count < 1) GetMatchWeeks();
+        Debug.Log("Getting all upcoming fixtures"); 
 
-        i = Mathf.Clamp(i, 0, matchWeeks.Count - 1);
+        DateTime today = CalenderManager.Instance.CurrentDay;
+        DateTime maxDate = today.AddDays(daysAhead);
 
-        return matchWeeks[i];
+        return allFixtures
+            .Where(f => !f.BeenPlayed && f.Date >= today && f.Date <= maxDate)
+            .OrderBy(f => f.Date)
+            .ToList();
+    }
+
+    public List<Fixture> GetUpcomingFixturesForTeam(Team team, int daysAhead = 1000)
+    {
+        if (!fixturesByTeam.ContainsKey(team))
+        {
+            Debug.LogWarning($"No fixtures found for team: {team.Name}");
+            return new List<Fixture>();
+        }
+
+        DateTime today = CalenderManager.Instance.CurrentDay;
+        DateTime maxDate = today.AddDays(daysAhead);
+
+        return fixturesByTeam[team]
+            .Where(f => !f.BeenPlayed && f.Date >= today && f.Date <= maxDate)
+            .OrderBy(f => f.Date)
+            .ToList();
     }
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            Fixture fixture = GetMatchWeek(GameManager.Instance.MatchWeekNum).fixtures[0];
-            Match match = new Match(fixture.HomeTeam, fixture.AwayTeam);
-            match.SimulateProbabilites(0.2f);
-        }
-        if (Input.GetKeyDown(KeyCode.S))
-        {
-            Fixture fixture = GetMatchWeek(GameManager.Instance.MatchWeekNum).fixtures[0];
-            Match match = new Match(fixture.HomeTeam, fixture.AwayTeam);
-            match.SimulateProbabilites(0.04f);
-        }
-        if (Input.GetKeyDown(KeyCode.L))
-        {
-            Fixture fixture = GetMatchWeek(GameManager.Instance.MatchWeekNum).fixtures[0];
-            Match match = new Match(fixture.HomeTeam, fixture.AwayTeam);
-            match.SimulateProbabilites(0.7f);
-        }
+        // You can reimplement testing logic here using GetRound instead of MatchWeek
     }
 }

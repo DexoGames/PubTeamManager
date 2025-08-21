@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d368c2b89264c2b498b4261e286ce322, type: 3}
   m_Name: Southampton
   m_EditorClassIdentifier: 
-  TeamName: Southampton
+  Name: Southampton
   YearFounded: 1952
   TeamColor: {r: 0.9161425, g: 0.27753168, b: 0.47220406, a: 1}
   Players: []

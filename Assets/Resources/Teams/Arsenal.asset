@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d368c2b89264c2b498b4261e286ce322, type: 3}
   m_Name: Arsenal
   m_EditorClassIdentifier: 
-  TeamName: VARsenal
+  Name: VARsenal
   YearFounded: 0
   TeamColor: {r: 0.802935, g: 0.1826383, b: 0.1826383, a: 1}
   Players: []

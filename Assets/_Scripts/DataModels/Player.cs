@@ -88,26 +88,28 @@ public class Player : Person
         public Dictionary<Position, PositionStrength> Positions;
         public int Height;
 
-        public int Shooting { get => Skills[0]; set => Skills[0] = value; }
-        public int Passing { get => Skills[1]; set => Skills[1] = value; }
-        public int Tackling { get => Skills[2]; set => Skills[2] = value; }
-        public int Dribbling { get => Skills[3]; set => Skills[3] = value; }
-        public int Crossing { get => Skills[4]; set => Skills[4] = value; }
-        public int Heading { get => Skills[5]; set => Skills[5] = value; }
+        int Clamp(int value) { return Mathf.Clamp(value, 0, 100); }
 
-        public int Positioning { get => Skills[6]; set => Skills[6] = value; }
-        public int Intelligence { get => Skills[7]; set => Skills[7] = value; }
-        public int Creativity { get => Skills[8]; set => Skills[8] = value; }
-        public int Teamwork { get => Skills[9]; set => Skills[9] = value; }
-        public int Composure { get => Skills[10]; set => Skills[10] = value; }
-        public int Aggression { get => Skills[11]; set => Skills[11] = value; }
+        public int Shooting { get => Skills[0]; set => Skills[0] = Clamp(value); }
+        public int Passing { get => Skills[1]; set => Skills[1] = Clamp(value); }
+        public int Tackling { get => Skills[2]; set => Skills[2] = Clamp(value); }
+        public int Dribbling { get => Skills[3]; set => Skills[3] = Clamp(value); }
+        public int Crossing { get => Skills[4]; set => Skills[4] = Clamp(value); }
+        public int Heading { get => Skills[5]; set => Skills[5] = Clamp(value); }
 
-        public int Pace { get => Skills[12]; set => Skills[12] = value; }
-        public int Strength { get => Skills[13]; set => Skills[13] = value; }
-        public int Jumping { get => Skills[14]; set => Skills[14] = value; }
-        public int Agility { get => Skills[15]; set => Skills[15] = value; }
-        public int Stamina { get => Skills[16]; set => Skills[16] = value; }
-        public int Durability { get => Skills[17]; set => Skills[17] = value; }
+        public int Positioning { get => Skills[6]; set => Skills[6] = Clamp(value); }
+        public int Intelligence { get => Skills[7]; set => Skills[7] = Clamp(value); }
+        public int Creativity { get => Skills[8]; set => Skills[8] = Clamp(value ); }
+        public int Teamwork { get => Skills[9]; set => Skills[9] = Clamp(value); }
+        public int Composure { get => Skills[10]; set => Skills[10] = Clamp(value); }
+        public int Aggression { get => Skills[11]; set => Skills[11] = Clamp(value); }
+
+        public int Pace { get => Skills[12]; set => Skills[12] = Clamp(value); }
+        public int Strength { get => Skills[13]; set => Skills[13] = Clamp(value); }
+        public int Jumping { get => Skills[14]; set => Skills[14] = Clamp(value); }
+        public int Agility { get => Skills[15]; set => Skills[15] = Clamp(value)  ; }
+        public int Stamina { get => Skills[16]; set => Skills[16] = Clamp(value); }
+        public int Durability { get => Skills[17]; set => Skills[17] = Clamp(value); }
 
         public int Attacking => (int)Game.WeightedAverage((Shooting, 1f), (Composure, 0.5f), (Dribbling, 0.2f), (Creativity, 0.2f), (Pace, 0.2f));
         public int Midfield => (int)Game.WeightedAverage((Passing, 1f), (Positioning, 0.5f), (Crossing, 0.2f), (Creativity, 0.2f), (Intelligence, 0.2f));
@@ -151,71 +153,119 @@ public class Player : Person
 
     public static Stats PersonalityModifier(Stats player, PersonalityType personality)
     {
-        int bigChange = 15;
-        //int smallChange = 10;
+        int bigChange = 40;
+        int smallChange = 15;
 
         switch (personality)
         {
             case PersonalityType.Aggressive:
-                player.Aggression += bigChange;
-                return player;
+                player.Aggression = Apply(player.Aggression, bigChange, true);
+                player.Composure = Apply(player.Composure, smallChange, false);
+                break;
 
             case PersonalityType.Calm:
-                player.Composure += bigChange;
-                return player;
+                player.Composure = Apply(player.Composure, bigChange, true);
+                player.Aggression = Apply(player.Aggression, smallChange, false);
+                break;
 
             case PersonalityType.Cautious:
-                player.Creativity -= bigChange;
-                return player;
+                player.Creativity = Apply(player.Creativity, bigChange, false);
+                player.Intelligence = Apply(player.Intelligence, smallChange, true);
+                break;
 
             case PersonalityType.Cocky:
-                player.Teamwork -= bigChange;
-                player.Creativity += bigChange;
-                return player;
+                player.Teamwork = Apply(player.Teamwork, bigChange, false);
+                player.Creativity = Apply(player.Creativity, bigChange, true);
+                break;
 
             case PersonalityType.Driven:
-                player.Teamwork += bigChange;
-                return player;
+                player.Teamwork = Apply(player.Teamwork, bigChange, true);
+                player.Stamina = Apply(player.Stamina, bigChange, true);
+                break;
 
             case PersonalityType.Kind:
-                player.Aggression -= bigChange;
-                return player;
+                player.Aggression = Apply(player.Aggression, bigChange, false);
+                player.Composure = Apply(player.Composure, smallChange, true);
+                break;
 
             case PersonalityType.Lazy:
-                player.Intelligence -= bigChange;
-                return player;
+                player.Intelligence = Apply(player.Intelligence, bigChange, false);
+                player.Positioning = Apply(player.Positioning, smallChange, false);
+                break;
 
             case PersonalityType.Shy:
-                player.Teamwork -= bigChange;
-                return player;
+                player.Teamwork = Apply(player.Teamwork, bigChange, false);
+                player.Creativity = Apply(player.Creativity, smallChange, false);
+                break;
 
             case PersonalityType.Silly:
-                player.Creativity += bigChange;
-                return player;
+                player.Creativity = Apply(player.Creativity, bigChange, true);
+                player.Intelligence = Apply(player.Intelligence, smallChange, false);
+                break;
 
             case PersonalityType.Smart:
-                player.Intelligence += bigChange;
-                return player;
-
-            default:
-                return player;
+                player.Intelligence = Apply(player.Intelligence, bigChange, true);
+                player.Positioning = Apply(player.Positioning, bigChange, true);
+                break;
         }
-    }
-
-    public static Stats MoraleModifier(Stats player, int morale)
-    {
-        if (morale == 50) return player;
-
-        int bigChange = (int)((morale / 100f - 0.5f) * 30f);
-        int smallChange = (int)((morale / 100f - 0.5f) * 16f);
-
-        player.Teamwork += bigChange;
-        player.Aggression -= bigChange;
-        player.Composure += smallChange;
-        player.Strength -= smallChange;
-        player.Dribbling += smallChange;
 
         return player;
+    }
+
+    private static int Apply(int stat, int baseChange, bool increase)
+    {
+        //Debug.Log($"Input of {stat} to");
+
+        float factor = increase ? (100 - stat) / 100f : stat / 100f;
+
+        int scaledChange = (int)Mathf.Round(baseChange * factor);
+
+        stat += increase ? scaledChange : -scaledChange;
+
+        //Debug.Log($"Output of {stat}");
+
+        return Mathf.Clamp(stat, 0, 100);
+    }
+
+    public static Stats MoraleModifier(Stats stats, Morale morale)
+    {
+        int moodDiff = morale.Mood - morale.IdealMood;
+        int passionDiff = morale.Passion - morale.IdealPassion;
+
+        int moodFactor = Mathf.Abs((int) (moodDiff / 4f));
+        int passionFactor = Mathf.Abs((int)(passionDiff / 4f));
+
+        if (moodDiff > 0)
+        {
+            stats.Aggression -= moodFactor;
+            stats.Intelligence -= moodFactor;
+            stats.Strength -= moodFactor;
+        }
+        else if (moodDiff < 0)
+        {
+            stats.Creativity -= moodFactor;
+            stats.Teamwork -= moodFactor;
+            stats.Durability -= passionFactor;
+        }
+        if (passionDiff > 0)
+        {
+            stats.Aggression += passionFactor;
+            stats.Composure -= passionFactor;
+            stats.Stamina -= passionFactor;
+        }
+        else if(passionDiff < 0)
+        {
+            stats.Composure += passionFactor;
+            stats.Positioning -= passionFactor;
+            stats.Pace -= passionFactor;
+        }
+
+        for(int i = 0; i < stats.Skills.Length; i++)
+        {
+            stats.Skills[i] = Mathf.Clamp(stats.Skills[i] - (int)(morale.DistanceToIdeal()/15f), 0, 100);
+        }
+
+        return stats;
     }
 
     public enum Position

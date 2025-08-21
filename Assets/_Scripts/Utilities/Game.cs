@@ -178,17 +178,6 @@ public class Game : MonoBehaviour
         return values.Length;
     }
 
-    public static void Shuffle<T>(T[] array)
-    {
-        System.Random rng = new System.Random(); // Random instance created inside the method
-        int n = array.Length;
-        for (int i = n - 1; i > 0; i--)
-        {
-            int j = rng.Next(i + 1);
-            (array[i], array[j]) = (array[j], array[i]);
-        }
-    }
-
     public static Color Gradient(Color[] colorArray, float t)
     {
         if (colorArray == null || colorArray.Length == 0)
@@ -209,5 +198,29 @@ public class Game : MonoBehaviour
     public static float KeepSignPow(float input, float power)
     {
         return Mathf.Abs(Mathf.Pow(input, power)) * Mathf.Sign(input);
+    }
+}
+
+public static class ListExtensions
+{
+    public static void Shuffle<T>(this T[] array)
+    {
+        System.Random rng = new System.Random(); // Random instance created inside the method
+        int n = array.Length;
+        for (int i = n - 1; i > 0; i--)
+        {
+            int j = rng.Next(i + 1);
+            (array[i], array[j]) = (array[j], array[i]);
+        }
+    }
+    public static void Shuffle<T>(this IList<T> array)
+    {
+        System.Random rng = new System.Random(); // Random instance created inside the method
+        int n = array.Count;
+        for (int i = n - 1; i > 0; i--)
+        {
+            int j = rng.Next(i + 1);
+            (array[i], array[j]) = (array[j], array[i]);
+        }
     }
 }

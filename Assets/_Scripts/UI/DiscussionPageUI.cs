@@ -42,7 +42,7 @@ public class DiscussionPageUI : UIPage
         Event.Reaction reaction = EventsManager.Instance.ReactionTable[(response, person.Personality)];
         reaction = Event.ReactionSeverityChange(response, reaction, thisEvent.type.severity);
 
-        int moraleChange = person.NewMorale(thisEvent.type.moraleChange, reaction, thisEvent.type.severity);
+        int moraleChange = person.NewMorale(thisEvent.type.moodChange, reaction, thisEvent.type.severity);
         dialogue.UpdatePerson(ReactionToDialogue(reaction));
         responseManager.MakeDialogue(response);
 

@@ -12,7 +12,7 @@ public class LeagueTable : UIObject
         Game.ClearContainer(leagueContainer);
 
         int leagueIndex = 1;
-        var standings = LeagueManager.Instance.GetStandings();
+        var standings = TeamManager.Instance.MyTeam.GetMainLeague().GetStandings();
         foreach (LeagueTableEntry entry in standings)
         {
             var obj = Instantiate(leaguePrefab, leagueContainer);

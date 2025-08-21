@@ -170,19 +170,19 @@ public class EventsManager : MonoBehaviour
 
         foreach(Person p in _event.affected)
         {
-            p.ChangeMorale(_event.type.moraleChange);
+            p.Morale.Mood += _event.type.moodChange;
         }
     }
 
     public void AddWinEvent(Team winner, Team loser)
     {
-        Event winEvent = new Event(this.winEvent, TeamManager.Instance.MyTeam.Players.ToList<Person>(), CalenderManager.Instance.CurrentDay, new List<string>{ loser.TeamName });
+        Event winEvent = new Event(this.winEvent, TeamManager.Instance.MyTeam.Players.ToList<Person>(), CalenderManager.Instance.CurrentDay, new List<string>{ loser.Name });
 
         AddEvent(winEvent);
     }
     public void AddLoseEvent(Team winner, Team loser)
     {
-        Event loseEvent = new Event(this.loseEvent, TeamManager.Instance.MyTeam.Players.ToList<Person>(), CalenderManager.Instance.CurrentDay, new List<string> { winner.TeamName });
+        Event loseEvent = new Event(this.loseEvent, TeamManager.Instance.MyTeam.Players.ToList<Person>(), CalenderManager.Instance.CurrentDay, new List<string> { winner.Name });
 
         AddEvent(loseEvent);
     }
@@ -194,7 +194,7 @@ public class EventsManager : MonoBehaviour
 
         EventType[] allTypes = randomEvents;
         Person[] allPlayers = TeamManager.Instance.MyTeam.Players.ToArray();
-        Game.Shuffle(allPlayers);
+        allPlayers.Shuffle();
 
         EventType randomType = PickRandomEvent(allTypes);
 

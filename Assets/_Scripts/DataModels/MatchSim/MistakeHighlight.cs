@@ -14,6 +14,6 @@ public class MistakeHighlight : Highlight
 
     public override string Describe()
     {
-        return $"{Team.TeamName}'s {Player.Surname} makes a mistake!";
+        return $"{Team.Name}'s {Player.Surname} makes a mistake!";
     }
 }

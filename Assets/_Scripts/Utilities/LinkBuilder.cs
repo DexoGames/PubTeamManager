@@ -6,7 +6,7 @@ public static class LinkBuilder
 {
     public static string BuildLink(Team team)
     {
-        return $"<link=\"team/{team.TeamId}\"><u>{team.TeamName}</u></link>";
+        return $"<link=\"team/{team.TeamId}\"><u>{team.Name}</u></link>";
     }
     public static string BuildLink(Player player)
     {
@@ -27,6 +27,6 @@ public static class LinkBuilder
     }
     public static string BuildTacticsLink(Team team)
     {
-        return $"<link=\"tactics/{team.TeamId}\"><u>{team.TeamName}</u></link>";
+        return $"<link=\"tactics/{team.TeamId}\"><u>{team.Name}</u></link>";
     }
 }

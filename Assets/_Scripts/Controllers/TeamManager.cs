@@ -22,23 +22,27 @@ public class TeamManager : MonoBehaviour
 
     public List<Team> teams;
     List<Team> spawnedTeams = new List<Team>();
-    public Team MyTeam => spawnedTeams[0];
+    public Team MyTeam => spawnedTeams[6];
 
+    public void SpawnTeams()
+    {
+        foreach (var team in teams)
+        {
+            Team spawnedTeam = Instantiate(team);
+            spawnedTeams.Add(spawnedTeam);
+        }
+
+        for(int i = 0; i < spawnedTeams.Count; i++)
+        {
+            var team = spawnedTeams[i];
+
+            team.GenerateTeam();
+            team.SetTeamId(i);
+        }
+    }
 
     public List<Team> GetAllTeams()
     {
-        if(spawnedTeams.Count < 1)
-        {
-            foreach (var team in teams)
-            {
-                Team spawnedTeam = Instantiate(team);
-                spawnedTeams.Add(spawnedTeam);
-
-                spawnedTeam.GenerateTeam();
-                spawnedTeam.SetTeamId(spawnedTeams.Count);
-            }
-        }
-
         return spawnedTeams;
     }
 

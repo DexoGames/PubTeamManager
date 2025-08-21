@@ -154,7 +154,8 @@ public class PositionUI : MonoBehaviour
     {
         Color moraleColor = player.GetMoraleColor();
 
-        UpdateImage(StatType.Morale, moraleColor);
+        UpdateImage(StatType.Morale, moraleColor, player.MoraleToSprite());
+
     }
 
     protected virtual void UpdateOtherPositions(Player player, bool includeBest = true)

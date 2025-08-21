@@ -31,7 +31,7 @@ public class TeamDetailsUI : UIPage
         base.OnShow(team);
         Game.ClearContainer(_teamContainer);
 
-        _teamTitleText.text = team.TeamName;
+        _teamTitleText.text = team.Name;
 
         _managerText.text = $"Manager: {LinkBuilder.BuildLink(team.Manager)}";
 

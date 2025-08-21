@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d368c2b89264c2b498b4261e286ce322, type: 3}
   m_Name: Harpenden Town
   m_EditorClassIdentifier: 
-  TeamName: Harpenden
+  Name: Harpenden
   YearFounded: 1952
   TeamColor: {r: 0.34067088, g: 0.5624018, b: 1, a: 1}
   Players: []

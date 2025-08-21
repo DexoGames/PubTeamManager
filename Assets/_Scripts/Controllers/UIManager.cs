@@ -9,7 +9,7 @@ public class UIManager : MonoBehaviour
 
     private PlayerDetailsUI playerDetailsUI;
     private TeamDetailsUI clubDetailsUI;
-    private FixtureListUI fixtureListUI;
+    private CompetitionPageUI fixtureListUI;
     private HomePageUI homePageUI;
     private MatchSimPageUI matchSimPageUI;
     private TacticsPageUI tacticsPageUI;
@@ -28,11 +28,11 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    private void Start()
+    public void Setup()
     {
         playerDetailsUI = PlayerDetailsUI.Instance;
         clubDetailsUI = TeamDetailsUI.Instance;
-        fixtureListUI = FixtureListUI.Instance;
+        fixtureListUI = CompetitionPageUI.Instance;
         homePageUI = HomePageUI.Instance;
         matchSimPageUI = MatchSimPageUI.Instance;
         tacticsPageUI = TacticsPageUI.Instance;

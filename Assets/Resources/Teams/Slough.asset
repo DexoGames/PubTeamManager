@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d368c2b89264c2b498b4261e286ce322, type: 3}
   m_Name: Slough
   m_EditorClassIdentifier: 
-  TeamName: Slough
+  Name: Slough
   YearFounded: 1803
   TeamColor: {r: 0.22706337, g: 0.25611794, b: 0.42557657, a: 1}
   Players: []

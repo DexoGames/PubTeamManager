@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d368c2b89264c2b498b4261e286ce322, type: 3}
   m_Name: Team Wee
   m_EditorClassIdentifier: 
-  TeamName: Team Wee
+  Name: Team Wee
   YearFounded: 1803
   TeamColor: {r: 0.8448638, g: 0.7604153, b: 0.13549703, a: 1}
   Players: []

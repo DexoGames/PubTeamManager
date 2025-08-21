@@ -769,7 +769,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9ca9f501e7a4aa48be3e102a2cbf68c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  statToDisplay: 3
+  statToDisplay: 2
 --- !u!222 &8509330146158509503
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -1081,7 +1081,7 @@ MonoBehaviour:
   m_enableAutoSizing: 1
   m_fontSizeMin: 10
   m_fontSizeMax: 32
-  m_fontStyle: 0
+  m_fontStyle: 1
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
@@ -1564,7 +1564,7 @@ MonoBehaviour:
   m_enableAutoSizing: 1
   m_fontSizeMin: 18
   m_fontSizeMax: 32
-  m_fontStyle: 0
+  m_fontStyle: 1
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
@@ -1803,7 +1803,7 @@ RectTransform:
   m_AnchorMin: {x: 1, y: 1}
   m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: -3, y: -3}
-  m_SizeDelta: {x: 18, y: 18}
+  m_SizeDelta: {x: 25, y: 25}
   m_Pivot: {x: 1, y: 1}
 --- !u!114 &5667855361380527911
 MonoBehaviour:
@@ -2005,7 +2005,7 @@ MonoBehaviour:
   m_enableAutoSizing: 1
   m_fontSizeMin: 10
   m_fontSizeMax: 40
-  m_fontStyle: 0
+  m_fontStyle: 1
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
@@ -2180,10 +2180,10 @@ MonoBehaviour:
   displayDisplay: {fileID: 7290830752870147667}
   draggable: {fileID: 2455623907691516192}
   StrengthColors:
-  - {r: 0.6519916, g: 0.14067067, b: 0.09089607, a: 1}
-  - {r: 0.769392, g: 0.38953918, b: 0.07177766, a: 1}
-  - {r: 0.87840664, g: 0.647181, b: 0.14087656, a: 1}
-  - {r: 1, g: 0.90958726, b: 0.43710685, a: 1}
+  - {r: 0.3584906, g: 0.089058965, b: 0.117018856, a: 1}
+  - {r: 0.5387841, g: 0.23261493, b: 0.16321659, a: 1}
+  - {r: 0.6184486, g: 0.4321734, b: 0.33515507, a: 1}
+  - {r: 0.8, g: 0.69497925, b: 0.60784316, a: 1}
   - {r: 1, g: 1, b: 1, a: 1}
   id: 0
   fader: {fileID: 2093444988339402688}
@@ -2383,7 +2383,7 @@ MonoBehaviour:
   m_enableAutoSizing: 1
   m_fontSizeMin: 10
   m_fontSizeMax: 32
-  m_fontStyle: 0
+  m_fontStyle: 1
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535

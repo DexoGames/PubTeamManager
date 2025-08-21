@@ -2,14 +2,11 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; set; }
-
-    int matchWeekNum;
-    public int MatchWeekNum => matchWeekNum;
-    public int PrevMatchWeekNum => matchWeekNum == 0 ? 0 : matchWeekNum - 1;
 
     public void Awake()
     {
@@ -23,14 +20,26 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    void SetupGame()
+    {
+        TeamManager.Instance.SpawnTeams();
+        FixturesManager.Instance.AddComps();
+
+        UIManager.Instance.Setup();
+    }
+
     void Start()
     {
+        SetupGame();
+
         CalenderManager.Instance.NewDay.AddListener(NewDay);
         CalenderManager.Instance.ConfirmAddedListener();
     }
 
     void NewDay(DateTime date)
     {
+        PlayerMatchSim = null;
+
         List<Fixture> allFixtures = FixturesManager.Instance.GetAllFixtures();
         Fixture myFixture = null;
         for (int i  = 0; i < allFixtures.Count; i++)
@@ -50,25 +59,11 @@ public class GameManager : MonoBehaviour
 
         if (myFixture != null)
         {
-            UIManager.Instance.ShowMatchSimPage(myFixture);
-        }
-        else
-        {
-            UpdateMatchWeek();
+            PlayerMatchSim = () => UIManager.Instance.ShowMatchSimPage(myFixture);
         }
 
         CalenderManager.Instance.RespondToAdvance();
     }
 
-    void UpdateMatchWeek()
-    {
-        MatchWeek week = FixturesManager.Instance.GetMatchWeek(matchWeekNum-1);
-
-        UIManager.Instance.ShowHomePage();
-
-        if (week.FullyPlayed())
-        {
-            matchWeekNum = Mathf.Min(matchWeekNum + 1, FixturesManager.Instance.GetMatchWeeks().Count);
-        }
-    }
+    public UnityAction PlayerMatchSim;
 }

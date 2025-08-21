@@ -17,6 +17,6 @@ public class GoalHighlight : ShotHighlight
 
     public override string Describe()
     {
-        return $"GOAL for {Team.TeamName}! {Shooter.Surname} scores with a {ShotType.ToString().ToLower()}!";
+        return $"GOAL for {Team.Name}! {Shooter.Surname} scores with a {ShotType.ToString().ToLower()}!";
     }
 }

@@ -1,7 +1,57 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
+
+public struct Morale
+{
+    private int mood;
+    private int passion;
+
+    public readonly int IdealMood;
+    public readonly int IdealPassion;
+
+    public int Mood
+    {
+        get => mood;
+        set => mood = Clamp(value, 0, 100);
+    }
+
+    public int Passion
+    {
+        get => passion;
+        set => passion = Clamp(value, 0, 100);
+    }
+
+    private static int Clamp(int value, int min, int max)
+    {
+        if (value < min) return min;
+        if (value > max) return max;
+        return value;
+    }
+
+    public Morale(int mood, int passion, Person.PersonalityType personality)
+    {
+        (IdealMood, IdealPassion) = Person.IdealMorale(personality);
+        IdealMood += UnityEngine.Random.Range(-5, 6);
+        IdealPassion += UnityEngine.Random.Range(-5, 6);
+        IdealMood = Mathf.Clamp(IdealMood, 0, 100);
+        IdealPassion = Mathf.Clamp(IdealPassion, 0, 100);
+
+        this.mood = 50;
+        this.passion = 50;
+
+        Mood = mood;
+        Passion = passion;
+    }
+
+    public float DistanceToIdeal()
+    {
+        return Vector2.Distance(new Vector2(Mood, Passion), new Vector2(IdealMood, IdealPassion));
+    }
+}
+
 
 [System.Serializable]
 public class Person
@@ -27,28 +77,70 @@ public class Person
     {
         return GetColor(Morale);
     }
-    public static Color GetColor(int morale)
+
+    public static Color GetColor(Morale morale)
     {
-        float t = morale / 100f;
+        const float BestDistanceThreshold = 3f;
+        const float WorstDistanceThreshold = 100f;
 
-        Color[] colorArray = { new Color(0.8f, 0.1f, 0f), new Color(1f, 0.5f, 0f), Color.yellow, new Color(0.5f, 0.9f, 0.5f), new Color(0.05f, 0.7f, 0.1f) };
+        float distance = morale.DistanceToIdeal();
 
-        return Game.Gradient(colorArray, t);
+        if (distance <= BestDistanceThreshold)
+            return Game.Gradient(MoraleColors(), 1f);
+
+        distance = Mathf.Clamp(distance, BestDistanceThreshold, WorstDistanceThreshold);
+
+        float t = 1f - ((distance - BestDistanceThreshold) /
+                       (WorstDistanceThreshold - BestDistanceThreshold));
+
+        return Game.Gradient(MoraleColors(), t);
     }
+
+
+    public static Color[] MoraleColors()
+    {
+        return new Color[] { new Color(0.8f, 0.1f, 0f), new Color(1f, 0.5f, 0f), Color.yellow, new Color(0.5f, 0.9f, 0.5f), new Color(0.05f, 0.7f, 0.1f) };
+    }
+
+    public Sprite MoraleToSprite()
+    {
+        if (Morale.Mood >= 42 && Morale.Mood <= 58 &&
+            Morale.Passion >= 42 && Morale.Passion <= 58)
+        {
+            return Resources.Load<Sprite>("Art/Morale/Neutral");
+        }
+
+        if (Morale.Mood >= 50 && Morale.Passion >= 50)
+        {
+            if(Morale.Passion >=75) return Resources.Load<Sprite>("Art/Morale/Overjoyed");
+
+            return Resources.Load<Sprite>("Art/Morale/Happy");
+        }
+        else if (Morale.Mood >= 50 && Morale.Passion < 50)
+        {
+            if(Morale.Mood >= 75) return Resources.Load<Sprite>("Art/Morale/Positive");
+
+            return Resources.Load<Sprite>("Art/Morale/Content");
+        }
+        else if (Morale.Mood < 50 && Morale.Passion >= 50)
+        {
+            if(Morale.Passion >= 75 || Morale.Mood <= 10) return Resources.Load<Sprite>("Art/Morale/Angry");
+
+            return Resources.Load<Sprite>("Art/Morale/Annoyed");
+        }
+        else
+        {
+            if(Morale.Mood <= 25) return Resources.Load<Sprite>("Art/Morale/Upset");
+
+            return Resources.Load<Sprite>("Art/Morale/Sad");
+        }
+    }
+
 
     public PersonalityType Personality;
-
     public DateTime DateOfBirth;
-    public int Morale => Mathf.Clamp(clampedMorale, 0, 100);
-    private int clampedMorale;
-    public void ChangeMorale(int i)
-    {
-        clampedMorale = Mathf.Clamp(clampedMorale + i, 0, 100);
-    }
-    public void SetMorale(int i)
-    {
-        clampedMorale = Mathf.Clamp(i, 0, 100);
-    }
+    public Morale Morale;
+
     public int AgeDays() { return (CalenderManager.Instance.CurrentDay - DateOfBirth).Days; }
     public int AgeYears() { return (int)((CalenderManager.Instance.CurrentDay - DateOfBirth).Days / 365.25f); }
 
@@ -105,7 +197,7 @@ public class Person
 
         RatingOffset = UnityEngine.Random.Range(-10, 11);
 
-        ChangeMorale(UnityEngine.Random.Range(0, 100));
+        Morale = new Morale(UnityEngine.Random.Range(25, 76), UnityEngine.Random.Range(20, 61), Personality);
 
         //Debug.Log($"{FullName} is {AgeYears()} years old.");
 
@@ -114,12 +206,43 @@ public class Person
 
     public int NewMorale(int originalMoraleChange, Event.Reaction reaction, EventType.Severity severity)
     {
-        int newMorale = Morale + (int)(((int)reaction - 3) * (Mathf.Abs((int)severity - 3)));
+        int newMood = Morale.Mood + (int)(((int)reaction - 3) * (Mathf.Abs((int)severity - 3)));
 
-        Debug.Log($"After talking, morale went from {Morale} to {newMorale}");
+        int newPassion = Morale.Passion + (Mathf.Abs((int)reaction - 3)) * Mathf.Abs((int)severity - 3);
 
-        SetMorale(newMorale);
+        Debug.Log($"After talking, morale went from {Morale} to {newMood}");
 
-        return newMorale;
+        Morale.Mood = newMood;
+
+        return newMood;
+    }
+
+    public static (int, int) IdealMorale(PersonalityType personality)
+    {
+        switch (personality)
+        {
+            case PersonalityType.Aggressive:
+                return (25, 95);
+            case PersonalityType.Calm:
+                return (90, 5);
+            case PersonalityType.Cautious:
+                return (75, 25);
+            case PersonalityType.Cocky:
+                return (95, 80);
+            case PersonalityType.Driven:
+                return (80, 80);
+            case PersonalityType.Kind:
+                return (100, 50);
+            case PersonalityType.Lazy:
+                return (25, 95);
+            case PersonalityType.Shy:
+                return (100, 70);
+            case PersonalityType.Silly:
+                return (60, 60);
+            case PersonalityType.Smart:
+                return (70, 80);
+        }
+
+        return (75, 75);
     }
 }

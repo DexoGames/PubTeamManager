@@ -8,23 +8,23 @@ using Unity.Mathematics;
 [System.Serializable]
 public class Fixture
 {
+    public Competition Competition;
+    public int Round;
     public Team HomeTeam;
     public Team AwayTeam;
     public Match.Result Result;
     public DateTime Date;
-    public List<Player> Goalscorers;
 
     public bool BeenPlayed;
 
-    [System.NonSerialized] public MatchWeek matchWeek;
-
-    public Fixture(Team home, Team away, DateTime date, MatchWeek matchWeek)
+    public Fixture(Team home, Team away, DateTime date, Competition competition, int round)
     {
         HomeTeam = home;
         AwayTeam = away;
         Result = new Match.Result(home, away);
         Date = date;
-        this.matchWeek = matchWeek;
+        Competition = competition;
+        Round = round;
     }
 
     internal void SimulateFixture()
@@ -40,11 +40,21 @@ public class Fixture
 
     public void FinaliseResult()
     {
-        LeagueManager.Instance.UpdateStandings(this);
         BeenPlayed = true;
 
         if (GetWinner() == TeamManager.Instance.MyTeam) EventsManager.Instance.AddWinEvent(GetWinner(), GetLoser());
         if (GetLoser() == TeamManager.Instance.MyTeam) EventsManager.Instance.AddLoseEvent(GetWinner(), GetLoser());
+
+        if (Competition.GetType() == typeof(Cup))
+        {
+            Cup cup = (Cup)Competition;
+            cup.TryGenerateNextRound();
+        }
+        else if (Competition.GetType() == typeof(League))
+        {
+            League league = (League)Competition;
+            league.UpdateStandings(this);
+        }
     }
 
     public Team GetWinner()

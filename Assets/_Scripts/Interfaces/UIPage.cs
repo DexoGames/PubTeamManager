@@ -49,6 +49,7 @@ public abstract class UIPage : MonoBehaviour
     protected virtual void OnShow(Manager manager) { }
     protected virtual void OnShow(Team team) { }
     protected virtual void OnShow(Fixture fixture) { }
+    protected virtual void OnShow(Competition competition) { }
     protected virtual void OnShow(Event @event, Person person) { }
 
 

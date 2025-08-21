@@ -317,6 +317,10 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8058744326019447496, guid: 99901a0b7e0579b47b630a3c4f4e898e, type: 3}
+      propertyPath: m_fontSize
+      value: 26.85
+      objectReference: {fileID: 0}
     - target: {fileID: 8143440398833726871, guid: 99901a0b7e0579b47b630a3c4f4e898e, type: 3}
       propertyPath: m_IsActive
       value: 0
@@ -371,7 +375,7 @@ MonoBehaviour:
     RawStats:
       Skills: 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
       Height: 0
-  Position:
+  playerPosition:
     ID: 0
     Location: {x: 0, y: 0}
 --- !u!1 &1482909577531805705 stripped

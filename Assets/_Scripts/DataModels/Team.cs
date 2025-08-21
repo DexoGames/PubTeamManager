@@ -8,7 +8,7 @@ using static Game;
 [CreateAssetMenu(fileName = "New Team", menuName = "Team")]
 public class Team : ScriptableObject
 {
-    public string TeamName;
+    public string Name;
     public int YearFounded;
     public Color TeamColor;
 
@@ -136,4 +136,16 @@ public class Team : ScriptableObject
         }
     }
 
+    public List<Competition> GetAllCompetitions()
+    {
+        return FixturesManager.Instance.Competitions.Where(c => c.Teams.Contains(this)).ToList();
+    }
+    public League GetMainLeague()
+    {
+        return (League)GetAllCompetitions().OrderBy(c => c.Priority).FirstOrDefault();
+    }
+    public Fixture GetUpcomingFixture()
+    {
+        return FixturesManager.Instance.GetUpcomingFixturesForTeam(this).FirstOrDefault();
+    }
 }

@@ -15,6 +15,6 @@ public class PossessionHighlight : Highlight
 
     public override string Describe()
     {
-        return $"{Team.TeamName} are in possession: {PhaseType.ToString().Replace('_', ' ')}.";
+        return $"{Team.Name} are in possession: {PhaseType.ToString().Replace('_', ' ')}.";
     }
 }

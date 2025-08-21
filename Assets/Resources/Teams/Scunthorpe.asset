@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d368c2b89264c2b498b4261e286ce322, type: 3}
   m_Name: Scunthorpe
   m_EditorClassIdentifier: 
-  TeamName: Scunthorpe
+  Name: Scunthorpe
   YearFounded: 1803
   TeamColor: {r: 0.51781964, g: 0.15252334, b: 0.24024542, a: 1}
   Players: []

@@ -95,7 +95,19 @@ public class CalenderManager : MonoBehaviour
         dateText.text = CurrentDay.Date.ToShortDateString();
         advanceResponses = advanceListeners;
         NewDay.Invoke(CurrentDay);
+
+        if(GameManager.Instance.PlayerMatchSim != null)
+        {
+            GameManager.Instance.PlayerMatchSim.Invoke();
+            GameManager.Instance.PlayerMatchSim = null;
+        }
+        else
+        {
+            UIManager.Instance.ShowHomePage();
+        }
     }
+
+    public UnityAction ShowNextPage;
 
     public void ConfirmAddedListener()
     {

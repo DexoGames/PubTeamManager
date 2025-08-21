@@ -27,7 +27,7 @@ public class PlayerEventUI : MonoBehaviour
         playerEvent = _event;
         date.text = CalenderManager.Instance.DaysAgo(playerEvent.date);
         description.text = Event.ReadDescription(playerEvent.type.description, playerEvent.affected, playerEvent.customWords);
-        moraleChange.color = Person.GetColor(50 + (int)(_event.type.moraleChange * 1.8f));
+        moraleChange.color = Game.Gradient(Person.MoraleColors(), (50+playerEvent.type.moodChange*2)/100f);
     }
 
     public void Link()

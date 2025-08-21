@@ -552,7 +552,7 @@ public class Match
             AddHighlight(new MissHighlight(shootingTeam, currentMin, shooter, goalkeeper, type, outcome));
         }
 
-        Debug.LogWarning($"{shootingTeam.TeamName} - {outcome}! {shooter.Surname} ({type}) with xG: {xG:F2} and chance: {temp:F2}.");
+        //Debug.LogWarning($"{shootingTeam.TeamName} - {outcome}! {shooter.Surname} ({type}) with xG: {xG:F2} and chance: {temp:F2}.");
     }
 
     private Minute AdvanceMinute(Minute currentMinute)
@@ -685,8 +685,8 @@ public class Match
         if (debug)
         {
             Debug.Log($"== {parameters.PhaseName.ToUpper()} PHASE ==");
-            Debug.Log($"Attacking Team: {attacking.TeamName} | Tactic: {attackingTactic}, Ability: {attackingAbility}");
-            Debug.Log($"Defending Team: {defending.TeamName} | Tactic: {defendingTactic}, Ability: {defendingAbility}");
+            Debug.Log($"Attacking Team: {attacking.Name} | Tactic: {attackingTactic}, Ability: {attackingAbility}");
+            Debug.Log($"Defending Team: {defending.Name} | Tactic: {defendingTactic}, Ability: {defendingAbility}");
             Debug.Log($"TacticDiff: {tacticDiff}, AbilityDiff: {abilityDiff}");
             Debug.Log($"TacticInfluence: {tacticInfluence:F2} | TacticWeight: {tacticWeight:F2} | AbilityWeight: {abilityWeight:F2}");
             Debug.Log($"WeightedTactic: {weightedTactic:F2}, WeightedAbility: {weightedAbility:F2}");

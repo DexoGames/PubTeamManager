@@ -22,6 +22,6 @@ public class EventType : ScriptableObject
     [TextArea] public string discussion;
     [Range(0f, 1f)] public float odds = 0.2f;
     public int noAffected;
-    public int moraleChange;
+    public int moodChange;
     public Severity severity = Severity.Irrelevant;
 }
