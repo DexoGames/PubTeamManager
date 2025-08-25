@@ -17,7 +17,7 @@ public class PositionStrengthUI : FormationUI
             tempTeam.Players.Add(player);
         }
 
-        print(tempTeam.Players.Count);
+        //print(tempTeam.Players.Count);
 
         SetFormations(tempTeam);
     }

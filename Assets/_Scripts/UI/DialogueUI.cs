@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 public class DialogueUI : MonoBehaviour
 {
-    [SerializeField] TextMeshProUGUI description, personName, contents;
+    [SerializeField] TextMeshProUGUI description, personName, contents, extraInfo;
     [SerializeField] Image face;
 
     Person person;
@@ -14,10 +14,13 @@ public class DialogueUI : MonoBehaviour
 
     public void Setup(Event _event, Person person)
     {
+        extraInfo.gameObject.SetActive(false);
+
         this.person = person;
         dialogueEvent = _event;
 
         face.color = person.GetMoraleColor();
+        face.sprite = person.GetMoraleSprite();
         description.text = Event.ReadDescription(dialogueEvent.type.description, dialogueEvent.affected, dialogueEvent.customWords);
         if (_event.type.discussion.Length <= 1)
         {
@@ -34,5 +37,12 @@ public class DialogueUI : MonoBehaviour
     {
         contents.text = response;
         face.color = person.GetMoraleColor();
+        face.sprite = person.GetMoraleSprite();
+    }
+
+    public void UpdateExtraInfo(string info)
+    {
+        extraInfo.gameObject.SetActive(true);
+        extraInfo.text = info;
     }
 }

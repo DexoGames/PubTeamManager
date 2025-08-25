@@ -34,6 +34,8 @@ public class Tactic
     public int Fouling;
     public int Provoking;
 
+    public Player.Stats StatReliances;
+
     public Tactic(Team team, Manager manager)
     {
         Manager = manager;
@@ -77,6 +79,12 @@ public class Tactic
         Threat = Creativity = DefensiveWidth = AttackingWidth = Fouling = Provoking = 50;
 
         Complexity = 25;
+
+        //StatReliances = new Player.Stats();
+        //foreach (PlayerStat stat in Enum.GetValues(typeof(PlayerStat)))
+        //{
+        //    StatReliances.SetStat(stat, 50);
+        //}
     }
 
     public int GetStat(TacticStat stat) => GetStatRef(stat);
@@ -187,4 +195,8 @@ public class Tactic
         }
     }
 
+    void ApplyTeamDependencies()
+    {
+
+    }
 }

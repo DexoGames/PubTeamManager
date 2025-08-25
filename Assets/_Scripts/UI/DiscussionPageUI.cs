@@ -42,9 +42,11 @@ public class DiscussionPageUI : UIPage
         Event.Reaction reaction = EventsManager.Instance.ReactionTable[(response, person.Personality)];
         reaction = Event.ReactionSeverityChange(response, reaction, thisEvent.type.severity);
 
-        int moraleChange = person.NewMorale(thisEvent.type.moodChange, reaction, thisEvent.type.severity);
+        (int, int) moraleChange = person.NewMorale(thisEvent.type.moodChange, reaction, thisEvent.type.severity);
         dialogue.UpdatePerson(ReactionToDialogue(reaction));
         responseManager.MakeDialogue(response);
+
+        dialogue.UpdateExtraInfo(InfoAboutResponse(moraleChange));
 
         EventsManager.Instance.Events.Remove(thisEvent);
     }
@@ -69,5 +71,35 @@ public class DiscussionPageUI : UIPage
                 return "Boss, you are absolutely correct!!";
         }
         return "Okay.";
+    }
+
+    public static string InfoAboutResponse((int, int) moraleChange)
+    {
+        int moodChange = moraleChange.Item1;
+        int passionChange = moraleChange.Item2;
+
+        int distance = Mathf.Abs(moodChange) + Mathf.Abs(passionChange);
+        string much = distance > 10 ? "much " : "";
+
+        if (Mathf.Abs(moodChange) <= 2 && Mathf.Abs(passionChange) <= 2) { }
+
+        else if (moodChange > 0 && passionChange > 0)
+        {
+            return $"They seemed to get {much}more excited.";
+        }
+        else if (moodChange > 0 && passionChange < 0)
+        {
+            return $"They seemed to get {much}more relaxed.";
+        }
+        else if (moodChange < 0 && passionChange > 0)
+        {
+            return $"They seemed to get {much}more annoyed.";
+        }
+        else if (moodChange < 0 && passionChange < 0)
+        {
+            return $"They seemed to get {much}more upset.";
+        }
+
+        return "There seemed to be no change in morale.";
     }
 }

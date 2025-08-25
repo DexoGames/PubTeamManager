@@ -2,7 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public enum PlayerStat
@@ -115,8 +114,21 @@ public class Player : Person
         public int Midfield => (int)Game.WeightedAverage((Passing, 1f), (Positioning, 0.5f), (Crossing, 0.2f), (Creativity, 0.2f), (Intelligence, 0.2f));
         public int Defending => (int)Game.WeightedAverage((Positioning, 1f), (Tackling, 0.5f), (Strength, 0.2f), (Pace, 0.2f));
         public int Mental => (int)Game.Average(Intelligence, Teamwork, Composure);
-        public int Physical => (int)Game.WeightedAverage((Pace, 1f), (Strength, 0.5f));
+        public int Physical => (int)Game.WeightedAverage((Pace, 0.7f), (Strength, 0.5f), (Height, 0.3f));
         public int Goalkeeping => (int)Game.Average(Jumping, Aggression, Composure, Positioning, Height);
+
+        public int GetStat(PlayerStat stat)
+        {
+            return stat == PlayerStat.Height ? Height : Skills[(int)stat];
+        }
+
+        public void SetStat(PlayerStat stat, int value)
+        {
+            if (stat == PlayerStat.Height)
+                Height = Clamp(value);
+            else
+                Skills[(int)stat] = Clamp(value);
+        }
     }
 
     public Stats GetStats(bool ignoreMorale = false)
@@ -210,21 +222,15 @@ public class Player : Person
         }
 
         return player;
-    }
 
-    private static int Apply(int stat, int baseChange, bool increase)
-    {
-        //Debug.Log($"Input of {stat} to");
+        int Apply(int stat, int baseChange, bool increase)
+        {
+            float factor = increase ? (100 - stat) / 100f : stat / 100f;
+            int scaledChange = (int)Mathf.Round(baseChange * factor);
 
-        float factor = increase ? (100 - stat) / 100f : stat / 100f;
-
-        int scaledChange = (int)Mathf.Round(baseChange * factor);
-
-        stat += increase ? scaledChange : -scaledChange;
-
-        //Debug.Log($"Output of {stat}");
-
-        return Mathf.Clamp(stat, 0, 100);
+            stat += increase ? scaledChange : -scaledChange;
+            return Mathf.Clamp(stat, 0, 100);
+        }
     }
 
     public static Stats MoraleModifier(Stats stats, Morale morale)
@@ -232,8 +238,8 @@ public class Player : Person
         int moodDiff = morale.Mood - morale.IdealMood;
         int passionDiff = morale.Passion - morale.IdealPassion;
 
-        int moodFactor = Mathf.Abs((int) (moodDiff / 4f));
-        int passionFactor = Mathf.Abs((int)(passionDiff / 4f));
+        int moodFactor = Mathf.Abs((int) (moodDiff / 3f));
+        int passionFactor = Mathf.Abs((int)(passionDiff / 3f));
 
         if (moodDiff > 0)
         {
@@ -262,7 +268,7 @@ public class Player : Person
 
         for(int i = 0; i < stats.Skills.Length; i++)
         {
-            stats.Skills[i] = Mathf.Clamp(stats.Skills[i] - (int)(morale.DistanceToIdeal()/15f), 0, 100);
+            stats.Skills[i] = Mathf.Clamp(stats.Skills[i] - (int)(morale.DistanceToIdeal()/12f), 0, 100);
         }
 
         return stats;
@@ -465,11 +471,11 @@ public class Player : Person
 
 public static class PlayerExtensions
 {
-    public static Player.Stats AverageStats(this Player[] players){
-        return AverageStats(players.ToList());
+    public static Player.Stats AverageStats(this Player[] players, Tactic tactic = null){
+        return AverageStats(players.ToList(), tactic);
     }
 
-    public static Player.Stats AverageStats(this List<Player> players)
+    public static Player.Stats AverageStats(this List<Player> players, Tactic tactic = null)
     {
         Player.Stats avgStats = new Player.Stats
         {
@@ -489,12 +495,16 @@ public static class PlayerExtensions
         {
             var stats = players[i].GetStats();
 
-            for (int j = 0; j < Player.SKILL_NO; j++)
+            for (int j = 0; j < Player.SKILL_NO+1; j++)
             {
-                totalSkills[j] += stats.Skills[j];
-            }
+                if (j == Player.SKILL_NO)
+                {
+                    totalHeight += stats.Height;
+                    continue;
+                }
 
-            totalHeight += stats.Height;
+                totalSkills[j] += (int)(stats.Skills[j]);
+            }
         }
 
         for(int i = 0; i < Player.SKILL_NO; i++)

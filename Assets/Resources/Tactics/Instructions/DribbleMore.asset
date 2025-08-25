@@ -26,6 +26,9 @@ MonoBehaviour:
     strength: 2
   - stat: 1
     group: 4
+    strength: -1
+  - stat: 4
+    group: 4
     strength: -3
   tacticDependencies: []
   reliances: []

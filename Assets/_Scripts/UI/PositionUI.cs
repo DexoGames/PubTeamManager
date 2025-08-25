@@ -154,7 +154,7 @@ public class PositionUI : MonoBehaviour
     {
         Color moraleColor = player.GetMoraleColor();
 
-        UpdateImage(StatType.Morale, moraleColor, player.MoraleToSprite());
+        UpdateImage(StatType.Morale, moraleColor, player.GetMoraleSprite());
 
     }
 

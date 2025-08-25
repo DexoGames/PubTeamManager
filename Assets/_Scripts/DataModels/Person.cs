@@ -102,7 +102,7 @@ public class Person
         return new Color[] { new Color(0.8f, 0.1f, 0f), new Color(1f, 0.5f, 0f), Color.yellow, new Color(0.5f, 0.9f, 0.5f), new Color(0.05f, 0.7f, 0.1f) };
     }
 
-    public Sprite MoraleToSprite()
+    public Sprite GetMoraleSprite()
     {
         if (Morale.Mood >= 42 && Morale.Mood <= 58 &&
             Morale.Passion >= 42 && Morale.Passion <= 58)
@@ -152,7 +152,7 @@ public class Person
         string[] names = new string[] { "James", "Oliver", "Ethan", "Liam", "Alexander", "Noah", "Lucas", "Mason", "Logan", "Samuel", "Daniel", "Michael", "Dexter", "Rory", "Callum", "Gerald", "Javier", "Yash", "Indigo", "Ollie",
             "Ivo", "Alan", "Joe", "Kirk", "Cole", "Ivan", "Son", "Josh", "Walter", "Mike", "Jesse", "Gus", "Hank", "Hikmat", "Alex", "Max", "Lewis", "Charles", "Sergio", "David", "Luke", "Mark", "Jeremy", "Alex", "Brent", "Magnus",
             "James", "Will", "Ben", "Zayn", "Albert", "Jack", "Tom", "Seb", "Sebby", "Zac", "Ed", "Fred", "Freddie", "Brian", "Troy", "Mario", "Luigi", "Karl", "Darwin", "Tim", "John", "Tyler", "Harry", "Victor", "Jayce", "Ange",
-            "Cody", "Mal", "Billy", "Cole", "Ivan", "Kale", "Adrian", "Dylan", "Nathdaniel", "Oran", "Nat", "Rono", "Bradley", "Rene", "Aidan", "Adam", "Indy"};
+            "Cody", "Mal", "Billy", "Cole", "Ivan", "Kale", "Adrian", "Dylan", "Nathdaniel", "Oran", "Nat", "Rono", "Bradley", "Rene", "Aidan", "Adam", "Indy", "Gregory", "Greg", "Erc", "Robert", "Sean", "Hugh", "Russell"};
         var rnd = UnityEngine.Random.Range(0, names.Length);
 
         return names[rnd];
@@ -167,7 +167,8 @@ public class Person
             "Miranda", "Burr", "Schuyler", "Groff", "Jefferson", "Wecht", "Bellingham", "Gallagher", "Bolton", "Montez", "Evans", "Mario", "Mangione", "Marx", "Tralala", "Gusini", "Pork", "Cheese", "Angrave", "Thompson",
             "Wood", "Mainoo", "Shaw", "Trundle", "Lukather", "Jota", "Shears", "Eastman", "Ashdown", "Sterry", "Hart", "Marlene", "Marsden", "Rainsford", "Bending", "Dylan", "Tye", "Flowers", "Ronald", "Hornsey", "Crisp",
             "Withell", "Leung", "Barrie", "Ellwood", "Keating", "Manley", "Gouldstone", "Caldow", "Bolt", "Pise", "Price", "Borman", "Spencer", "Sunderland", "Heaton", "Morgan", "Edge-Morgan", "Maldonado", "Trifinov", "Reeves",
-            "Aston", "Cox", "Nolan"};
+            "Aston", "Cox", "Nolan", "House", "Cuddy", "Cameron", "Chase", "Foreman", "Leonard", "Laurie", "Tritter", "Acaster", "Mitchell", "Mack", "Atkinson", "Howard", "Pegg", "Moore", "Robson", "Stones", "Henderson", "Saka",
+            "Pearce", "Butcher", "Keegan"};
         var rnd = UnityEngine.Random.Range(0, names.Length);
 
         return names[rnd];
@@ -204,17 +205,22 @@ public class Person
         return this;
     }
 
-    public int NewMorale(int originalMoraleChange, Event.Reaction reaction, EventType.Severity severity)
+    public (int, int) NewMorale(int originalMoraleChange, Event.Reaction reactionEnum, EventType.Severity severityEnum)
     {
-        int newMood = Morale.Mood + (int)(((int)reaction - 3) * (Mathf.Abs((int)severity - 3)));
+        int reaction = (int)reactionEnum - (int)Event.Reaction.Neutral;
+        int severity = (int)severityEnum - (int)EventType.Severity.Irrelevant;
 
-        int newPassion = Morale.Passion + (Mathf.Abs((int)reaction - 3)) * Mathf.Abs((int)severity - 3);
+        int moodChange = (int)(reaction * (Mathf.Abs(severity)+1) * 1.5f);
 
-        Debug.Log($"After talking, morale went from {Morale} to {newMood}");
+        int passionChange = ( (int)Mathf.Pow(reaction, 2) - 4 ) * (Mathf.Abs(severity)+1);
 
-        Morale.Mood = newMood;
+        Debug.Log($"Mood was {Morale.Mood}, changed by {moodChange}");
+        Debug.Log($"Passion was {Morale.Passion}, changed by {passionChange}");
 
-        return newMood;
+        Morale.Mood += moodChange;
+        Morale.Passion += passionChange;
+
+        return (moodChange, passionChange);
     }
 
     public static (int, int) IdealMorale(PersonalityType personality)

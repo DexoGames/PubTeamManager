@@ -28,7 +28,7 @@ public class LinkHandler : MonoBehaviour, IPointerClickHandler
 
     public void HandleLinkClick(string linkID)
     {
-        Debug.Log("handling " + linkID);
+        //Debug.Log("handling " + linkID);
 
         string[] splitID = linkID.Split('/');
 
@@ -59,21 +59,21 @@ public class LinkHandler : MonoBehaviour, IPointerClickHandler
             {
                 case "player":
                     UIManager.Instance.ShowPlayerDetails(result);
-                    Debug.Log($"Clicked player with id: {id}");
+                    //Debug.Log($"Clicked player with id: {id}");
                     break;
                 case "club":
                 case "team":
                     UIManager.Instance.ShowTeamDetails(result);
-                    Debug.Log($"Clicked club with id: {id}");
+                    //Debug.Log($"Clicked club with id: {id}");
                     break;
                 case "tactics":
                     var team = TeamManager.Instance.GetTeam(result);
                     UIManager.Instance.ShowTactics();
-                    Debug.Log($"Clicked club with id: {id}");
+                    //Debug.Log($"Clicked club with id: {id}");
                     break;
                 case "manager":
                     UIManager.Instance.ShowManagerDetails(result);
-                    Debug.Log($"Clicked manager with id: {id}");
+                    //Debug.Log($"Clicked manager with id: {id}");
                     break;
                 default:
                     Debug.LogError("Unknown link type");
