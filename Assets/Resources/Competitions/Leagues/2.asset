@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d4a21f886ab40d7438d0336d2ca60d26, type: 3}
+  m_Name: 2
+  m_EditorClassIdentifier: 
+  Name: Division One
+  Priority: 0
+  Teams: []
+  PromotionLeague: {fileID: 11400000, guid: ebfd5f3d5a2a28841bbaa702d7a66d81, type: 2}
+  RelegationLeague: {fileID: 11400000, guid: fea493a4a534a6043bb8a01bdca68a24, type: 2}
+  PromotionSpots: 1
+  PlayoffSpots: 4
+  RelegationSpots: 3

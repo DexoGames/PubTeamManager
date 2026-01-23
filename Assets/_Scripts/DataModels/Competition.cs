@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-public abstract class Competition
+public abstract class Competition : ScriptableObject
 {
     public string Name;
     public int Priority = 0;

@@ -27,10 +27,27 @@ public class FixturesManager : MonoBehaviour
 
     public void AddComps()
     {
-        League league = new("Scunthorpe Suburbs Regional", TeamManager.Instance.GetAllTeams(), CalenderManager.Instance.CurrentDay.AddDays(7));
-        Cup cup = new("Scunthorpe Papa Johns Cup", TeamManager.Instance.GetAllTeams(), CalenderManager.Instance.CurrentDay.AddDays(10));
+        var teams = TeamManager.Instance.GetAllTeams();
+        DateTime startDate = CalenderManager.Instance.CurrentDay;
+        
+        League[] leagueTemplates = Resources.LoadAll<League>("Competitions/Leagues");
 
-        Competitions.Add(league);
+        League div3 = Instantiate(leagueTemplates[3]);
+        League div2 = Instantiate(leagueTemplates[2]);
+        League div1 = Instantiate(leagueTemplates[1]);
+        League premier = Instantiate(leagueTemplates[0]);
+
+        div3.Initialize(teams.GetRange(0, 20), startDate);
+        div2.Initialize(teams.GetRange(20, 20), startDate);
+        div1.Initialize(teams.GetRange(40, 20), startDate);
+        premier.Initialize(teams.GetRange(60, 20), startDate);
+
+        Cup cup = new("Papa Johns Cup", teams, CalenderManager.Instance.CurrentDay.AddDays(10));
+
+        Competitions.Add(premier);
+        Competitions.Add(div1);
+        Competitions.Add(div2);
+        Competitions.Add(div3);
         Competitions.Add(cup);
     }
 

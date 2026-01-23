@@ -63,7 +63,6 @@ public class Player : Person
             { bestPosition, PositionStrength.Natural }
         };
 
-
         int length = Game.GetEnumLength<Position>();
 
         for (int i = 0; i < Game.GetEnumLength<Position>(); i++)
@@ -77,6 +76,61 @@ public class Player : Person
             else if (rand >= 3) strength = PositionStrength.Poor;
 
             RawStats.Positions.TryAdd((Position)i, strength);
+        }
+
+        // Spilling effect: +1 to similar positions (capped at Good)
+        Position[] relatedPositions = GetSimilarPositions(bestPosition);
+        foreach (Position relatedPos in relatedPositions)
+        {
+            if (RawStats.Positions.ContainsKey(relatedPos) && RawStats.Positions[relatedPos] < PositionStrength.Good)
+            {
+                RawStats.Positions[relatedPos] = (PositionStrength)((int)RawStats.Positions[relatedPos] + 1);
+            }
+        }
+    }
+
+    private static Position[] GetSimilarPositions(Position position)
+    {
+        switch (position)
+        {
+            case Position.GK:
+                return new Position[] { };
+
+            case Position.LB:
+                return new Position[] { Position.LM, Position.CB };
+
+            case Position.CB:
+                return new Position[] { };
+
+            case Position.RB:
+                return new Position[] { Position.RM, Position.CB };
+
+            case Position.DM:
+                return new Position[] { Position.CM, Position.CB };
+
+            case Position.LM:
+                return new Position[] { Position.LB, Position.LW };
+
+            case Position.CM:
+                return new Position[] { Position.DM, Position.AM };
+
+            case Position.RM:
+                return new Position[] { Position.RB, Position.RW };
+
+            case Position.LW:
+                return new Position[] { Position.LM };
+
+            case Position.AM:
+                return new Position[] { Position.CM, Position.ST };
+
+            case Position.RW:
+                return new Position[] { Position.RM };
+
+            case Position.ST:
+                return new Position[] { Position.AM};
+
+            default:
+                return new Position[] { };
         }
     }
 

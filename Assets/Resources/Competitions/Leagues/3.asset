@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d4a21f886ab40d7438d0336d2ca60d26, type: 3}
+  m_Name: 3
+  m_EditorClassIdentifier: 
+  Name: Division Two
+  Priority: 0
+  Teams: []
+  PromotionLeague: {fileID: 11400000, guid: 3e862ecd73f4caa49a71efed7285400c, type: 2}
+  RelegationLeague: {fileID: 11400000, guid: e6185223f71938c4fbe63a32843ce2a3, type: 2}
+  PromotionSpots: 2
+  PlayoffSpots: 4
+  RelegationSpots: 3

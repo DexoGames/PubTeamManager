@@ -3,15 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
+[CreateAssetMenu(fileName = "New Cup", menuName = "Competition/Cup")]
 public class Cup : Competition
 {
     private List<Team> autoSecondRoundTeams = new List<Team>();
     private List<List<Fixture>> roundList = new List<List<Fixture>>();
 
-    public Cup(string name, List<Team> teams, DateTime startDate) : base(name, 1, teams, startDate)
-    {
-
-    }
+    public Cup(string name, List<Team> teams, DateTime startDate) : base(name, 1, teams, startDate) {}
 
     private void GenerateRound(List<Team> entrants, DateTime roundDate)
     {

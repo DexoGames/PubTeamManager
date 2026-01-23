@@ -50,6 +50,10 @@ public struct Morale
     {
         return Vector2.Distance(new Vector2(Mood, Passion), new Vector2(IdealMood, IdealPassion));
     }
+    public Vector2 DisplacementToIdeal()
+    {
+        return new Vector2(Mood - IdealMood, Passion - IdealPassion);
+    }
 }
 
 

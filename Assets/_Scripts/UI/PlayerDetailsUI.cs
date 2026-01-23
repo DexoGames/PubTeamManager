@@ -13,6 +13,7 @@ public class PlayerDetailsUI : UIPage
     [SerializeField] StatUI statPrefab;
     [SerializeField] PositionStrengthUI positionStrengths;
     [SerializeField] PlayerEventsUI playerEvents;
+    [SerializeField] MoraleUI morale;
 
 
     public void Awake()
@@ -49,6 +50,7 @@ public class PlayerDetailsUI : UIPage
 
         positionStrengths.SetPositionStrengths(player, player.Team);
         playerEvents.ShowEvents(new() { player });
+        morale.Setup(player);
     }
     protected override void OnShow(Manager manager)
     {

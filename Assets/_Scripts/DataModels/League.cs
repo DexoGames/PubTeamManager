@@ -3,17 +3,44 @@ using System;
 using System.Linq;
 using UnityEngine;
 
+[CreateAssetMenu(fileName = "New League", menuName = "Competition/League")]
 public class League : Competition
 {
-    public League(string name, List<Team> teams, DateTime startDate) : base(name, 0, teams, startDate)
-    {
+    public League(string name, List<Team> teams, DateTime startDate) : base(name, 0, teams, startDate) {}
 
-    }
+    public League PromotionLeague;
+    public League RelegationLeague;
+
+    public int PromotionSpots;
+    public int PlayoffSpots;
+    public int RelegationSpots;
 
     List<LeagueTableEntry> standings = new List<LeagueTableEntry>();
 
+
+    public void Initialize(List<Team> teams, DateTime startDate)
+    {
+        this.Teams = teams;
+        this.startDate = startDate;
+        
+        // Initialize collections that might be null after Instantiate
+        if (Fixtures == null)
+            Fixtures = new List<Fixture>();
+        if (Rounds == null)
+            Rounds = new List<Fixture>[0];
+        if (standings == null)
+            standings = new List<LeagueTableEntry>();
+
+        InitializeStandings();    
+        
+        GenerateFixtures();
+    }
+
     public override void GenerateFixtures()
     {
+        if (Fixtures == null)
+            Fixtures = new List<Fixture>();
+            
         Fixtures.Clear();
 
         // Make a copy of teams list
@@ -58,7 +85,7 @@ public class League : Competition
             roundDate = roundDate.AddDays(14);
         }
 
-        // Second half — reverse home/away
+        // Second half ï¿½ reverse home/away
         for (int round = 0; round < numTeams - 1; round++)
         {
             int roundIndex = round + (numTeams - 1);
@@ -85,7 +112,7 @@ public class League : Competition
     {
         standings.Clear();
 
-        foreach (var team in TeamManager.Instance.GetAllTeams())
+        foreach (var team in Teams)
         {
             standings.Add(new LeagueTableEntry(team));
         }
@@ -93,12 +120,12 @@ public class League : Competition
 
     public void UpdateStandings(Fixture fixture)
     {
-        var homeTeamEntry = standings.FirstOrDefault(entry => entry.team == fixture.HomeTeam);
-        var awayTeamEntry = standings.FirstOrDefault(entry => entry.team == fixture.AwayTeam);
+        var homeTeamEntry = standings.FirstOrDefault(entry => entry.team.TeamId == fixture.HomeTeam.TeamId);
+        var awayTeamEntry = standings.FirstOrDefault(entry => entry.team.TeamId == fixture.AwayTeam.TeamId);
 
         if (homeTeamEntry == null || awayTeamEntry == null)
         {
-            Debug.LogError("Team not found in league standings.");
+            Debug.LogError($"Team not found in league standings. Home: {fixture.HomeTeam.Name} (ID:{fixture.HomeTeam.TeamId}), Away: {fixture.AwayTeam.Name} (ID:{fixture.AwayTeam.TeamId})");
             return;
         }
 
