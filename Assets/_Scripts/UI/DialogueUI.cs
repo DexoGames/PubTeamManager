@@ -4,45 +4,70 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// Generic dialogue UI component that displays conversation with a person.
+/// Independent of the dialogue type (discussion, interview, etc.)
+/// </summary>
 public class DialogueUI : MonoBehaviour
 {
-    [SerializeField] TextMeshProUGUI description, personName, contents, extraInfo;
+    [SerializeField] TextMeshProUGUI descriptionText, personNameText, contentsText, extraInfoText;
     [SerializeField] Image face;
 
-    Person person;
-    Event dialogueEvent;
+    Person currentPerson;
 
-    public void Setup(Event _event, Person person)
+    /// <summary>
+    /// Setup the dialogue UI using a context that provides all necessary data.
+    /// </summary>
+    public void Setup(IDialogueContext context)
     {
-        extraInfo.gameObject.SetActive(false);
+        extraInfoText.gameObject.SetActive(false);
 
-        this.person = person;
-        dialogueEvent = _event;
+        currentPerson = context.Person;
 
-        face.color = person.GetMoraleColor();
-        face.sprite = person.GetMoraleSprite();
-        description.text = Event.ReadDescription(dialogueEvent.type.description, dialogueEvent.affected, dialogueEvent.customWords);
-        if (_event.type.discussion.Length <= 1)
-        {
-            contents.text = "Hey boss, did you want something from me?";
-        }
-        else
-        {
-            contents.text = Event.ReadDescription(dialogueEvent.type.discussion, dialogueEvent.affected, dialogueEvent.customWords);
-        }
-        personName.text = LinkBuilder.BuildLink((Player)person);
+        face.color = context.FaceColor;
+        face.sprite = context.FaceSprite;
+        descriptionText.text = context.Description;
+        contentsText.text = context.InitialDialogue;
+        personNameText.text = context.PersonName;
     }
 
-    public void UpdatePerson(string response)
+    /// <summary>
+    /// Update the dialogue contents and refresh the person's face based on current morale.
+    /// </summary>
+    public void UpdateDialogue(string dialogue)
     {
-        contents.text = response;
-        face.color = person.GetMoraleColor();
-        face.sprite = person.GetMoraleSprite();
+        contentsText.text = dialogue;
+        if (currentPerson != null)
+        {
+            face.color = currentPerson.GetMoraleColor();
+            face.sprite = currentPerson.GetMoraleSprite();
+        }
     }
 
+    /// <summary>
+    /// Update the dialogue contents with custom face color and sprite.
+    /// </summary>
+    public void UpdateDialogue(string dialogue, Color faceColor, Sprite faceSprite)
+    {
+        contentsText.text = dialogue;
+        face.color = faceColor;
+        face.sprite = faceSprite;
+    }
+
+    /// <summary>
+    /// Show or update the extra info text (e.g., morale change feedback).
+    /// </summary>
     public void UpdateExtraInfo(string info)
     {
-        extraInfo.gameObject.SetActive(true);
-        extraInfo.text = info;
+        extraInfoText.gameObject.SetActive(true);
+        extraInfoText.text = info;
+    }
+
+    /// <summary>
+    /// Hide the extra info text.
+    /// </summary>
+    public void HideExtraInfo()
+    {
+        extraInfoText.gameObject.SetActive(false);
     }
 }

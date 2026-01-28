@@ -32,14 +32,17 @@ public class MoraleUI : MonoBehaviour
     {
         Vector2 disp = person.Morale.DisplacementToIdeal();
         Debug.Log("" + disp.x + " " + disp.y);
+        string desc = "";
         
         if(person.Morale.DistanceToIdeal() < 10) return "Thriving";
+        if(person.Morale.DistanceToIdeal() < 30) desc = "Slightly ";
+        if(person.Morale.DistanceToIdeal() > 60) desc = "Way ";
 
-        if(disp.x > 0 && disp.y > 0) return "Overexcited";
-        if(disp.x > 0 && disp.y < 0) return "Too Relaxed";
-        if(disp.x < 0 && disp.y > 0) return "Too Angry";
-        if(disp.x < 0 && disp.y < 0) return "Too Sad";
+        if(disp.x > 0 && disp.y > 0) desc += "Overexcited";
+        if(disp.x > 0 && disp.y < 0) desc += "Too Relaxed";
+        if(disp.x < 0 && disp.y > 0) desc += "Too Angry";
+        if(disp.x < 0 && disp.y < 0) desc += "Too Sad";
 
-        return "Uhhhhh";
+        return desc;
     }
 }

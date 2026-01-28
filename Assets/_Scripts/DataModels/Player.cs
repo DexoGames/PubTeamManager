@@ -292,8 +292,8 @@ public class Player : Person
         int moodDiff = morale.Mood - morale.IdealMood;
         int passionDiff = morale.Passion - morale.IdealPassion;
 
-        int moodFactor = Mathf.Abs((int) (moodDiff / 3f));
-        int passionFactor = Mathf.Abs((int)(passionDiff / 3f));
+        int moodFactor = Mathf.Abs((int) (moodDiff / 5f));
+        int passionFactor = Mathf.Abs((int)(passionDiff / 5f));
 
         if (moodDiff > 0)
         {
@@ -322,7 +322,7 @@ public class Player : Person
 
         for(int i = 0; i < stats.Skills.Length; i++)
         {
-            stats.Skills[i] = Mathf.Clamp(stats.Skills[i] - (int)(morale.DistanceToIdeal()/12f), 0, 100);
+            stats.Skills[i] = Mathf.Clamp(stats.Skills[i] - (int)(morale.DistanceToIdeal()/10f), 0, 100);
         }
 
         return stats;

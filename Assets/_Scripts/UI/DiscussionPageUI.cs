@@ -10,6 +10,7 @@ public class DiscussionPageUI : UIPage
 
     Person person;
     Event thisEvent;
+    DiscussionContext discussionContext;
 
     public static DiscussionPageUI Instance { get; private set; }
 
@@ -33,7 +34,23 @@ public class DiscussionPageUI : UIPage
         thisEvent = @event;
         this.person = person;
 
-        dialogue.Setup(@event, person);
+        discussionContext = new DiscussionContext(@event, person);
+        dialogue.Setup(discussionContext);
+        responseManager.SpawnButtons();
+    }
+    protected override void OnShow(Player player)
+    {
+        base.OnShow(player);
+
+        this.person = player;
+
+        // For showing without an event, we need to handle this differently
+        // This case might need an interview context instead
+        if (thisEvent != null)
+        {
+            discussionContext = new DiscussionContext(thisEvent, person);
+            dialogue.Setup(discussionContext);
+        }
         responseManager.SpawnButtons();
     }
 
@@ -43,7 +60,7 @@ public class DiscussionPageUI : UIPage
         reaction = Event.ReactionSeverityChange(response, reaction, thisEvent.type.severity);
 
         (int, int) moraleChange = person.NewMorale(thisEvent.type.moodChange, reaction, thisEvent.type.severity);
-        dialogue.UpdatePerson(ReactionToDialogue(reaction));
+        dialogue.UpdateDialogue(ReactionToDialogue(reaction));
         responseManager.MakeDialogue(response);
 
         dialogue.UpdateExtraInfo(InfoAboutResponse(moraleChange));

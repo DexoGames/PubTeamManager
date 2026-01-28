@@ -70,7 +70,7 @@ public class PlayerDetailsUI : UIPage
     {
         for(int i = 0; i < Player.SKILL_NO; i++)
         {
-            int value = player.RawStats.Skills[i];
+            int value = player.GetStats().Skills[i];
             string stat = ((PlayerStat)i).ToString();
 
             Instantiate(statPrefab, statsContainer).SetText(stat, value);

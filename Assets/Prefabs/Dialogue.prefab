@@ -833,10 +833,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 95f682c538fbcd341be8d5e7ad2e6e3a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  description: {fileID: 3150014820033350360}
-  personName: {fileID: 1381925708101711455}
-  contents: {fileID: 5614242196612642224}
-  extraInfo: {fileID: 7727982298917583964}
+  descriptionText: {fileID: 3150014820033350360}
+  personNameText: {fileID: 1381925708101711455}
+  contentsText: {fileID: 5614242196612642224}
+  extraInfoText: {fileID: 7727982298917583964}
   face: {fileID: 1084555155957701029}
 --- !u!224 &6438113189194524929 stripped
 RectTransform:
