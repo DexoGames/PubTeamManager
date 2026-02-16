@@ -255,4 +255,132 @@ public class Person
 
         return (75, 75);
     }
+
+    /// <summary>
+    /// Returns how well this personality type gets along with another.
+    /// Range: -2 (clash) to +2 (great chemistry)
+    /// </summary>
+    public static int GetPersonalityCompatibility(PersonalityType self, PersonalityType other)
+    {
+        // Same personality - depends on the type
+        if (self == other)
+        {
+            return self switch
+            {
+                PersonalityType.Cocky => -1,      // Two cocky people clash
+                PersonalityType.Aggressive => -1, // Two aggressive people clash
+                PersonalityType.Kind => 2,        // Kind people get along great
+                PersonalityType.Calm => 1,        // Calm people are fine together
+                PersonalityType.Driven => 2,      // Driven people motivate each other
+                _ => 0                            // Neutral for others
+            };
+        }
+
+        // Define specific compatibility pairs
+        return (self, other) switch
+        {
+            // Aggressive
+            (PersonalityType.Aggressive, PersonalityType.Calm) => 1,      // Calm balances Aggressive
+            (PersonalityType.Aggressive, PersonalityType.Kind) => 1,      // Kind calms Aggressive
+            (PersonalityType.Aggressive, PersonalityType.Cocky) => -2,    // Both volatile
+            (PersonalityType.Aggressive, PersonalityType.Shy) => -1,      // Intimidates Shy
+
+            // Calm
+            (PersonalityType.Calm, PersonalityType.Aggressive) => 1,
+            (PersonalityType.Calm, PersonalityType.Driven) => 1,          // Good balance
+            (PersonalityType.Calm, PersonalityType.Silly) => 0,           // Tolerates Silly
+            (PersonalityType.Calm, PersonalityType.Lazy) => -1,           // Frustrated by Lazy
+
+            // Cautious
+            (PersonalityType.Cautious, PersonalityType.Smart) => 2,       // Both think ahead
+            (PersonalityType.Cautious, PersonalityType.Silly) => -1,      // Silly is unpredictable
+            (PersonalityType.Cautious, PersonalityType.Cocky) => -1,      // Cocky is reckless
+            (PersonalityType.Cautious, PersonalityType.Driven) => 1,      // Respects dedication
+
+            // Cocky
+            (PersonalityType.Cocky, PersonalityType.Aggressive) => -2,
+            (PersonalityType.Cocky, PersonalityType.Shy) => -1,           // Dismisses Shy
+            (PersonalityType.Cocky, PersonalityType.Kind) => 0,           // Kind tolerates
+            (PersonalityType.Cocky, PersonalityType.Driven) => 1,         // Respects ambition
+
+            // Driven
+            (PersonalityType.Driven, PersonalityType.Lazy) => -2,         // Opposite values
+            (PersonalityType.Driven, PersonalityType.Cocky) => 1,
+            (PersonalityType.Driven, PersonalityType.Smart) => 2,         // Great combo
+            (PersonalityType.Driven, PersonalityType.Calm) => 1,
+
+            // Kind
+            (PersonalityType.Kind, PersonalityType.Shy) => 2,             // Makes Shy comfortable
+            (PersonalityType.Kind, PersonalityType.Aggressive) => 1,
+            (PersonalityType.Kind, PersonalityType.Silly) => 1,           // Enjoys their humor
+            (PersonalityType.Kind, PersonalityType.Lazy) => 0,            // Too nice to judge
+
+            // Lazy
+            (PersonalityType.Lazy, PersonalityType.Driven) => -2,
+            (PersonalityType.Lazy, PersonalityType.Silly) => 1,           // Both relaxed
+            (PersonalityType.Lazy, PersonalityType.Calm) => 1,            // No pressure
+            (PersonalityType.Lazy, PersonalityType.Smart) => -1,          // Smart gets frustrated
+
+            // Shy
+            (PersonalityType.Shy, PersonalityType.Kind) => 2,
+            (PersonalityType.Shy, PersonalityType.Calm) => 1,             // Non-threatening
+            (PersonalityType.Shy, PersonalityType.Aggressive) => -1,
+            (PersonalityType.Shy, PersonalityType.Cocky) => -1,
+
+            // Silly
+            (PersonalityType.Silly, PersonalityType.Kind) => 1,
+            (PersonalityType.Silly, PersonalityType.Lazy) => 1,
+            (PersonalityType.Silly, PersonalityType.Smart) => 0,          // Smart tolerates
+            (PersonalityType.Silly, PersonalityType.Cautious) => -1,
+
+            // Smart
+            (PersonalityType.Smart, PersonalityType.Cautious) => 2,
+            (PersonalityType.Smart, PersonalityType.Driven) => 2,
+            (PersonalityType.Smart, PersonalityType.Lazy) => -1,
+            (PersonalityType.Smart, PersonalityType.Silly) => 0,
+
+            // Default - neutral
+            _ => 0
+        };
+    }
+
+    /// <summary>
+    /// Get the personality type this person gets along with best.
+    /// </summary>
+    public PersonalityType GetBestCompatiblePersonality()
+    {
+        PersonalityType best = PersonalityType.Calm;
+        int bestScore = int.MinValue;
+
+        foreach (PersonalityType other in Enum.GetValues(typeof(PersonalityType)))
+        {
+            int score = GetPersonalityCompatibility(Personality, other);
+            if (score > bestScore)
+            {
+                bestScore = score;
+                best = other;
+            }
+        }
+        return best;
+    }
+
+    /// <summary>
+    /// Get the personality type this person clashes with most.
+    /// </summary>
+    public PersonalityType GetWorstCompatiblePersonality()
+    {
+        PersonalityType worst = PersonalityType.Calm;
+        int worstScore = int.MaxValue;
+
+        foreach (PersonalityType other in Enum.GetValues(typeof(PersonalityType)))
+        {
+            int score = GetPersonalityCompatibility(Personality, other);
+            if (score < worstScore)
+            {
+                worstScore = score;
+                worst = other;
+            }
+        }
+        return worst;
+    }
 }

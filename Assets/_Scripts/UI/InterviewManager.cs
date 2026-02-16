@@ -3,15 +3,16 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Manages interview dialogues with players (hiring, contract renewal, etc.)
-/// Uses DialogueUI for display but has its own interview-specific logic.
+/// Manages hiring interviews with potential players.
+/// Uses DialogueUI for display and InterviewQuestion system for Q&A logic.
 /// </summary>
 public class InterviewManager : MonoBehaviour
 {
     [SerializeField] DialogueUI dialogue;
     
-    Person interviewee;
+    Player interviewee;
     InterviewContext interviewContext;
+    List<InterviewQuestion> askedQuestions = new List<InterviewQuestion>();
 
     public static InterviewManager Instance { get; private set; }
 
@@ -28,35 +29,85 @@ public class InterviewManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Start an interview with a person using a specific interview type.
+    /// Start a hiring interview with a potential player.
     /// </summary>
-    public void StartInterview(Person person, InterviewContext.InterviewType type)
+    public void StartInterview(Player player)
     {
-        interviewee = person;
-        interviewContext = new InterviewContext(person, type);
+        interviewee = player;
+        askedQuestions.Clear();
+        
+        interviewContext = new InterviewContext(player);
         dialogue.Setup(interviewContext);
     }
 
     /// <summary>
-    /// Start an interview with custom description and dialogue.
+    /// Ask about a specific stat (e.g., shooting, passing).
     /// </summary>
-    public void StartInterview(Person person, string description, string initialDialogue)
+    public InterviewAnswer AskAboutStat(PlayerStat stat)
     {
-        interviewee = person;
-        interviewContext = new InterviewContext(person, description, initialDialogue);
-        dialogue.Setup(interviewContext);
+        var question = new InterviewQuestion(InterviewQuestionType.AskAboutStat, stat);
+        return AskQuestion(question);
     }
 
     /// <summary>
-    /// Update the dialogue based on interview progress.
+    /// Ask a general question.
     /// </summary>
-    public void UpdateDialogue(string newDialogue)
+    public InterviewAnswer AskQuestion(InterviewQuestionType questionType)
     {
-        dialogue.UpdateDialogue(newDialogue);
+        var question = new InterviewQuestion(questionType);
+        return AskQuestion(question);
     }
 
     /// <summary>
-    /// Show feedback about the interview (e.g., impression made).
+    /// Ask a specific question and get the answer.
+    /// </summary>
+    public InterviewAnswer AskQuestion(InterviewQuestion question)
+    {
+        if (interviewee == null)
+        {
+            Debug.LogWarning("No interviewee set. Call StartInterview first.");
+            return null;
+        }
+
+        askedQuestions.Add(question);
+        InterviewAnswer answer = InterviewAnswerGenerator.GenerateAnswer(interviewee, question);
+        
+        dialogue.UpdateDialogue(answer.ResponseText);
+        
+        return answer;
+    }
+
+    /// <summary>
+    /// Get all available stat questions.
+    /// </summary>
+    public static List<InterviewQuestion> GetStatQuestions()
+    {
+        var questions = new List<InterviewQuestion>();
+        for (int i = 0; i < Player.SKILL_NO; i++)
+        {
+            questions.Add(new InterviewQuestion(InterviewQuestionType.AskAboutStat, (PlayerStat)i));
+        }
+        return questions;
+    }
+
+    /// <summary>
+    /// Get all general questions.
+    /// </summary>
+    public static List<InterviewQuestion> GetGeneralQuestions()
+    {
+        return new List<InterviewQuestion>
+        {
+            new InterviewQuestion(InterviewQuestionType.BiggestStrength),
+            new InterviewQuestion(InterviewQuestionType.BiggestWeakness),
+            new InterviewQuestion(InterviewQuestionType.BestPersonalityFit),
+            new InterviewQuestion(InterviewQuestionType.WorstPersonalityFit),
+            new InterviewQuestion(InterviewQuestionType.PreferredPosition),
+            new InterviewQuestion(InterviewQuestionType.CareerGoals)
+        };
+    }
+
+    /// <summary>
+    /// Show feedback/info to the interviewer.
     /// </summary>
     public void ShowFeedback(string feedback)
     {
@@ -66,10 +117,25 @@ public class InterviewManager : MonoBehaviour
     /// <summary>
     /// Get the current interviewee.
     /// </summary>
-    public Person GetInterviewee() => interviewee;
+    public Player GetInterviewee() => interviewee;
 
     /// <summary>
     /// Get the current interview context.
     /// </summary>
     public InterviewContext GetContext() => interviewContext;
+
+    /// <summary>
+    /// Get list of questions asked so far.
+    /// </summary>
+    public List<InterviewQuestion> GetAskedQuestions() => askedQuestions;
+
+    /// <summary>
+    /// End the interview.
+    /// </summary>
+    public void EndInterview()
+    {
+        interviewee = null;
+        interviewContext = null;
+        askedQuestions.Clear();
+    }
 }
