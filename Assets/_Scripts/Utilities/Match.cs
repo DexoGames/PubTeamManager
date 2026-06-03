@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using Newtonsoft.Json;
 using UnityEngine;
 using UnityEngine.Events;
 using static Game;
@@ -19,8 +20,11 @@ public class Match
     {
         public ShotType type;
         public ShotOutcome result;
+        [JsonConverter(typeof(TeamRefConverter))]
         public Team team;
+        [JsonConverter(typeof(PersonRefConverter))]
         public Player shooter;
+        [JsonConverter(typeof(PersonRefConverter))]
         public Player assister;
         public float xG;
         public Minute minute;
@@ -29,24 +33,27 @@ public class Match
     public struct Foul
     {
         public Card card;
+        [JsonConverter(typeof(PersonRefConverter))]
         public Player offender;
+        [JsonConverter(typeof(PersonRefConverter))]
         public Player victim;
         public Minute minute;
         public InjuryType injuryType;
 
-        public Foul(Card c, Player o, Player v, InjuryType i, Minute m)
+        [JsonConstructor]
+        public Foul(Card card, Player offender, Player victim, InjuryType injuryType, Minute minute)
         {
-            card = c;
-            offender = o;
-            victim = v;
-            minute = m;
-            injuryType = i;
+            this.card = card;
+            this.offender = offender;
+            this.victim = victim;
+            this.minute = minute;
+            this.injuryType = injuryType;
         }
     }
 
     public struct Result
     {
-        public Score score => new Score(home.goals.Count, away.goals.Count);
+        [JsonIgnore] public Score score => new Score(home.goals?.Count ?? 0, away.goals?.Count ?? 0);
         public TeamStats home;
         public TeamStats away;
 
@@ -59,6 +66,7 @@ public class Match
 
     public struct TeamStats
     {
+        [JsonConverter(typeof(TeamRefConverter))]
         public Team team;
         public List<Shot> goals;
         public List<Foul> fouls;

@@ -9,14 +9,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d4a21f886ab40d7438d0336d2ca60d26, type: 3}
+  m_Script: {fileID: 11500000, guid: 7756e7e2ab2b2a64093ed53912fc56b7, type: 3}
   m_Name: 1
   m_EditorClassIdentifier: 
-  Name: Premier Division
+  LeagueName: Premier Division
   Priority: 0
-  Teams: []
-  PromotionLeague: {fileID: 0}
-  RelegationLeague: {fileID: 11400000, guid: 3e862ecd73f4caa49a71efed7285400c, type: 2}
   PromotionSpots: 0
   PlayoffSpots: 0
   RelegationSpots: 2
+  PromotionLeagueTemplate: {fileID: 0}
+  RelegationLeagueTemplate: {fileID: 11400000, guid: 75711347c9a671b40b2cc761812fdb64, type: 2}

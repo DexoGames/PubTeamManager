@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Newtonsoft.Json;
 using UnityEngine;
 
 public enum PlayerStat
@@ -33,6 +34,7 @@ public class Player : Person
     }
 
     public int Fatigue { get; private set; }
+    public float TacticFamiliarity { get; set; } = 0f;
 
     public Player(Team team, Formation.Position[] teamPositions, int index)
     {
@@ -88,6 +90,10 @@ public class Player : Person
             }
         }
     }
+
+    /// <summary>Parameterless constructor for JSON deserialization.</summary>
+    public Player() { }
+
 
     private static Position[] GetSimilarPositions(Position position)
     {
@@ -164,12 +170,12 @@ public class Player : Person
         public int Stamina { get => Skills[16]; set => Skills[16] = Clamp(value); }
         public int Durability { get => Skills[17]; set => Skills[17] = Clamp(value); }
 
-        public int Attacking => (int)Game.WeightedAverage((Shooting, 1f), (Composure, 0.5f), (Dribbling, 0.2f), (Creativity, 0.2f), (Pace, 0.2f));
-        public int Midfield => (int)Game.WeightedAverage((Passing, 1f), (Positioning, 0.5f), (Crossing, 0.2f), (Creativity, 0.2f), (Intelligence, 0.2f));
-        public int Defending => (int)Game.WeightedAverage((Positioning, 1f), (Tackling, 0.5f), (Strength, 0.2f), (Pace, 0.2f));
-        public int Mental => (int)Game.Average(Intelligence, Teamwork, Composure);
-        public int Physical => (int)Game.WeightedAverage((Pace, 0.7f), (Strength, 0.5f), (Height, 0.3f));
-        public int Goalkeeping => (int)Game.Average(Jumping, Aggression, Composure, Positioning, Height);
+        [JsonIgnore] public int Attacking => (int)Game.WeightedAverage((Shooting, 1f), (Composure, 0.5f), (Dribbling, 0.2f), (Creativity, 0.2f), (Pace, 0.2f));
+        [JsonIgnore] public int Midfield => (int)Game.WeightedAverage((Passing, 1f), (Positioning, 0.5f), (Crossing, 0.2f), (Creativity, 0.2f), (Intelligence, 0.2f));
+        [JsonIgnore] public int Defending => (int)Game.WeightedAverage((Positioning, 1f), (Tackling, 0.5f), (Strength, 0.2f), (Pace, 0.2f));
+        [JsonIgnore] public int Mental => (int)Game.Average(Intelligence, Teamwork, Composure);
+        [JsonIgnore] public int Physical => (int)Game.WeightedAverage((Pace, 0.7f), (Strength, 0.5f), (Height, 0.3f));
+        [JsonIgnore] public int Goalkeeping => (int)Game.Average(Jumping, Aggression, Composure, Positioning, Height);
 
         public int GetStat(PlayerStat stat)
         {
@@ -520,6 +526,39 @@ public class Player : Person
         float inches = totalInches % 12;
 
         return $"{feet}'{(int)inches}\"";
+    }
+
+    /// <summary>
+    /// Modifies a raw stat by the given amount (clamped 0-100).
+    /// Used by the training system.
+    /// </summary>
+    public void ModifyStat(PlayerStat stat, float amount)
+    {
+        int current = RawStats.GetStat(stat);
+        RawStats.SetStat(stat, Mathf.RoundToInt(current + amount));
+    }
+
+    /// <summary>
+    /// Improves positional strength for a given position.
+    /// Used by positional training.
+    /// </summary>
+    public void ImprovePositionalStrength(Position targetPosition, float gain)
+    {
+        if (!RawStats.Positions.ContainsKey(targetPosition))
+        {
+            RawStats.Positions[targetPosition] = PositionStrength.None;
+        }
+
+        PositionStrength current = RawStats.Positions[targetPosition];
+        if (current >= PositionStrength.Natural) return;
+
+        // Accumulate gain — each strength level needs ~15 gain points
+        float threshold = 15f;
+        float currentProgress = (int)current * threshold;
+        float newProgress = currentProgress + gain;
+        int newLevel = Mathf.Min((int)(newProgress / threshold), (int)PositionStrength.Natural);
+
+        RawStats.Positions[targetPosition] = (PositionStrength)newLevel;
     }
 }
 

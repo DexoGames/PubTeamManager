@@ -11,6 +11,7 @@ public class Team : ScriptableObject
     public string Name;
     public int YearFounded;
     public Color TeamColor;
+    public Color AwayColor;
 
     int teamId;
 
@@ -27,6 +28,8 @@ public class Team : ScriptableObject
 
     public Manager Manager { get; private set; }
     public Tactic Tactic { get; private set; }
+    public ClubStats Stats { get; private set; } = new ClubStats();
+
     public void SetTactic(Tactic newTactic)
     {
         Tactic = newTactic;
@@ -60,12 +63,29 @@ public class Team : ScriptableObject
         Manager = new Manager(this);
         Tactic = new Tactic(this, Manager);
         KitNumbers = new Dictionary<Player, int>();
+        Stats = new ClubStats();
 
         for (int i = 0; i < 21; i++)
         {
             var newPlayer = new Player(this, Tactic.Formation.Positions, i);
             Players.Add(newPlayer);
             KitNumbers.Add(newPlayer, i + 1);
+        }
+    }
+
+    /// <summary>
+    /// Restores a team's state from saved data (bypassing private setters).
+    /// Called by TeamManager.RestoreTeams().
+    /// </summary>
+    public void RestoreTeamState(Manager manager, ClubStats stats)
+    {
+        Manager = manager;
+        Tactic = new Tactic(this, manager);
+        Stats = stats;
+        KitNumbers = new Dictionary<Player, int>();
+        for (int i = 0; i < Players.Count; i++)
+        {
+            KitNumbers[Players[i]] = i + 1;
         }
     }
 

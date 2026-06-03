@@ -1,15 +1,21 @@
 using System.Collections.Generic;
 using System;
 using System.Linq;
+using Newtonsoft.Json;
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "New League", menuName = "Competition/League")]
-public class League : Competition
+/// <summary>
+/// Runtime league instance — plain C# class (not ScriptableObject).
+/// Created from LeagueTemplate via LeagueTemplate.CreateLeague().
+/// Contains full season lifecycle: fixture generation, standings, season completion,
+/// promotion/relegation detection.
+/// </summary>
+public class League : Competition, ISaveable
 {
-    public League(string name, List<Team> teams, DateTime startDate) : base(name, 0, teams, startDate) {}
+    [JsonIgnore] public LeagueTemplate Template { get; private set; }
 
-    public League PromotionLeague;
-    public League RelegationLeague;
+    [JsonIgnore] public League PromotionLeague;
+    [JsonIgnore] public League RelegationLeague;
 
     public int PromotionSpots;
     public int PlayoffSpots;
@@ -17,13 +23,43 @@ public class League : Competition
 
     List<LeagueTableEntry> standings = new List<LeagueTableEntry>();
 
+    /// <summary>Public accessor for serialization of standings.</summary>
+    [JsonProperty("Standings")]
+    public List<LeagueTableEntry> StandingsData
+    {
+        get => standings;
+        set => standings = value ?? new List<LeagueTableEntry>();
+    }
+
+    /// <summary>Parameterless constructor for deserialization.</summary>
+    public League() { }
+
+    /// <summary>Constructor used by LeagueTemplate.CreateLeague().</summary>
+    public League(LeagueTemplate template, List<Team> teams, DateTime startDate)
+    {
+        Template = template;
+        Name = template.LeagueName;
+        Priority = template.Priority;
+        PromotionSpots = template.PromotionSpots;
+        PlayoffSpots = template.PlayoffSpots;
+        RelegationSpots = template.RelegationSpots;
+
+        Initialize(teams, startDate);
+    }
+
+    /// <summary>Legacy constructor for compatibility.</summary>
+    public League(string name, List<Team> teams, DateTime startDate)
+    {
+        Name = name;
+        Priority = 0;
+        Initialize(teams, startDate);
+    }
 
     public void Initialize(List<Team> teams, DateTime startDate)
     {
         this.Teams = teams;
         this.startDate = startDate;
-        
-        // Initialize collections that might be null after Instantiate
+
         if (Fixtures == null)
             Fixtures = new List<Fixture>();
         if (Rounds == null)
@@ -31,8 +67,7 @@ public class League : Competition
         if (standings == null)
             standings = new List<LeagueTableEntry>();
 
-        InitializeStandings();    
-        
+        InitializeStandings();
         GenerateFixtures();
     }
 
@@ -40,13 +75,11 @@ public class League : Competition
     {
         if (Fixtures == null)
             Fixtures = new List<Fixture>();
-            
+
         Fixtures.Clear();
 
-        // Make a copy of teams list
         List<Team> teams = new List<Team>(Teams);
 
-        // If odd number of teams, add a null (bye week)
         if (teams.Count % 2 != 0)
             teams.Add(null);
 
@@ -81,11 +114,10 @@ public class League : Competition
             teams.RemoveAt(numTeams - 1);
             teams.Insert(1, last);
 
-            // Jump ahead 14 days (1 week break)
             roundDate = roundDate.AddDays(14);
         }
 
-        // Second half � reverse home/away
+        // Second half — reverse home/away
         for (int round = 0; round < numTeams - 1; round++)
         {
             int roundIndex = round + (numTeams - 1);
@@ -129,7 +161,6 @@ public class League : Competition
             return;
         }
 
-        // Assuming Fixture has properties like HomeGoals, AwayGoals
         int homeGoals = fixture.Result.score.home;
         int awayGoals = fixture.Result.score.away;
 
@@ -142,29 +173,111 @@ public class League : Competition
         if (homeGoals > awayGoals) // Home win
         {
             homeTeamEntry.points += 3;
+            homeTeamEntry.wins++;
+            awayTeamEntry.losses++;
         }
         else if (homeGoals < awayGoals) // Away win
         {
             awayTeamEntry.points += 3;
+            awayTeamEntry.wins++;
+            homeTeamEntry.losses++;
         }
         else // Draw
         {
             homeTeamEntry.points += 1;
             awayTeamEntry.points += 1;
+            homeTeamEntry.draws++;
+            awayTeamEntry.draws++;
         }
 
         SortStandings();
+
+        // Check if the season is now complete
+        CheckSeasonEnd();
+    }
+
+    /// <summary>
+    /// Checks if all league fixtures have been played, and if so, fires completion events.
+    /// </summary>
+    public void CheckSeasonEnd()
+    {
+        if (IsComplete) return;
+        if (Fixtures.Any(f => !f.BeenPlayed)) return;
+
+        // All matches played — season is complete
+        IsComplete = true;
+        SortStandings();
+
+        // Champion
+        Team champion = GetChampion();
+        if (champion != null)
+        {
+            Debug.Log($"[League] {Name} champion: {champion.Name}!");
+            CompetitionEvents.FireLeagueWon(this, champion);
+        }
+
+        // Promotion
+        List<Team> promoted = GetPromotedTeams();
+        if (promoted.Count > 0)
+        {
+            Debug.Log($"[League] {Name} promoted: {string.Join(", ", promoted.Select(t => t.Name))}");
+            CompetitionEvents.FirePromoted(this, promoted);
+        }
+
+        // Relegation
+        List<Team> relegated = GetRelegatedTeams();
+        if (relegated.Count > 0)
+        {
+            Debug.Log($"[League] {Name} relegated: {string.Join(", ", relegated.Select(t => t.Name))}");
+            CompetitionEvents.FireRelegated(this, relegated);
+        }
+
+        CompetitionEvents.FireSeasonComplete(this);
+    }
+
+    /// <summary>Returns the league champion (1st in standings).</summary>
+    public Team GetChampion()
+    {
+        return standings.Count > 0 ? standings[0].team : null;
+    }
+
+    /// <summary>Returns teams that earned promotion (top N based on PromotionSpots).</summary>
+    public List<Team> GetPromotedTeams()
+    {
+        if (PromotionSpots <= 0) return new List<Team>();
+        return standings.Take(PromotionSpots).Select(e => e.team).ToList();
+    }
+
+    /// <summary>Returns teams that are relegated (bottom N based on RelegationSpots).</summary>
+    public List<Team> GetRelegatedTeams()
+    {
+        if (RelegationSpots <= 0) return new List<Team>();
+        return standings.Skip(standings.Count - RelegationSpots).Select(e => e.team).ToList();
     }
 
     void SortStandings()
     {
-        standings = standings.OrderByDescending(entry => entry.points).ThenByDescending(entry => entry.goalDifference).ThenByDescending(entry => entry.goalsFor).ToList();
+        standings = standings.OrderByDescending(entry => entry.points)
+            .ThenByDescending(entry => entry.goalDifference)
+            .ThenByDescending(entry => entry.goalsFor)
+            .ToList();
     }
 
     public List<LeagueTableEntry> GetStandings()
     {
         if (standings.Count < 1) InitializeStandings();
-
         return standings;
+    }
+
+    /// <summary>
+    /// ISaveable — rebuilds Rounds and resolves Template after deserialization.
+    /// </summary>
+    public void OnAfterDeserialize()
+    {
+        BuildRoundsFromFixtures();
+
+        // Resolve LeagueTemplate from Resources by name
+        var templates = UnityEngine.Resources.LoadAll<LeagueTemplate>("Competitions/Leagues");
+        Template = System.Array.Find(templates, t => t.LeagueName == Name);
     }
 }

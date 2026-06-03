@@ -1,24 +1,37 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 using UnityEngine;
 using System.Linq;
 using Unity.Mathematics;
 
 [System.Serializable]
-public class Fixture
+public class Fixture : ISaveable
 {
+    /// <summary>Stable unique ID — lets any past fixture be addressed/queried for history.</summary>
+    public int Id = -1;
+
+    [JsonIgnore]
     public Competition Competition;
     public int Round;
+    [JsonConverter(typeof(TeamRefConverter))]
     public Team HomeTeam;
+    [JsonConverter(typeof(TeamRefConverter))]
     public Team AwayTeam;
     public Match.Result Result;
     public DateTime Date;
 
     public bool BeenPlayed;
 
+    /// <summary>Parameterless constructor for deserialization.</summary>
+    public Fixture() { }
+
+
+
     public Fixture(Team home, Team away, DateTime date, Competition competition, int round)
     {
+        Id = IdManager.Instance.AllocateFixtureId();
         HomeTeam = home;
         AwayTeam = away;
         Result = new Match.Result(home, away);
@@ -42,17 +55,19 @@ public class Fixture
     {
         BeenPlayed = true;
 
+        // Record club stats for both teams
+        HomeTeam.Stats.RecordMatchResult(this, HomeTeam);
+        AwayTeam.Stats.RecordMatchResult(this, AwayTeam);
+
         if (GetWinner() == TeamManager.Instance.MyTeam) EventsManager.Instance.AddWinEvent(GetWinner(), GetLoser());
         if (GetLoser() == TeamManager.Instance.MyTeam) EventsManager.Instance.AddLoseEvent(GetWinner(), GetLoser());
 
-        if (Competition.GetType() == typeof(Cup))
+        if (Competition is Cup cup)
         {
-            Cup cup = (Cup)Competition;
             cup.TryGenerateNextRound();
         }
-        else if (Competition.GetType() == typeof(League))
+        else if (Competition is League league)
         {
-            League league = (League)Competition;
             league.UpdateStandings(this);
         }
     }
@@ -284,4 +299,9 @@ public class Fixture
 
     //        return clearChanceResult;
     //    }
+
+    /// <summary>
+    /// ISaveable — no extra work needed since Result is fully serialized.
+    /// </summary>
+    public void OnAfterDeserialize() { }
 }

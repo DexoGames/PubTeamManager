@@ -24,6 +24,8 @@ public class PlayerEventsUI : UIObject
         List<Event> playerEvents = new List<Event>();
         foreach(Event e in EventsManager.Instance.Events)
         {
+            if (e.affected == null || e.type == null) continue;
+
             foreach(Player player in players)
             {
                 if (e.affected.Contains(player))

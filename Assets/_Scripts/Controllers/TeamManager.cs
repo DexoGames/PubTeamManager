@@ -25,6 +25,7 @@ public class TeamManager : MonoBehaviour
     public int numberOfTeams = 81; // 1 player team + 80 AI teams
     private List<Pub> allPubs = new List<Pub>();
     List<Team> spawnedTeams = new List<Team>();
+    private readonly Dictionary<int, Team> _byId = new Dictionary<int, Team>();
     public Team MyTeam => spawnedTeams[0];
 
     private void Start()
@@ -111,11 +112,11 @@ public class TeamManager : MonoBehaviour
         }
 
         // Find "The Hobbit" pub in Southampton as the first team
-        Pub playerPub = allPubs.FirstOrDefault(p => p.Name.Contains("Hobbit") && p.LocalAuthority.Contains("Southampton"));
+        Pub playerPub = allPubs.FirstOrDefault(p => p.Name.Contains("The Hobbit"));
         
         if (playerPub == null)
         {
-            Debug.LogWarning("Could not find The Hobbit pub, using first pub in list");
+            Debug.LogWarning("Could not find The Five Dials pub, using first pub in list");
             playerPub = allPubs[0];
         }
 
@@ -137,6 +138,12 @@ public class TeamManager : MonoBehaviour
             }
 
             spawnedTeam.Name = selectedPubs[i].Name;
+
+            // Deterministic kit colours seeded from the pub's identity.
+            string colorSeed = $"{selectedPubs[i].FasId}|{selectedPubs[i].Name}|{selectedPubs[i].Postcode}";
+            spawnedTeam.TeamColor = KitColors.GetHomeColor(colorSeed);
+            spawnedTeam.AwayColor = KitColors.GetAwayColor(colorSeed, spawnedTeam.TeamColor);
+
             spawnedTeams.Add(spawnedTeam);
         }
 
@@ -144,7 +151,8 @@ public class TeamManager : MonoBehaviour
         {
             var team = spawnedTeams[i];
             team.GenerateTeam();
-            team.SetTeamId(i);
+            team.SetTeamId(IdManager.Instance.AllocateTeamId());
+            _byId[team.TeamId] = team;
         }
 
         Debug.Log($"Spawned {spawnedTeams.Count} teams. Player team: {MyTeam.Name}");
@@ -155,27 +163,41 @@ public class TeamManager : MonoBehaviour
         List<Pub> selected = new List<Pub>();
         selected.Add(playerPub); // First team is always the player's pub
 
-        // Get all pubs from the same local authority
-        List<Pub> sameLAPubs = allPubs.Where(p => p != playerPub && p.LocalAuthority == playerPub.LocalAuthority).ToList();
-        
-        // Shuffle for randomness
         System.Random rng = new System.Random();
-        sameLAPubs = sameLAPubs.OrderBy(x => rng.Next()).ToList();
+        string playerPrefix = playerPub.PostcodePrefix;
 
-        // Add random pubs from same local authority
-        int pubsNeeded = totalCount - 1;
-        int pubsFromSameLA = Mathf.Min(pubsNeeded, sameLAPubs.Count);
-        selected.AddRange(sameLAPubs.Take(pubsFromSameLA));
+        // --- Tier 1: Same postcode prefix (e.g. "TA19") ---
+        List<Pub> samePostcodePubs = allPubs
+            .Where(p => p != playerPub && p.PostcodePrefix == playerPrefix)
+            .OrderBy(x => rng.Next())
+            .ToList();
 
-        // If we need more pubs, get closest ones by distance
-        if (selected.Count < totalCount)
-        {
-            List<Pub> remainingPubs = allPubs.Where(p => !selected.Contains(p)).ToList();
-            remainingPubs = remainingPubs.OrderBy(p => p.DistanceTo(playerPub)).ToList();
-            
-            int additionalNeeded = totalCount - selected.Count;
-            selected.AddRange(remainingPubs.Take(additionalNeeded));
-        }
+        int needed = totalCount - selected.Count;
+        int take = Mathf.Min(needed, samePostcodePubs.Count);
+        selected.AddRange(samePostcodePubs.Take(take));
+
+        if (selected.Count >= totalCount) return selected;
+
+        // --- Tier 2: Same local authority (general area) ---
+        List<Pub> sameLAPubs = allPubs
+            .Where(p => !selected.Contains(p) && p.LocalAuthority == playerPub.LocalAuthority)
+            .OrderBy(x => rng.Next())
+            .ToList();
+
+        needed = totalCount - selected.Count;
+        take = Mathf.Min(needed, sameLAPubs.Count);
+        selected.AddRange(sameLAPubs.Take(take));
+
+        if (selected.Count >= totalCount) return selected;
+
+        // --- Tier 3: Closest by distance ---
+        List<Pub> remainingPubs = allPubs
+            .Where(p => !selected.Contains(p))
+            .OrderBy(p => p.DistanceTo(playerPub))
+            .ToList();
+
+        needed = totalCount - selected.Count;
+        selected.AddRange(remainingPubs.Take(needed));
 
         return selected;
     }
@@ -187,11 +209,51 @@ public class TeamManager : MonoBehaviour
 
     public Team GetTeam(int id)
     {
-        return spawnedTeams.FirstOrDefault(x=>x.TeamId == id);
+        return _byId.TryGetValue(id, out Team team) ? team : null;
+    }
+
+    /// <summary>
+    /// Registers a team into the lookup during save restore, before the full team
+    /// list is rebuilt. Lets TeamRefConverter resolve references mid-deserialization.
+    /// </summary>
+    public void RegisterTeamDuringLoad(Team team)
+    {
+        if (team != null) _byId[team.TeamId] = team;
+    }
+
+    /// <summary>Clears the team lookup — called before a save restore.</summary>
+    public void ClearLookup()
+    {
+        _byId.Clear();
     }
 
     public List<Pub> GetAllPubs()
     {
         return allPubs;
+    }
+
+    /// <summary>
+    /// Registers already-deserialized teams (from TeamConverter).
+    /// Called by SaveManager.RestoreGameState().
+    /// </summary>
+    public void RestoreTeamsFromState(List<Team> teams, int playerTeamId)
+    {
+        spawnedTeams.Clear();
+        spawnedTeams.AddRange(teams);
+
+        _byId.Clear();
+        foreach (var team in spawnedTeams)
+            _byId[team.TeamId] = team;
+
+        // Find and set the player's team as index 0
+        int playerIdx = spawnedTeams.FindIndex(t => t.TeamId == playerTeamId);
+        if (playerIdx > 0)
+        {
+            var temp = spawnedTeams[0];
+            spawnedTeams[0] = spawnedTeams[playerIdx];
+            spawnedTeams[playerIdx] = temp;
+        }
+
+        Debug.Log($"[Restore] Restored {spawnedTeams.Count} teams. Player team: {(spawnedTeams.Count > 0 ? MyTeam.Name : "none")}");
     }
 }

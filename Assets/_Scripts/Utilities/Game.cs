@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Newtonsoft.Json;
 using UnityEngine;
 
 public enum Card
@@ -23,10 +24,11 @@ public struct Minute : IComparable<Minute>, IEquatable<Minute>
     public int Base { get; private set;}
     public int Stoppage { get; private set;}
 
-    public Minute(int baseMinute, int stoppageTime = 0)
+    [JsonConstructor]
+    public Minute(int Base, int Stoppage = 0)
     {
-        Base = baseMinute;
-        Stoppage = stoppageTime;
+        this.Base = Base;
+        this.Stoppage = Stoppage;
     }
 
     public void Next()
@@ -41,9 +43,9 @@ public struct Minute : IComparable<Minute>, IEquatable<Minute>
         
     }
 
-    public int TotalMinutes => Base + Stoppage;
+    [JsonIgnore] public int TotalMinutes => Base + Stoppage;
 
-    public bool IsInStoppageTime => Stoppage > 0;
+    [JsonIgnore] public bool IsInStoppageTime => Stoppage > 0;
 
     public override string ToString()
     {

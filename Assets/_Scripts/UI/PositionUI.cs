@@ -129,7 +129,7 @@ public class PositionUI : MonoBehaviour
 
     protected virtual void UpdateAge(Player player)
     {
-        int age = player.AgeYears();
+        int age = player.AgeYears;
 
         UpdateTextStat(StatType.Age, age.ToString());
     }

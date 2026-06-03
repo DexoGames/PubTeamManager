@@ -9,14 +9,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d4a21f886ab40d7438d0336d2ca60d26, type: 3}
+  m_Script: {fileID: 11500000, guid: 7756e7e2ab2b2a64093ed53912fc56b7, type: 3}
   m_Name: 4
   m_EditorClassIdentifier: 
-  Name: Division Three
+  LeagueName: 3rd Division
   Priority: 0
-  Teams: []
-  PromotionLeague: {fileID: 11400000, guid: fea493a4a534a6043bb8a01bdca68a24, type: 2}
-  RelegationLeague: {fileID: 0}
   PromotionSpots: 2
   PlayoffSpots: 4
   RelegationSpots: 0
+  PromotionLeagueTemplate: {fileID: 11400000, guid: 4af6c0e0e9b97cd4e9680d0bf18ac49b, type: 2}
+  RelegationLeagueTemplate: {fileID: 0}

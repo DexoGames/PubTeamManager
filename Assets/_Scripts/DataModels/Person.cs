@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Newtonsoft.Json;
 using UnityEngine;
 
 public struct Morale
@@ -12,13 +13,13 @@ public struct Morale
     public readonly int IdealMood;
     public readonly int IdealPassion;
 
-    public int Mood
+    [JsonProperty] public int Mood
     {
         get => mood;
         set => mood = Clamp(value, 0, 100);
     }
 
-    public int Passion
+    [JsonProperty] public int Passion
     {
         get => passion;
         set => passion = Clamp(value, 0, 100);
@@ -46,6 +47,18 @@ public struct Morale
         Passion = passion;
     }
 
+    /// <summary>Restore constructor for JSON deserialization.</summary>
+    [JsonConstructor]
+    public Morale(int Mood, int Passion, int IdealMood, int IdealPassion)
+    {
+        this.IdealMood = IdealMood;
+        this.IdealPassion = IdealPassion;
+        this.mood = 50;
+        this.passion = 50;
+        this.Mood = Mood;
+        this.Passion = Passion;
+    }
+
     public float DistanceToIdeal()
     {
         return Vector2.Distance(new Vector2(Mood, Passion), new Vector2(IdealMood, IdealPassion));
@@ -62,8 +75,9 @@ public class Person
 {
     public int PersonID;
     public string FirstName, Surname;
-    public string FullName => string.Concat(FirstName, " ", Surname);
+    [JsonIgnore] public string FullName => string.Concat(FirstName, " ", Surname);
 
+    [JsonConverter(typeof(TeamRefConverter))]
     public Team Team;
 
     [Serializable]
@@ -145,8 +159,8 @@ public class Person
     public DateTime DateOfBirth;
     public Morale Morale;
 
-    public int AgeDays() { return (CalenderManager.Instance.CurrentDay - DateOfBirth).Days; }
-    public int AgeYears() { return (int)((CalenderManager.Instance.CurrentDay - DateOfBirth).Days / 365.25f); }
+    [JsonIgnore] public int AgeDays => (CalenderManager.Instance.CurrentDay - DateOfBirth).Days;
+    [JsonIgnore] public int AgeYears => (int)((CalenderManager.Instance.CurrentDay - DateOfBirth).Days / 365.25f);
 
     public int RatingOffset { get; private set; }
 

@@ -1,15 +1,39 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
+using Newtonsoft.Json;
 using UnityEngine;
 
 public class Event
 {
-    public EventType type;
-    public List<Person> affected;
+    /// <summary>EventType SO — serialized by name, resolved from Resources.</summary>
+    [JsonIgnore] public EventType type;
+
+    /// <summary>Name of the EventType ScriptableObject for serialization.</summary>
+    [JsonProperty] public string EventTypeName
+    {
+        get => type != null ? type.name : "";
+        set => _eventTypeName = value;
+    }
+    private string _eventTypeName;
+
+    /// <summary>Affected persons — serialized as PersonIDs.</summary>
+    [JsonIgnore] public List<Person> affected = new List<Person>();
+
+    /// <summary>PersonIDs for serialization.</summary>
+    [JsonProperty] public List<int> AffectedPersonIds
+    {
+        get => affected?.Select(p => p.PersonID).ToList() ?? new List<int>();
+        set => _affectedIds = value;
+    }
+    private List<int> _affectedIds;
+
     public DateTime date;
     public List<string> customWords;
+
+    public Event() { }
 
     public Event(EventType type, List<Person> affected, DateTime date, List<string> customWords = null)
     {
@@ -17,6 +41,32 @@ public class Event
         this.affected = affected;
         this.date = date;
         if (customWords != null) this.customWords = customWords;
+    }
+
+    /// <summary>
+    /// Called after deserialization to resolve EventType and Person references.
+    /// </summary>
+    public void OnAfterDeserialize()
+    {
+        // Resolve EventType from Resources
+        if (!string.IsNullOrEmpty(_eventTypeName) && type == null)
+        {
+            var allEvents = Resources.LoadAll<EventType>("Events");
+            type = Array.Find(allEvents, e => e.name == _eventTypeName);
+            if (type == null)
+                Debug.LogWarning($"[Event] Could not find EventType '{_eventTypeName}'");
+        }
+
+        // Resolve affected persons from IDs
+        if (_affectedIds != null && (affected == null || affected.Count == 0))
+        {
+            affected = new List<Person>();
+            foreach (int id in _affectedIds)
+            {
+                Person p = PersonManager.Instance.GetPerson(id);
+                if (p != null) affected.Add(p);
+            }
+        }
     }
 
     public static string ReadDescription(string desc, List<Person> affected, List<string> customWords)

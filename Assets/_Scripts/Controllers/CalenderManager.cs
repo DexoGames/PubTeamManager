@@ -31,6 +31,15 @@ public class CalenderManager : MonoBehaviour
 
     public DateTime CurrentDay { get; private set; }
 
+    /// <summary>
+    /// Sets the current day — used by save/load system.
+    /// </summary>
+    public void SetCurrentDay(DateTime date)
+    {
+        CurrentDay = date;
+        dateText.text = CurrentDay.Date.ToShortDateString();
+    }
+
     [SerializeField] TextMeshProUGUI dateText;
 
     public UnityEvent<DateTime> NewDay;

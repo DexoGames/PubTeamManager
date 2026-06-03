@@ -28,6 +28,20 @@ public class Pub
     }
 
     /// <summary>
+    /// Returns the postcode prefix (outward code), e.g. "TA19" from "TA19 1AB".
+    /// </summary>
+    public string PostcodePrefix
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(Postcode)) return "";
+            string trimmed = Postcode.Trim();
+            int spaceIndex = trimmed.IndexOf(' ');
+            return spaceIndex > 0 ? trimmed.Substring(0, spaceIndex) : trimmed;
+        }
+    }
+
+    /// <summary>
     /// Calculate distance to another pub using Haversine formula (in kilometers)
     /// </summary>
     public float DistanceTo(Pub other)

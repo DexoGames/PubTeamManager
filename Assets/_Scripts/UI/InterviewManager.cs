@@ -13,6 +13,7 @@ public class InterviewManager : MonoBehaviour
     Player interviewee;
     InterviewContext interviewContext;
     List<InterviewQuestion> askedQuestions = new List<InterviewQuestion>();
+    const int MAX_QUESTIONS = 5;
 
     public static InterviewManager Instance { get; private set; }
 
@@ -69,12 +70,44 @@ public class InterviewManager : MonoBehaviour
             return null;
         }
 
+        if (askedQuestions.Count >= MAX_QUESTIONS)
+        {
+            Debug.Log("[Interview] Maximum questions reached (5). Make your decision!");
+            return null;
+        }
+
         askedQuestions.Add(question);
         InterviewAnswer answer = InterviewAnswerGenerator.GenerateAnswer(interviewee, question);
         
         dialogue.UpdateDialogue(answer.ResponseText);
         
         return answer;
+    }
+
+    /// <summary>
+    /// Returns how many questions remain in this interview.
+    /// </summary>
+    public int QuestionsRemaining => MAX_QUESTIONS - askedQuestions.Count;
+
+    /// <summary>
+    /// Hire the current interviewee — delegates to RecruitmentManager.
+    /// </summary>
+    public bool HireInterviewee()
+    {
+        if (interviewee == null) return false;
+        bool result = RecruitmentManager.Instance.HirePlayer(interviewee);
+        if (result) EndInterview();
+        return result;
+    }
+
+    /// <summary>
+    /// Reject the current interviewee — permanently removed.
+    /// </summary>
+    public void RejectInterviewee()
+    {
+        if (interviewee == null) return;
+        RecruitmentManager.Instance.RejectPlayer(interviewee);
+        EndInterview();
     }
 
     /// <summary>

@@ -14,6 +14,9 @@ public class UIManager : MonoBehaviour
     private MatchSimPageUI matchSimPageUI;
     private TacticsPageUI tacticsPageUI;
     private DiscussionPageUI discussionPageUI;
+    private SchedulePageUI schedulePageUI;
+    private TrainingPageUI trainingPageUI;
+    private RecruitmentPageUI recruitmentPageUI;
 
     private void Awake()
     {
@@ -37,8 +40,11 @@ public class UIManager : MonoBehaviour
         matchSimPageUI = MatchSimPageUI.Instance;
         tacticsPageUI = TacticsPageUI.Instance;
         discussionPageUI = DiscussionPageUI.Instance;
+        schedulePageUI = SchedulePageUI.Instance;
+        trainingPageUI = TrainingPageUI.Instance;
+        recruitmentPageUI = RecruitmentPageUI.Instance;
 
-        //Start by showing home page
+        //START PAGE IS THE HOME PAGE
         ShowHomePage();
     }
 
@@ -94,6 +100,24 @@ public class UIManager : MonoBehaviour
         fixtureListUI.Show();
     }
 
+    public void ShowSchedule()
+    {
+        HideAllUI();
+        schedulePageUI.Show();
+    }
+
+    public void ShowTraining()
+    {
+        HideAllUI();
+        trainingPageUI.Show();
+    }
+
+    public void ShowRecruitment()
+    {
+        HideAllUI();
+        recruitmentPageUI.Show();
+    }
+
     public void ShowHomePage()
     {
         HideAllUI();
@@ -108,7 +132,6 @@ public class UIManager : MonoBehaviour
 
     private void HideAllUI()
     {
-        // Hide all UI panels
         playerDetailsUI.Hide();
         clubDetailsUI.Hide();
         fixtureListUI.Hide();
@@ -116,6 +139,9 @@ public class UIManager : MonoBehaviour
         matchSimPageUI.Hide();
         tacticsPageUI.Hide();
         discussionPageUI.Hide();
+        schedulePageUI.Hide();
+        trainingPageUI.Hide();
+        recruitmentPageUI.Hide();
     }
 
     public void ShowNavigationButtons(bool show)

@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Newtonsoft.Json;
 using UnityEngine;
 
 [System.Serializable]
@@ -11,14 +12,18 @@ public class Manager : Person
     public struct Stats
     {
         public Skills Skills;
+
+        [JsonConverter(typeof(ScriptableObjectRefConverter), typeof(Formation), "Formations/Usable")]
         public Formation Formation;
-        public TacticInstruction[] Instructions;
+
+        [JsonIgnore] public TacticInstruction[] Instructions;
+
+        [JsonConverter(typeof(ScriptableObjectRefConverter), typeof(TacticTemplate), "Tactics/Templates")]
         public TacticTemplate Template;
 
-        public int Tactics => (int)Game.Average(Skills.Intelligence, Skills.Intelligence, Skills.Teamwork);
-        public int Motivation => (int)Game.Average(Skills.Agression, Skills.Resilience, Skills.Teamwork);
-        public int Communication => (int)Game.Average(Skills.Teamwork, Skills.Teamwork, Skills.Composure, Skills.Intelligence);
-
+        [JsonIgnore] public int Tactics => (int)Game.Average(Skills.Intelligence, Skills.Intelligence, Skills.Teamwork);
+        [JsonIgnore] public int Motivation => (int)Game.Average(Skills.Agression, Skills.Resilience, Skills.Teamwork);
+        [JsonIgnore] public int Communication => (int)Game.Average(Skills.Teamwork, Skills.Teamwork, Skills.Composure, Skills.Intelligence);
     }
 
     [System.Serializable]
@@ -63,6 +68,11 @@ public class Manager : Person
             }
         }
     }
+
+    /// <summary>
+    /// Parameterless constructor for JSON deserialization.
+    /// </summary>
+    public Manager() { }
 
     public static Skills PersonalityModifier(Skills manager, PersonalityType personality)
     {
