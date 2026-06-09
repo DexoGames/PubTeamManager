@@ -166,6 +166,9 @@ public class MatchSimPageUI : UIPage
             SetState(State.FullTime);
 
             _fixture.FinaliseResult();
+
+            // The player's match result changed a fixture — persist core + current season.
+            SaveManager.Instance?.AutoSave();
         }
     }
 

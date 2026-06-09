@@ -28,6 +28,21 @@ public class Match
         public Player assister;
         public float xG;
         public Minute minute;
+
+        // Newtonsoft cannot set members on a value-type (struct) via its value provider, so a
+        // [JsonConstructor] is required for Shot to deserialize (same pattern as Foul below).
+        // Without it, loading a saved match throws "Error setting value to 'shooter' on 'Match+Shot'".
+        [JsonConstructor]
+        public Shot(ShotType type, ShotOutcome result, Team team, Player shooter, Player assister, float xG, Minute minute)
+        {
+            this.type = type;
+            this.result = result;
+            this.team = team;
+            this.shooter = shooter;
+            this.assister = assister;
+            this.xG = xG;
+            this.minute = minute;
+        }
     }
 
     public struct Foul
@@ -71,6 +86,10 @@ public class Match
         public List<Shot> goals;
         public List<Foul> fouls;
         public float possession;
+
+        /// <summary>PersonIDs of the starting XI. Captured at FinaliseResult so archived
+        /// (slimmed) matches can still show who played even after fouls/possession are dropped.</summary>
+        public List<int> lineup;
     }
 
     private readonly Team home;

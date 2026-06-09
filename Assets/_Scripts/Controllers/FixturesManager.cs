@@ -17,6 +17,16 @@ public class FixturesManager : MonoBehaviour
     public List<CompetitionSeries> CompetitionSeries { get; private set; } = new List<CompetitionSeries>();
     private readonly Dictionary<int, CompetitionSeries> _seriesById = new Dictionary<int, CompetitionSeries>();
 
+    /// <summary>The season currently in play. Only this season's competitions live in memory.</summary>
+    public int CurrentSeasonYear { get; private set; }
+
+    /// <summary>Index of all seasons that exist on disk (current + archived), for lazy history loading.</summary>
+    public List<SeasonIndexEntry> Seasons { get; private set; } = new List<SeasonIndexEntry>();
+
+    // Temporary cache holding a past season loaded for viewing (history UI); not part of live state.
+    private readonly Dictionary<int, Competition> _viewedComps = new Dictionary<int, Competition>();
+    private readonly Dictionary<int, Fixture> _viewedFixtures = new Dictionary<int, Fixture>();
+
     public static FixturesManager Instance { get; private set; }
 
     public void Awake()
@@ -85,9 +95,25 @@ public class FixturesManager : MonoBehaviour
         RegisterCompetition(div3, GetOrCreateSeries(div3.Name, div3.Name), seasonYear);
         RegisterCompetition(cup, GetOrCreateSeries(cup.Name, cup.Name), seasonYear);
 
+        CurrentSeasonYear = seasonYear;
+        RecordSeasonIndex(seasonYear);
+
         foreach (var c in Competitions)
             Debug.Log($"[Comp] '{c.Name}' Id:{c.Id} Series:{c.SeriesId} Season:{c.SeasonYear} Fixtures:{c.Fixtures.Count}");
     }
+
+    /// <summary>Adds/updates the season-index entry for a year from the in-memory competitions.</summary>
+    private void RecordSeasonIndex(int year)
+    {
+        var ids = Competitions.Where(c => c.SeasonYear == year).Select(c => c.Id).ToList();
+        var entry = Seasons.FirstOrDefault(s => s.Year == year);
+        if (entry == null) Seasons.Add(new SeasonIndexEntry(year, ids));
+        else entry.CompetitionIds = ids;
+    }
+
+    /// <summary>The competitions of the current season (the only ones held in memory).</summary>
+    public List<Competition> GetCurrentSeasonCompetitions() =>
+        Competitions.Where(c => c.SeasonYear == CurrentSeasonYear).ToList();
 
     /// <summary>
     /// Assigns an ID + series + season to a freshly-created competition instance and indexes it.
@@ -122,10 +148,12 @@ public class FixturesManager : MonoBehaviour
     }
 
     public Competition GetCompetition(int id) =>
-        _competitionsById.TryGetValue(id, out var c) ? c : null;
+        _competitionsById.TryGetValue(id, out var c) ? c
+        : (_viewedComps.TryGetValue(id, out var vc) ? vc : null);
 
     public Fixture GetFixture(int id) =>
-        _fixturesById.TryGetValue(id, out var f) ? f : null;
+        _fixturesById.TryGetValue(id, out var f) ? f
+        : (_viewedFixtures.TryGetValue(id, out var vf) ? vf : null);
 
     public CompetitionSeries GetSeries(int id) =>
         _seriesById.TryGetValue(id, out var s) ? s : null;
@@ -139,18 +167,20 @@ public class FixturesManager : MonoBehaviour
         Competitions.Where(c => !c.IsComplete).ToList();
 
     /// <summary>
-    /// Rolls over to a new season. The finished instances are marked complete and RETAINED
-    /// (for history); brand-new Competition instances are created for the new season, linked
-    /// to the same CompetitionSeries lineage. Promotion/relegation is applied into fresh
-    /// rosters without mutating the archived instances.
+    /// Rolls over to a new season. The finishing season (the only one in memory) is marked
+    /// complete, then — once the new season is built — archived to its own file (with
+    /// non-player matches slimmed) and unloaded from memory. Brand-new Competition instances
+    /// are created for the new season, linked to the same CompetitionSeries lineage, with
+    /// promotion/relegation applied into fresh rosters.
     /// </summary>
     public void StartNewSeason()
     {
-        // The current (most recent) instance of each series.
-        var currentLeagues = CompetitionSeries
-            .Select(s => GetCompetition(s.SeasonCompetitionIds.LastOrDefault()) as League)
-            .Where(l => l != null)
-            .ToList();
+        int oldYear = CurrentSeasonYear;
+
+        // The finishing season is the only thing in memory.
+        var finishingComps = new List<Competition>(Competitions);
+        var currentLeagues = finishingComps.OfType<League>().ToList();
+        var currentCup = finishingComps.OfType<Cup>().FirstOrDefault();
 
         // Mark finished, and snapshot rosters so we don't mutate the archived instances.
         var newRosters = new Dictionary<League, List<Team>>();
@@ -159,6 +189,7 @@ public class FixturesManager : MonoBehaviour
             league.IsComplete = true;
             newRosters[league] = new List<Team>(league.Teams);
         }
+        if (currentCup != null) currentCup.IsComplete = true;
 
         // Apply promotion/relegation movements into the snapshot rosters.
         foreach (var league in currentLeagues)
@@ -184,7 +215,7 @@ public class FixturesManager : MonoBehaviour
         }
 
         DateTime newStartDate = CalenderManager.Instance.CurrentDay;
-        int seasonYear = newStartDate.Year;
+        int newYear = newStartDate.Year;
 
         // Create new league instances with the updated rosters, linked to the same series.
         var newLeaguesByName = new Dictionary<string, League>();
@@ -195,7 +226,7 @@ public class FixturesManager : MonoBehaviour
                 ? oldLeague.Template.CreateLeague(roster, newStartDate)
                 : new League(oldLeague.Name, roster, newStartDate);
 
-            RegisterCompetition(newLeague, GetSeries(oldLeague.SeriesId), seasonYear);
+            RegisterCompetition(newLeague, GetSeries(oldLeague.SeriesId), newYear);
             newLeaguesByName[newLeague.Name] = newLeague;
         }
 
@@ -211,14 +242,21 @@ public class FixturesManager : MonoBehaviour
 
         // New cup with all teams, linked to the cup series.
         var allTeams = TeamManager.Instance.GetAllTeams();
-        var currentCup = CompetitionSeries
-            .Select(s => GetCompetition(s.SeasonCompetitionIds.LastOrDefault()) as Cup)
-            .FirstOrDefault(c => c != null);
-        if (currentCup != null) currentCup.IsComplete = true;
         string cupName = currentCup?.Name ?? "Papa Johns Cup";
         var cupSeries = currentCup != null ? GetSeries(currentCup.SeriesId) : GetOrCreateSeries(cupName, cupName);
         Cup newCup = new Cup(cupName, allTeams, newStartDate.AddDays(10));
-        RegisterCompetition(newCup, cupSeries, seasonYear);
+        RegisterCompetition(newCup, cupSeries, newYear);
+
+        // Advance the current-season pointer + index (so the new season is "current").
+        CurrentSeasonYear = newYear;
+        RecordSeasonIndex(newYear);
+
+        // Archive the finished season to its own file (slimming non-player games) then unload it.
+        if (oldYear != 0 && finishingComps.Count > 0)
+        {
+            SaveManager.Instance?.ArchiveSeason(oldYear, finishingComps);
+            UnloadSeasonFromMemory(finishingComps);
+        }
 
         // Increment seasons played for all teams
         foreach (var team in allTeams)
@@ -227,7 +265,7 @@ public class FixturesManager : MonoBehaviour
         }
 
         foreach (var newLeague in newLeaguesByName.Values)
-            Debug.Log($"[Season] New '{newLeague.Name}' Id:{newLeague.Id} Series:{newLeague.SeriesId} Season:{seasonYear} — lineage now {GetSeasonsOfSeries(newLeague.SeriesId).Count} seasons");
+            Debug.Log($"[Season] New '{newLeague.Name}' Id:{newLeague.Id} Series:{newLeague.SeriesId} Season:{newYear}");
     }
 
     public void RegisterFixtures(List<Fixture> fixtures)
@@ -264,6 +302,62 @@ public class FixturesManager : MonoBehaviour
         _competitionsById.Clear();
         CompetitionSeries.Clear();
         _seriesById.Clear();
+        Seasons.Clear();
+        CurrentSeasonYear = 0;
+        _viewedComps.Clear();
+        _viewedFixtures.Clear();
+    }
+
+    /// <summary>Restores the season index + current-season pointer from the core save.</summary>
+    public void RestoreSeasonIndex(List<SeasonIndexEntry> seasons, int currentYear)
+    {
+        Seasons = seasons ?? new List<SeasonIndexEntry>();
+        CurrentSeasonYear = currentYear;
+    }
+
+    /// <summary>
+    /// Removes a season's competitions and fixtures from live memory (after it's been
+    /// archived to disk). The season-index entry is kept so it can be lazily re-loaded.
+    /// </summary>
+    public void UnloadSeasonFromMemory(IEnumerable<Competition> comps)
+    {
+        if (comps == null) return;
+        foreach (var comp in comps)
+        {
+            if (comp == null) continue;
+            _competitionsById.Remove(comp.Id);
+            Competitions.Remove(comp);
+
+            if (comp.Fixtures == null) continue;
+            foreach (var fx in comp.Fixtures)
+            {
+                _fixturesById.Remove(fx.Id);
+                allFixtures.Remove(fx);
+                if (fx.HomeTeam != null && fixturesByTeam.TryGetValue(fx.HomeTeam, out var hl)) hl.Remove(fx);
+                if (fx.AwayTeam != null && fixturesByTeam.TryGetValue(fx.AwayTeam, out var al)) al.Remove(fx);
+            }
+        }
+    }
+
+    /// <summary>Registers a lazily-loaded past season into the viewing cache so its
+    /// competitions/fixtures resolve by ID for a history UI. Call ClearViewedSeason() after.</summary>
+    public void RegisterViewedSeason(IEnumerable<Competition> comps)
+    {
+        if (comps == null) return;
+        foreach (var comp in comps)
+        {
+            if (comp == null) continue;
+            _viewedComps[comp.Id] = comp;
+            if (comp.Fixtures == null) continue;
+            foreach (var fx in comp.Fixtures) _viewedFixtures[fx.Id] = fx;
+        }
+    }
+
+    /// <summary>Clears the history viewing cache.</summary>
+    public void ClearViewedSeason()
+    {
+        _viewedComps.Clear();
+        _viewedFixtures.Clear();
     }
 
     /// <summary>

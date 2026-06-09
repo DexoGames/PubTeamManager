@@ -41,6 +41,12 @@ public class TacticsPageUI : UIPage
         benchManager.Setup(formationUI, team);
     }
 
+    /// <summary>Persist tactic changes when the player navigates away from the tactics page.</summary>
+    protected override void OnHide()
+    {
+        SaveManager.Instance?.SaveCore();
+    }
+
 
     public void SetSizes(int index)
     {

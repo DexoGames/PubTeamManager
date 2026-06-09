@@ -74,7 +74,12 @@ public abstract class UIPage : MonoBehaviour
 
     public void Hide()
     {
+        bool wasVisible = Elements.gameObject.activeSelf;
         Elements.gameObject.SetActive(false);
+        if (wasVisible) OnHide();
     }
+
+    /// <summary>Called when the page transitions from visible to hidden (e.g. navigating away).</summary>
+    protected virtual void OnHide() { }
 
 }

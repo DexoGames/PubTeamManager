@@ -66,6 +66,9 @@ public class DiscussionPageUI : UIPage
         dialogue.UpdateExtraInfo(InfoAboutResponse(moraleChange));
 
         EventsManager.Instance.Events.Remove(thisEvent);
+
+        // Persist the morale change + event removal.
+        SaveManager.Instance?.SaveCore();
     }
 
     public static string ReactionToDialogue(Event.Reaction reaction)

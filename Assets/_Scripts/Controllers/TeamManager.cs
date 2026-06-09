@@ -12,10 +12,12 @@ public class TeamManager : MonoBehaviour
     {
         if (Instance != null && Instance != this)
         {
+            Debug.Log("[TRACE] TeamManager.Awake — DUPLICATE, destroying this GameObject");
             Destroy(this.gameObject);
         }
         else
         {
+            Debug.Log("[TRACE] TeamManager.Awake — set Instance");
             Instance = this;
         }
     }
@@ -28,8 +30,14 @@ public class TeamManager : MonoBehaviour
     private readonly Dictionary<int, Team> _byId = new Dictionary<int, Team>();
     public Team MyTeam => spawnedTeams[0];
 
+    private void OnEnable()
+    {
+        Debug.Log("[TRACE] TeamManager.OnEnable — component is enabled");
+    }
+
     private void Start()
     {
+        Debug.Log("[TRACE] TeamManager.Start — LoadPubsFromCSV");
         LoadPubsFromCSV();
     }
 

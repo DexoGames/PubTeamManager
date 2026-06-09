@@ -1,14 +1,17 @@
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 /// <summary>
-/// Manages training sessions for the player's team.
-/// Provides available training options and executes the selected session.
+/// Manages the player's team training. Holds the ongoing training session (which persists
+/// across saves and repeats every training day) and executes it when the schedule fires a
+/// training day. Drill content comes from <see cref="DrillCatalog"/>.
 /// </summary>
 public class TrainingManager : MonoBehaviour
 {
     public static TrainingManager Instance { get; private set; }
+
+    /// <summary>Default drill used if the player never sets one.</summary>
+    private const DrillId DEFAULT_DRILL = DrillId.Fitness;
 
     public TrainingSession CurrentSession { get; private set; }
 
@@ -24,62 +27,37 @@ public class TrainingManager : MonoBehaviour
         }
     }
 
+    /// <summary>All available drills (content from the catalog).</summary>
+    public IReadOnlyList<Drill> GetDrills() => DrillCatalog.All;
+
     /// <summary>
-    /// Sets the training session for this week.
+    /// Sets the ongoing training session. Persists until changed and repeats every
+    /// training day — it is NOT executed here (execution happens on training days).
     /// </summary>
     public void SetTraining(TrainingSession session)
     {
         CurrentSession = session;
+        if (session != null)
+            Debug.Log($"[Training] Set ongoing training: {session.Name}");
     }
+
+    /// <summary>Convenience: set a simple (non-positional) drill as the ongoing session.</summary>
+    public void SetDrill(DrillId drill) => SetTraining(new TrainingSession(drill));
 
     /// <summary>
     /// Executes the current training session on the player's team.
-    /// Called on training days by the schedule system.
+    /// Called on training days via ScheduleManager.OnTrainingDay.
     /// </summary>
     public void ExecuteTraining()
     {
         if (CurrentSession == null)
         {
-            Debug.Log("[Training] No training session set — using default stat boost.");
-            CurrentSession = GetAvailableTrainingOptions()[0];
+            Debug.Log($"[Training] No session set — defaulting to {DEFAULT_DRILL}.");
+            CurrentSession = new TrainingSession(DEFAULT_DRILL);
         }
 
         Team myTeam = TeamManager.Instance.MyTeam;
         CurrentSession.Execute(myTeam);
-        Debug.Log($"[Training] Executed {CurrentSession.Type} training: {CurrentSession.Description}");
-    }
-
-    /// <summary>
-    /// Returns a list of available training session options.
-    /// </summary>
-    public List<TrainingSession> GetAvailableTrainingOptions()
-    {
-        var options = new List<TrainingSession>();
-
-        // Stat boost options — one per stat category
-        options.Add(new TrainingSession(TrainingType.Technical, "Shooting Practice") { TargetStat = PlayerStat.Shooting });
-        options.Add(new TrainingSession(TrainingType.Technical, "Passing Drills") { TargetStat = PlayerStat.Passing });
-        options.Add(new TrainingSession(TrainingType.Technical, "Defensive Training") { TargetStat = PlayerStat.Tackling });
-        options.Add(new TrainingSession(TrainingType.Technical, "Dribbling Drills") { TargetStat = PlayerStat.Dribbling });
-        options.Add(new TrainingSession(TrainingType.Technical, "Crossing Practice") { TargetStat = PlayerStat.Crossing });
-        options.Add(new TrainingSession(TrainingType.Technical, "Heading Drills") { TargetStat = PlayerStat.Heading });
-        options.Add(new TrainingSession(TrainingType.Mental, "Positioning Drills") { TargetStat = PlayerStat.Positioning });
-        options.Add(new TrainingSession(TrainingType.Mental, "Tactical Awareness") { TargetStat = PlayerStat.Intelligence });
-        options.Add(new TrainingSession(TrainingType.Mental, "Creative Play") { TargetStat = PlayerStat.Creativity });
-        options.Add(new TrainingSession(TrainingType.Mental, "Team Bonding Drills") { TargetStat = PlayerStat.Teamwork });
-        options.Add(new TrainingSession(TrainingType.Mental, "Composure Training") { TargetStat = PlayerStat.Composure });
-        options.Add(new TrainingSession(TrainingType.Physical, "Fitness Training") { TargetStat = PlayerStat.Pace });
-        options.Add(new TrainingSession(TrainingType.Physical, "Strength & Conditioning") { TargetStat = PlayerStat.Strength });
-
-        // Tactic familiarity
-        options.Add(new TrainingSession(TrainingType.Tactical, "Tactic Drills"));
-
-        // Social / morale
-        options.Add(new TrainingSession(TrainingType.Social, "Team Social Activity"));
-
-        // Positional — this is set up via UI, so we add a template
-        options.Add(new TrainingSession(TrainingType.Positional, "Positional Training"));
-
-        return options;
+        Debug.Log($"[Training] Executed '{CurrentSession.Name}' ({CurrentSession.Type}).");
     }
 }

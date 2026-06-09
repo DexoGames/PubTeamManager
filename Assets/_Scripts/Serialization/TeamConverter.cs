@@ -91,7 +91,10 @@ public class TeamConverter : JsonConverter<Team>
             if (manager != null)
             {
                 manager.Team = team;
-                PersonManager.Instance.RegisterPerson(manager);
+                // RegisterExisting (not RegisterPerson) so the manager keeps its saved PersonID —
+                // RegisterPerson would allocate a fresh ID on every load, breaking manager refs
+                // and inflating the person ID counter.
+                PersonManager.Instance.RegisterExisting(manager);
 
                 // Rebuild Instructions from Template
                 if (manager.ManStats.Template != null)

@@ -33,6 +33,7 @@ public class UIManager : MonoBehaviour
 
     public void Setup()
     {
+        Debug.Log("[TRACE] UIManager.Setup — begin");
         playerDetailsUI = PlayerDetailsUI.Instance;
         clubDetailsUI = TeamDetailsUI.Instance;
         fixtureListUI = CompetitionPageUI.Instance;
@@ -120,8 +121,10 @@ public class UIManager : MonoBehaviour
 
     public void ShowHomePage()
     {
+        Debug.Log($"[TRACE] UIManager.ShowHomePage — homePageUI null? {homePageUI == null}");
         HideAllUI();
         homePageUI.Show();
+        Debug.Log("[TRACE] UIManager.ShowHomePage — shown");
     }
 
     public void ShowMatchSimPage(Fixture fixture)

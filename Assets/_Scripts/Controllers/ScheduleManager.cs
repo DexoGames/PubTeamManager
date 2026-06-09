@@ -89,6 +89,22 @@ public class ScheduleManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Returns the date of the next scheduled training day (today onwards), or null if
+    /// none is scheduled within the lookahead window.
+    /// </summary>
+    public DateTime? GetNextTrainingDay()
+    {
+        DateTime today = CalenderManager.Instance.CurrentDay.Date;
+        for (int i = 0; i < SCHEDULE_AHEAD_DAYS; i++)
+        {
+            DateTime date = today.AddDays(i);
+            if (schedule.TryGetValue(date, out ScheduleEntry entry) && entry.Type == ScheduleEntryType.Training)
+                return date;
+        }
+        return null;
+    }
+
+    /// <summary>
     /// Gets upcoming schedule entries for the next N days.
     /// </summary>
     public List<ScheduleEntry> GetUpcoming(int days)

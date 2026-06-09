@@ -55,6 +55,8 @@ public class Fixture : ISaveable
     {
         BeenPlayed = true;
 
+        CaptureLineups();
+
         // Record club stats for both teams
         HomeTeam.Stats.RecordMatchResult(this, HomeTeam);
         AwayTeam.Stats.RecordMatchResult(this, AwayTeam);
@@ -70,6 +72,39 @@ public class Fixture : ISaveable
         {
             league.UpdateStandings(this);
         }
+    }
+
+    /// <summary>Records the starting XIs (PersonIDs) for both teams into the Result.</summary>
+    private void CaptureLineups()
+    {
+        var r = Result;
+        if (HomeTeam != null && HomeTeam.Players != null && HomeTeam.Players.Count >= 11)
+            r.home.lineup = HomeTeam.StartingPlayers.Select(p => p.PersonID).ToList();
+        if (AwayTeam != null && AwayTeam.Players != null && AwayTeam.Players.Count >= 11)
+            r.away.lineup = AwayTeam.StartingPlayers.Select(p => p.PersonID).ToList();
+        Result = r; // struct write-back
+    }
+
+    /// <summary>True if the given team (by ID) played in this fixture.</summary>
+    public bool InvolvesTeam(int teamId)
+    {
+        return (HomeTeam != null && HomeTeam.TeamId == teamId)
+            || (AwayTeam != null && AwayTeam.TeamId == teamId);
+    }
+
+    /// <summary>
+    /// Strips this fixture's result down for long-term archival: drops fouls and possession,
+    /// keeps the score, goal scorers and both starting XIs. Used for completed-season matches
+    /// that don't involve the player's team.
+    /// </summary>
+    public void SlimForArchive()
+    {
+        var r = Result;
+        r.home.fouls = new List<Match.Foul>();
+        r.away.fouls = new List<Match.Foul>();
+        r.home.possession = 0f;
+        r.away.possession = 0f;
+        Result = r;
     }
 
     public Team GetWinner()

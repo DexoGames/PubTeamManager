@@ -36,6 +36,22 @@ public class Player : Person
     public int Fatigue { get; private set; }
     public float TacticFamiliarity { get; set; } = 0f;
 
+    /// <summary>
+    /// Temporary per-skill "Boost" layer from training (0..MAX_BOOST each).
+    /// Added on top of raw skills in the stats pipeline; builds with training and
+    /// decays when not actively trained. Never modifies the underlying RawStats.
+    /// </summary>
+    public int[] Boost = new int[SKILL_NO];
+
+    /// <summary>Max amount a stat can be Boosted above its actual value.</summary>
+    public const int MAX_BOOST = 15;
+
+    /// <summary>
+    /// Per-position progress counters towards the next PositionStrength level,
+    /// driven by positional training. Resets to 0 on each level-up.
+    /// </summary>
+    public Dictionary<Position, int> PositionProgress = new Dictionary<Position, int>();
+
     public Player(Team team, Formation.Position[] teamPositions, int index)
     {
         GeneratePerson();
@@ -193,7 +209,7 @@ public class Player : Person
 
     public Stats GetStats(bool ignoreMorale = false)
     {
-        Stats newStats = GetRawStats();
+        Stats newStats = GetBoostedRawStats();
 
         if (GetTeamIndex() < Team.Formation.Positions.Length)
         {
@@ -205,10 +221,24 @@ public class Player : Person
         return newStats;
     }
 
+    /// <summary>
+    /// Raw stats with the temporary training Boost applied on top of each skill
+    /// (clamped to 100). This is the entry point for the effective-stats pipeline,
+    /// so Boost flows through positional scaling and morale automatically.
+    /// </summary>
+    private Stats GetBoostedRawStats()
+    {
+        Stats s = GetRawStats();
+        EnsureBoost();
+        for (int i = 0; i < SKILL_NO; i++)
+            s.Skills[i] = Mathf.Min(100, s.Skills[i] + Boost[i]);
+        return s;
+    }
+
 
     public Stats GetStatsFor(Position position)
     {
-        Stats newStats = GetRawStats();
+        Stats newStats = GetBoostedRawStats();
 
         PositionStrength strength = newStats.Positions[position];
 
@@ -538,27 +568,105 @@ public class Player : Person
         RawStats.SetStat(stat, Mathf.RoundToInt(current + amount));
     }
 
-    /// <summary>
-    /// Improves positional strength for a given position.
-    /// Used by positional training.
-    /// </summary>
-    public void ImprovePositionalStrength(Position targetPosition, float gain)
+    // ————————————————————— Training: Boost —————————————————————
+
+    /// <summary>50% chance per session that a positional progress counter increments.</summary>
+    public const float POSITIONAL_ROLL_CHANCE = 0.5f;
+
+    /// <summary>Guards the Boost array against null/old-save length mismatch.</summary>
+    public void EnsureBoost()
     {
-        if (!RawStats.Positions.ContainsKey(targetPosition))
+        if (Boost != null && Boost.Length == SKILL_NO) return;
+
+        int[] rebuilt = new int[SKILL_NO];
+        if (Boost != null)
+            for (int i = 0; i < Mathf.Min(Boost.Length, SKILL_NO); i++) rebuilt[i] = Boost[i];
+        Boost = rebuilt;
+    }
+
+    /// <summary>Guards the positional progress dictionary against null (old saves).</summary>
+    public void EnsurePositions()
+    {
+        if (PositionProgress == null) PositionProgress = new Dictionary<Position, int>();
+    }
+
+    /// <summary>
+    /// Applies one training session's Boost effect: trained stats build (capped at
+    /// MAX_BOOST and protected from decay this session), all other skills decay.
+    /// Pass an empty/null set (e.g. for tactical/social drills) to decay everything.
+    /// </summary>
+    public void ApplyBoostSession(IEnumerable<PlayerStat> trainedStats, int build, int decay)
+    {
+        EnsureBoost();
+
+        HashSet<int> trained = new HashSet<int>();
+        if (trainedStats != null)
         {
-            RawStats.Positions[targetPosition] = PositionStrength.None;
+            foreach (PlayerStat stat in trainedStats)
+            {
+                int i = (int)stat;
+                if (i < 0 || i >= SKILL_NO) continue; // Height has no Boost slot
+                Boost[i] = Mathf.Min(MAX_BOOST, Boost[i] + build);
+                trained.Add(i);
+            }
         }
 
-        PositionStrength current = RawStats.Positions[targetPosition];
+        for (int i = 0; i < SKILL_NO; i++)
+        {
+            if (trained.Contains(i)) continue;
+            Boost[i] = Mathf.Max(0, Boost[i] - decay);
+        }
+    }
+
+    /// <summary>Current Boost on a given skill (0 for Height, which has no Boost slot).</summary>
+    public int GetBoost(PlayerStat stat)
+    {
+        int i = (int)stat;
+        if (i < 0 || i >= SKILL_NO) return 0;
+        EnsureBoost();
+        return Boost[i];
+    }
+
+    // ————————————————————— Training: Positional —————————————————————
+
+    /// <summary>
+    /// One positional-training tick for a target position. With POSITIONAL_ROLL_CHANCE,
+    /// the progress counter increments; on reaching the level threshold the position
+    /// strength rises one level (permanently) and the counter resets. Caps at Natural.
+    /// </summary>
+    public void TickPositionalRoll(Position pos)
+    {
+        EnsurePositions();
+
+        PositionStrength current = RawStats.Positions.TryGetValue(pos, out var s) ? s : PositionStrength.None;
         if (current >= PositionStrength.Natural) return;
 
-        // Accumulate gain — each strength level needs ~15 gain points
-        float threshold = 15f;
-        float currentProgress = (int)current * threshold;
-        float newProgress = currentProgress + gain;
-        int newLevel = Mathf.Min((int)(newProgress / threshold), (int)PositionStrength.Natural);
+        if (UnityEngine.Random.value >= POSITIONAL_ROLL_CHANCE) return;
 
-        RawStats.Positions[targetPosition] = (PositionStrength)newLevel;
+        int counter = (PositionProgress.TryGetValue(pos, out var c) ? c : 0) + 1;
+
+        if (counter >= ProgressThreshold(current))
+        {
+            RawStats.Positions[pos] = (PositionStrength)((int)current + 1);
+            PositionProgress[pos] = 0;
+        }
+        else
+        {
+            PositionProgress[pos] = counter;
+        }
+    }
+
+    /// <summary>Counter needed to advance from the given strength to the next level.</summary>
+    public static int ProgressThreshold(PositionStrength from)
+    {
+        switch (from)
+        {
+            case PositionStrength.None: return 2; // None → Poor
+            case PositionStrength.Poor: return 3; // Poor → Okay
+            case PositionStrength.Okay: return 4; // Okay → Good
+            case PositionStrength.Good: return 8; // Good → Natural (the jump)
+            default: return int.MaxValue;
+        }
     }
 }
 
