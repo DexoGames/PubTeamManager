@@ -1,75 +1,45 @@
 using System;
-using TMPro;
 using UnityEngine;
 
+/// <summary>
+/// Home dashboard coordinator. Its only direct job is the day-timeline strip: on show it
+/// detects whether the day advanced by exactly one since it was last shown (the player must be
+/// on the home page to advance, and AdvanceDay re-shows the home page) and animates the slide,
+/// otherwise it snaps. Every other panel is a UIObject under this page, so it refreshes
+/// automatically via UIPage.SetupUI() — no per-widget wiring needed here.
+/// </summary>
 public class HomePageUI : UIPage
 {
     public static HomePageUI Instance { get; private set; }
 
-    [SerializeField] Transform fixtureContainer;
-    [SerializeField] FixtureUI fixturePrefab;
-    [SerializeField] TextMeshProUGUI competitionName;
+    [SerializeField] private DayTimelineWidget dayTimeline;
 
-    Competition latestCompetition;
-    int latestRoundFocus = -1;
-    DateTime latestMyTeamRoundEndDate; // last round involving MyTeam
+    private DateTime lastShownDay;
+    private bool hasShownBefore;
 
     public void Awake()
     {
         if (Instance != null && Instance != this)
-        {
             Destroy(this.gameObject);
-        }
         else
-        {
             Instance = this;
-        }
     }
 
     protected override void OnShow()
     {
-        Game.ClearContainer(fixtureContainer);
-
-        Fixture upcomingFixture = TeamManager.Instance.MyTeam.GetUpcomingFixture();
-        Competition competition = upcomingFixture.Competition;
-        int roundFocus = competition.GetUpcomingRound();
-
-        if (latestCompetition != null && latestRoundFocus >= 0)
+        if (dayTimeline != null && CalenderManager.Instance != null)
         {
-            if (CalenderManager.Instance.CurrentDay <= latestMyTeamRoundEndDate.AddDays(1))
-            {
-                competition = latestCompetition;
-                roundFocus = latestRoundFocus;
-            }
+            DateTime today = CalenderManager.Instance.CurrentDay.Date;
+            bool advancedOneDay = hasShownBefore && today == lastShownDay.AddDays(1).Date;
+
+            if (advancedOneDay) dayTimeline.AdvanceAnimated();
+            else dayTimeline.SnapToToday();
+
+            lastShownDay = today;
+            hasShownBefore = true;
         }
 
-        competitionName.text = $"{competition.Name}, Round {roundFocus + 1}";
-
-        foreach (var f in competition.Rounds[roundFocus])
-        {
-            var obj = Instantiate(fixturePrefab, fixtureContainer);
-            obj.SetFixtureText(f, false);
-        }
-
-        latestCompetition = competition;
-        latestRoundFocus = roundFocus;
-        latestMyTeamRoundEndDate = GetMyTeamRoundEndDate(competition, roundFocus);
-    }
-
-    private DateTime GetMyTeamRoundEndDate(Competition comp, int roundIndex)
-    {
-        DateTime latest = DateTime.MinValue;
-        Team myTeam = TeamManager.Instance.MyTeam;
-
-        foreach (var fixture in comp.Rounds[roundIndex])
-        {
-            if (fixture.HomeTeam == myTeam || fixture.AwayTeam == myTeam)
-            {
-                if (fixture.Date > latest)
-                    latest = fixture.Date;
-            }
-        }
-
-        return latest;
+        // CompetitionContextWidget, CurrentRoundWidget, SquadStatusWidget and the events inbox
+        // are UIObjects — UIPage.SetupUI() refreshes them right after this returns.
     }
 }

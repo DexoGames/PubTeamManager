@@ -69,6 +69,11 @@ public class ScheduleManager : MonoBehaviour
             {
                 schedule[date] = new ScheduleEntry(date, ScheduleEntryType.Training, "Training Day");
             }
+            // Pub trip on a non-match Sunday — a social day for the squad
+            else if (dow == DayOfWeek.Sunday)
+            {
+                schedule[date] = new ScheduleEntry(date, ScheduleEntryType.PubTrip, "Pub Trip");
+            }
             else
             {
                 schedule[date] = new ScheduleEntry(date, ScheduleEntryType.RestDay, "Rest Day");

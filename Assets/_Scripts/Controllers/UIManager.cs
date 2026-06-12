@@ -5,6 +5,9 @@ public class UIManager : MonoBehaviour
 {
     public static UIManager Instance { get; private set; }
 
+    /// <summary>True while the home page is the visible page (drives the Next Day / Home button).</summary>
+    public bool IsHomeActive { get; private set; }
+
     public GameObject[] hideForMatchSim;
 
     private PlayerDetailsUI playerDetailsUI;
@@ -124,6 +127,7 @@ public class UIManager : MonoBehaviour
         Debug.Log($"[TRACE] UIManager.ShowHomePage — homePageUI null? {homePageUI == null}");
         HideAllUI();
         homePageUI.Show();
+        IsHomeActive = true;
         Debug.Log("[TRACE] UIManager.ShowHomePage — shown");
     }
 
@@ -135,6 +139,7 @@ public class UIManager : MonoBehaviour
 
     private void HideAllUI()
     {
+        IsHomeActive = false;
         playerDetailsUI.Hide();
         clubDetailsUI.Hide();
         fixtureListUI.Hide();

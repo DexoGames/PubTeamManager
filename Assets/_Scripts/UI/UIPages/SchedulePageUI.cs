@@ -83,6 +83,8 @@ public class SchedulePageUI : UIPage
                 return "Training Session";
             case ScheduleEntryType.Interview:
                 return "Interview Day — Recruitment";
+            case ScheduleEntryType.PubTrip:
+                return "Pub Trip — Team Social";
             case ScheduleEntryType.RestDay:
                 return "Rest Day";
             default:

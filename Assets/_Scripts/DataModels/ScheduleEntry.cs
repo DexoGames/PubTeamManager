@@ -5,7 +5,8 @@ public enum ScheduleEntryType
     Match,
     Training,
     Interview,
-    RestDay
+    RestDay,
+    PubTrip
 }
 
 /// <summary>
