@@ -53,9 +53,10 @@ public abstract class Competition
 
     protected bool IsTeamAvailable(Team team, DateTime date)
     {
+        // A team shouldn't have two matches within 2 days of each other.
         return !FixturesManager.Instance.GetAllFixtures().Exists(f =>
             (f.HomeTeam == team || f.AwayTeam == team) &&
-            (f.Date.Date == date.Date || f.Date.Date == date.AddDays(1).Date || f.Date.Date == date.AddDays(-1).Date));
+            Math.Abs((f.Date.Date - date.Date).Days) <= 2);
     }
 
     public int GetMostRecentRound()
@@ -124,7 +125,9 @@ public abstract class Competition
 
     protected DateTime FindNextAvailableDate(Team team1, Team team2, DateTime fromDate)
     {
-        DateTime date = fromDate.AddDays(UnityEngine.Random.Range(-1, 2));
+        // Keep games on their intended day (weekend for league, midweek for cup); only shift
+        // forward if a team genuinely isn't available (clash within 2 days of another match).
+        DateTime date = fromDate.Date;
 
         while (!IsTeamAvailable(team1, date) || !IsTeamAvailable(team2, date))
         {
@@ -132,5 +135,13 @@ public abstract class Competition
         }
 
         return date;
+    }
+
+    /// <summary>The first date on/after <paramref name="from"/> that falls on the given weekday.</summary>
+    protected static DateTime NextDayOfWeek(DateTime from, DayOfWeek day)
+    {
+        DateTime d = from.Date;
+        while (d.DayOfWeek != day) d = d.AddDays(1);
+        return d;
     }
 }

@@ -88,12 +88,14 @@ public class League : Competition, ISaveable
         int matchesPerRound = numTeams / 2;
 
         Rounds = new List<Fixture>[numRounds];
-        DateTime roundDate = startDate;
+        // League games are weekly, on the weekend (Saturday). Rounds advance 7 days each.
+        DateTime roundDate = NextDayOfWeek(startDate, DayOfWeek.Saturday);
 
         // First half
         for (int round = 0; round < numTeams - 1; round++)
         {
             Rounds[round] = new List<Fixture>();
+            roundDate = ApplyWinterBreak(roundDate);
 
             for (int i = 0; i < matchesPerRound; i++)
             {
@@ -114,14 +116,15 @@ public class League : Competition, ISaveable
             teams.RemoveAt(numTeams - 1);
             teams.Insert(1, last);
 
-            roundDate = roundDate.AddDays(14);
+            roundDate = roundDate.AddDays(7);
         }
 
-        // Second half — reverse home/away
+        // Second half — reverse home/away, continuing weekly from where the first half ended.
         for (int round = 0; round < numTeams - 1; round++)
         {
             int roundIndex = round + (numTeams - 1);
             Rounds[roundIndex] = new List<Fixture>();
+            roundDate = ApplyWinterBreak(roundDate);
 
             foreach (var firstHalfFixture in Rounds[round])
             {
@@ -134,10 +137,27 @@ public class League : Competition, ISaveable
                 Rounds[roundIndex].Add(fixture);
             }
 
-            roundDate = roundDate.AddDays(14);
+            roundDate = roundDate.AddDays(7);
         }
 
         base.GenerateFixtures();
+    }
+
+    /// <summary>
+    /// If a round's Saturday falls in the Christmas/New-Year window (Dec 24 – Jan 1), pushes it to
+    /// the first Saturday after the break. Since round dates accumulate, this shifts every following
+    /// round too, producing a ~2-week winter break (one skipped weekend, Christmas + New Year off).
+    /// </summary>
+    private static DateTime ApplyWinterBreak(DateTime saturday)
+    {
+        int y = saturday.Month == 1 ? saturday.Year - 1 : saturday.Year;
+        DateTime breakStart = new DateTime(y, 12, 24);
+        DateTime breakEnd = new DateTime(y + 1, 1, 1);
+
+        if (saturday >= breakStart && saturday <= breakEnd)
+            return NextDayOfWeek(breakEnd.AddDays(1), DayOfWeek.Saturday); // first Saturday on/after Jan 2
+
+        return saturday;
     }
 
     public void InitializeStandings()

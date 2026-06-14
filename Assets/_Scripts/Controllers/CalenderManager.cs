@@ -96,6 +96,11 @@ public class CalenderManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Increments the date and fires NewDay. The UI/match flow (loading overlay, AI simulation,
+    /// save, home navigation, day-strip animation) is orchestrated by GameManager's advance
+    /// coroutine — this just moves the clock forward.
+    /// </summary>
     public void AdvanceDay()
     {
         if (advanceResponses > 0) return;
@@ -104,16 +109,6 @@ public class CalenderManager : MonoBehaviour
         dateText.text = CurrentDay.Date.ToShortDateString();
         advanceResponses = advanceListeners;
         NewDay.Invoke(CurrentDay);
-
-        if(GameManager.Instance.PlayerMatchSim != null)
-        {
-            GameManager.Instance.PlayerMatchSim.Invoke();
-            GameManager.Instance.PlayerMatchSim = null;
-        }
-        else
-        {
-            UIManager.Instance.ShowHomePage();
-        }
     }
 
     public UnityAction ShowNextPage;

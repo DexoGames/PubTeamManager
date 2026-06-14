@@ -114,43 +114,112 @@ public class GameManager : MonoBehaviour
         CalenderManager.Instance.ConfirmAddedListener();
     }
 
+    // Fires when the clock advances onto a new day — rebuild the rolling schedule window (so it
+    // always looks 120 days ahead and picks up new-season fixtures), then trigger that day's
+    // activity effects (training execution, etc.). AI simulation + saving are handled by the
+    // advance coroutines.
     void NewDay(DateTime date)
     {
-        PlayerMatchSim = null;
-
-        // Process today's schedule
+        ScheduleManager.Instance?.GenerateSchedule(date);
         ScheduleManager.Instance?.ProcessToday();
-
-        List<Fixture> allFixtures = FixturesManager.Instance.GetAllFixtures();
-        Fixture myFixture = null;
-        for (int i  = 0; i < allFixtures.Count; i++)
-        {
-            if (!allFixtures[i].BeenPlayed && allFixtures[i].Date < CalenderManager.Instance.CurrentDay)
-            {
-                if (myFixture == null && (allFixtures[i].HomeTeam == TeamManager.Instance.MyTeam || allFixtures[i].AwayTeam == TeamManager.Instance.MyTeam))
-                {
-                    myFixture = allFixtures[i];
-                }
-                else
-                {
-                    allFixtures[i].SimulateFixture();
-                }
-            }
-        }
-
-        if (myFixture != null)
-        {
-            PlayerMatchSim = () => UIManager.Instance.ShowMatchSimPage(myFixture);
-        }
-
-        // Auto-save after every day advance (writes core + the current season's fixtures).
-        if (SaveManager.Instance != null)
-        {
-            SaveManager.Instance.AutoSave();
-        }
-
         CalenderManager.Instance.RespondToAdvance();
     }
 
-    public UnityAction PlayerMatchSim;
+    // ————————————————————— Day / match flow —————————————————————
+
+    /// <summary>True while an advance/play coroutine is running (blocks re-entry; greys the button).</summary>
+    public bool IsBusy { get; private set; }
+
+    private const int SIM_MATCHES_PER_FRAME = 6;
+
+    /// <summary>True if the player has an unplayed fixture dated today or earlier (must be played before advancing).</summary>
+    public bool HasPendingPlayerMatch() => GetPendingPlayerMatch() != null;
+
+    private Fixture GetPendingPlayerMatch()
+    {
+        DateTime today = CalenderManager.Instance.CurrentDay.Date;
+        Team me = TeamManager.Instance.MyTeam;
+        Fixture earliest = null;
+        var all = FixturesManager.Instance.GetAllFixtures();
+        for (int i = 0; i < all.Count; i++)
+        {
+            var f = all[i];
+            if (f.BeenPlayed || f.Date.Date > today) continue;
+            if (f.HomeTeam != me && f.AwayTeam != me) continue;
+            if (earliest == null || f.Date < earliest.Date) earliest = f;
+        }
+        return earliest;
+    }
+
+    /// <summary>Button entry point: play today's pending match if there is one, else advance a day.</summary>
+    public void AdvanceOrPlay()
+    {
+        if (IsBusy) return;
+        Fixture pending = GetPendingPlayerMatch();
+        if (pending != null) StartCoroutine(PlayMatchRoutine(pending));
+        else StartCoroutine(AdvanceRoutine());
+    }
+
+    // Play the player's match ON its day: resolve that day's other games, then hand off to the
+    // interactive sim — which returns to the home page on the SAME day (the player advances separately).
+    private IEnumerator PlayMatchRoutine(Fixture match)
+    {
+        IsBusy = true;
+        LoadingOverlay.Instance?.Show();
+        yield return null;
+
+        yield return SimulateAiMatches(d => d == match.Date.Date);
+        SaveManager.Instance?.AutoSave();
+        yield return null;
+
+        LoadingOverlay.Instance?.Hide();
+        IsBusy = false;
+
+        UIManager.Instance.ShowMatchSimPage(match); // returns home (same day) + autosaves at full time
+    }
+
+    // Advance one day: resolve any due AI matches, advance the clock + save, THEN reveal the home
+    // page so the day-strip animation always plays smoothly (the hitch happened under the overlay).
+    private IEnumerator AdvanceRoutine()
+    {
+        IsBusy = true;
+        LoadingOverlay.Instance?.Show();
+        yield return null;
+
+        // Resolve all due AI matches up to today (the player has none pending in this branch).
+        yield return SimulateAiMatches(d => d <= CalenderManager.Instance.CurrentDay.Date);
+
+        CalenderManager.Instance.AdvanceDay(); // increments + fires NewDay (ProcessToday + events)
+        SaveManager.Instance?.AutoSave();       // save AFTER sim + advance, BEFORE the animation
+
+        yield return null; // let the save hitch pass so the slide is smooth
+        LoadingOverlay.Instance?.Hide();
+        IsBusy = false;
+
+        UIManager.Instance.ShowHomePage(); // HomePageUI.OnShow sees +1 day → plays the slide
+    }
+
+    // Simulates AI (non-player) fixtures matching the date predicate, a few per frame so the loading
+    // spinner keeps moving and a heavy match day doesn't freeze for a noticeable spell.
+    private IEnumerator SimulateAiMatches(Func<DateTime, bool> dateMatches)
+    {
+        Team me = TeamManager.Instance.MyTeam;
+        var all = FixturesManager.Instance.GetAllFixtures(); // live list; Count re-read each iteration
+        int simmedThisFrame = 0;
+
+        for (int i = 0; i < all.Count; i++)
+        {
+            Fixture f = all[i];
+            if (f.BeenPlayed || f.HomeTeam == me || f.AwayTeam == me) continue;
+            if (!dateMatches(f.Date.Date)) continue;
+
+            f.SimulateFixture(); // may append future-dated fixtures (cup next round) — skipped by the predicate
+
+            if (++simmedThisFrame >= SIM_MATCHES_PER_FRAME)
+            {
+                simmedThisFrame = 0;
+                yield return null;
+            }
+        }
+    }
 }

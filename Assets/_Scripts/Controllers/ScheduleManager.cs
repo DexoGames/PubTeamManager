@@ -13,6 +13,12 @@ public class ScheduleManager : MonoBehaviour
 
     private Dictionary<DateTime, ScheduleEntry> schedule = new Dictionary<DateTime, ScheduleEntry>();
     private const int SCHEDULE_AHEAD_DAYS = 120;
+    private const int INTERVIEW_INTERVAL = 14;
+
+    // Fixed anchor for the interview cadence. Set once so that regenerating the rolling window each
+    // day keeps interviews on stable dates (anchoring to "today" would make them recede every advance).
+    private DateTime interviewEpoch;
+    private bool epochSet;
 
     public event Action OnTrainingDay;
     public event Action OnInterviewDay;
@@ -31,54 +37,82 @@ public class ScheduleManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Generates the schedule from a start date, filling in match, training, interview, and rest days.
+    /// Generates the schedule from a start date. Priority order: matches (fixed) → pub socials (the day
+    /// after each match) → weekly training → fortnightly interviews → rest. Every scheduled activity is
+    /// guaranteed to happen: on a clash it shifts forward to the next free day rather than being dropped.
     /// </summary>
     public void GenerateSchedule(DateTime startDate)
     {
         schedule.Clear();
 
+        if (!epochSet)
+        {
+            interviewEpoch = startDate.Date;
+            epochSet = true;
+        }
+
         Team myTeam = TeamManager.Instance.MyTeam;
         var fixtures = FixturesManager.Instance.GetUpcomingFixturesForTeam(myTeam, SCHEDULE_AHEAD_DAYS);
 
-        // Mark match days
+        DateTime start = startDate.Date;
+        DateTime end = start.AddDays(SCHEDULE_AHEAD_DAYS);
+
+        // 1. Matches — fixed dates, highest priority.
+        var matchDays = new List<DateTime>();
         foreach (var fixture in fixtures)
         {
-            schedule[fixture.Date.Date] = new ScheduleEntry(fixture.Date, ScheduleEntryType.Match,
+            DateTime d = fixture.Date.Date;
+            schedule[d] = new ScheduleEntry(fixture.Date, ScheduleEntryType.Match,
                 $"{fixture.HomeTeam.Name} vs {fixture.AwayTeam.Name}", fixture);
+            matchDays.Add(d);
         }
 
-        // Fill in training and interview days
-        int interviewCounter = 0;
-        for (int day = 0; day < SCHEDULE_AHEAD_DAYS; day++)
+        // 2. Pub socials — the day after each match day (shifted forward on a clash).
+        foreach (var matchDay in matchDays.OrderBy(d => d))
+            PlaceActivity(matchDay.AddDays(1), end, ScheduleEntryType.PubTrip, "Pub Trip");
+
+        // 3. Training — once per week, preferring Wednesday, shifted on a clash.
+        for (DateTime weekStart = start; weekStart < end; weekStart = weekStart.AddDays(7))
+            PlaceActivity(PreferredWeekday(weekStart, DayOfWeek.Wednesday), end, ScheduleEntryType.Training, "Training Day");
+
+        // 4. Interviews — fortnightly on a fixed cadence (anchored to the epoch, not 'today', so the
+        //    rolling regeneration doesn't push them back a day each advance). Shifted on a clash.
+        DateTime interview = interviewEpoch.AddDays(INTERVIEW_INTERVAL);
+        while (interview < start) interview = interview.AddDays(INTERVIEW_INTERVAL);
+        for (; interview < end; interview = interview.AddDays(INTERVIEW_INTERVAL))
+            PlaceActivity(interview, end, ScheduleEntryType.Interview, "Interview Day");
+
+        // 5. Everything else is a rest day.
+        for (DateTime d = start; d < end; d = d.AddDays(1))
+            if (!schedule.ContainsKey(d))
+                schedule[d] = new ScheduleEntry(d, ScheduleEntryType.RestDay, "Rest Day");
+    }
+
+    /// <summary>
+    /// Places an activity on the first free (unscheduled) day at/after <paramref name="preferred"/>,
+    /// within the window — so a clash with a higher-priority day shifts it forward instead of dropping it.
+    /// </summary>
+    private void PlaceActivity(DateTime preferred, DateTime end, ScheduleEntryType type, string description)
+    {
+        for (DateTime d = preferred.Date; d < end; d = d.AddDays(1))
         {
-            DateTime date = startDate.AddDays(day).Date;
-
-            if (schedule.ContainsKey(date)) continue; // Already has a match
-
-            DayOfWeek dow = date.DayOfWeek;
-            interviewCounter++;
-
-            // Interview every 14 days (fortnightly) on a non-match day
-            if (interviewCounter >= 14)
+            if (!schedule.ContainsKey(d))
             {
-                schedule[date] = new ScheduleEntry(date, ScheduleEntryType.Interview, "Interview Day");
-                interviewCounter = 0;
-            }
-            // Training on Wednesday if no match
-            else if (dow == DayOfWeek.Wednesday)
-            {
-                schedule[date] = new ScheduleEntry(date, ScheduleEntryType.Training, "Training Day");
-            }
-            // Pub trip on a non-match Sunday — a social day for the squad
-            else if (dow == DayOfWeek.Sunday)
-            {
-                schedule[date] = new ScheduleEntry(date, ScheduleEntryType.PubTrip, "Pub Trip");
-            }
-            else
-            {
-                schedule[date] = new ScheduleEntry(date, ScheduleEntryType.RestDay, "Rest Day");
+                schedule[d] = new ScheduleEntry(d, type, description);
+                return;
             }
         }
+    }
+
+    /// <summary>The first occurrence of <paramref name="day"/> within the week starting at weekStart.</summary>
+    private DateTime PreferredWeekday(DateTime weekStart, DayOfWeek day)
+    {
+        for (int i = 0; i < 7; i++)
+        {
+            DateTime d = weekStart.AddDays(i);
+            if (d.DayOfWeek == day) return d;
+        }
+        return weekStart;
     }
 
     /// <summary>

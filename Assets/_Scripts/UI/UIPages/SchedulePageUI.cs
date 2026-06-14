@@ -12,6 +12,8 @@ public class SchedulePageUI : UIPage
 {
     public static SchedulePageUI Instance { get; private set; }
 
+
+    [SerializeField] private int daysPreview;
     [SerializeField] private Transform entryContainer;
     [SerializeField] private GameObject entryPrefab;
     [SerializeField] private TextMeshProUGUI headerText;
@@ -30,16 +32,13 @@ public class SchedulePageUI : UIPage
         RefreshSchedule();
     }
 
-    /// <summary>
-    /// Refreshes the schedule display with the next 14 days of entries.
-    /// </summary>
     public void RefreshSchedule()
     {
         Game.ClearContainer(entryContainer);
 
         if (ScheduleManager.Instance == null) return;
 
-        var entries = ScheduleManager.Instance.GetUpcoming(14);
+        var entries = ScheduleManager.Instance.GetUpcoming(daysPreview);
         DateTime today = CalenderManager.Instance.CurrentDay;
 
         if (headerText != null)

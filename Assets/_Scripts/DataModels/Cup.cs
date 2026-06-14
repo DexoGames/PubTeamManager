@@ -43,15 +43,8 @@ public class Cup : Competition, ISaveable
         autoSecondRoundTeams = entrants.Take(numByes).ToList();
 
         List<Fixture> roundFixtures = new List<Fixture>();
-        DateTime date = roundDate;
-
-        int batchSize;
-        if (roundTeams.Count >= 16)
-            batchSize = 4;
-        else if (roundTeams.Count >= 8)
-            batchSize = 2;
-        else
-            batchSize = 1;
+        // Cup ties are played midweek (Wednesday), between the weekend league rounds.
+        DateTime date = NextDayOfWeek(roundDate, DayOfWeek.Wednesday);
 
         for (int i = 0; i < roundTeams.Count; i += 2)
         {
@@ -61,11 +54,6 @@ public class Cup : Competition, ISaveable
             Fixture fixture = new Fixture(home, away, matchDate, this, roundList.Count);
             Fixtures.Add(fixture);
             roundFixtures.Add(fixture);
-
-            if (((i / 2) + 1) % batchSize == 0)
-            {
-                date = date.AddDays(7);
-            }
         }
 
         roundList.Add(roundFixtures);
@@ -114,7 +102,8 @@ public class Cup : Competition, ISaveable
         List<Team> entrants = winners.Union(autoSecondRoundTeams).ToList();
         autoSecondRoundTeams.Clear();
 
-        DateTime roundDate = roundList.Last().Last().Date.AddDays(18);
+        // Next round ~2 weeks later (GenerateRound snaps it to the next midweek Wednesday).
+        DateTime roundDate = roundList.Last().Last().Date.AddDays(14);
 
         GenerateRound(entrants, roundDate);
     }
