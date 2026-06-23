@@ -113,6 +113,10 @@ public class Match
         result = new Result(home, away);
         this.trackHighlights = trackHighlights;
 
+        // Cache each side's starting-XI intelligence once for the complexity/IQ gate this match.
+        home.Tactic?.RefreshMatchCache();
+        away.Tactic?.RefreshMatchCache();
+
         Engine = new MatchEngine(this);
     }
 
@@ -198,5 +202,18 @@ public class Match
         {
             AddHighlight(new MissHighlight(shootingTeam, minute, shooter, goalkeeper, type, outcome));
         }
+    }
+
+    /// <summary>Records a foul (with optional card/injury) committed by <paramref name="offender"/>'s team.</summary>
+    public void RecordFoul(Card card, Player offender, Player victim, InjuryType injuryType, Minute minute)
+    {
+        AddHighlight(new FoulHighlight(offender != null ? offender.Team : HomeTeam, minute, offender, victim, card, injuryType));
+
+        Foul foul = new Foul(card, offender, victim, injuryType, minute);
+
+        if (offender != null && offender.Team == AwayTeam)
+            result.away.fouls.Add(foul);
+        else
+            result.home.fouls.Add(foul);
     }
 }

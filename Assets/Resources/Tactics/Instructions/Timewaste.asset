@@ -23,5 +23,8 @@ MonoBehaviour:
     value: -5
   dependencies: []
   tacticDependencies: []
-  reliances: []
+  hasReliance: 0
+  reliance:
+    stats: 
+    multiplier: 0
   incompatibleInstructions: []

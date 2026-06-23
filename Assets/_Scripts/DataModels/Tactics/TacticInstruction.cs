@@ -11,31 +11,25 @@ public class TacticInstruction : ScriptableObject
     public List<StatModification> statModifications = new();
     public List<TeamDependency> dependencies = new();
     public List<TacticDependency> tacticDependencies = new();
-    public List<Reliance> reliances = new();
+
+    [Header("Reliance (optional) — this instruction leans on ONE chosen player")]
+    [Tooltip("Tick to make this a reliance instruction. Toggling it on in the tactics screen prompts you to " +
+             "pick the reliant player from your starting XI; that player's chosen stats then sway the team more.")]
+    public bool hasReliance;
+    public Reliance reliance;
 
     public TacticInstruction[] incompatibleInstructions;
 
     public void Apply(TacticStats stats)
     {
         foreach (var statMod in statModifications)
-        {
             stats.ModifyStat(statMod.stat, statMod.value);
-        }
-
-        foreach (var rely in reliances)
-        {
-            stats.Reliance(rely.position, rely.stat, rely.strength);
-        }
 
         foreach (var dependency in dependencies)
-        {
             stats.AddTeamDependency(dependency);
-        }
 
         foreach (var dependency in tacticDependencies)
-        {
             stats.AddTacticDependency(dependency);
-        }
     }
 
     [Serializable]
@@ -61,11 +55,17 @@ public class TacticInstruction : ScriptableObject
         public bool inverse;
     }
 
+    /// <summary>
+    /// Makes the instruction rely on one chosen player: that player's <see cref="stats"/> count
+    /// <see cref="multiplier"/>× more toward the team's effective ability in the groups he plays in — so his
+    /// strengths AND weaknesses in those stats are amplified. Which player is chosen at runtime (the picker).
+    /// </summary>
     [Serializable]
     public struct Reliance
     {
-        public int position;
-        public TacticStat stat;
-        public float strength;
+        [Tooltip("Which of the reliant player's stats count more toward the team's effective ability.")]
+        public PlayerStat[] stats;
+        [Tooltip("Extra weight on those stats: 1 = the reliant player counts double for them, 2 = triple, …")]
+        public float multiplier;
     }
 }

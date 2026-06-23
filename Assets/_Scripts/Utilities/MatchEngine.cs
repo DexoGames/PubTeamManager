@@ -23,6 +23,9 @@ public class MatchEngine
 
         StartingPhase(attackingTeam, defendingTeam);
 
+        // The defending side may foul the attackers as they try to play through.
+        TryFoul(defendingTeam, attackingTeam);
+
         do
         {
             match.currentMin = AdvanceMinute(match.currentMin);
@@ -30,9 +33,66 @@ public class MatchEngine
         while (Random.Range(0, 4) == 0);
     }
 
+    // ————————————————————— Fouls, cards & injuries —————————————————————
+
+    /// <summary>
+    /// Rolls a possible foul by <paramref name="committing"/> on <paramref name="fouled"/>, scaled by the
+    /// committing side's Fouling instruction and the fouled side's Provoking. A foul may carry a card
+    /// (yellow/red) and/or injure the victim — the in-match source of suspensions and injuries.
+    /// </summary>
+    private void TryFoul(Team committing, Team fouled)
+    {
+        if (committing?.StartingPlayers == null || fouled?.StartingPlayers == null) return;
+        if (committing.StartingPlayers.Count == 0 || fouled.StartingPlayers.Count == 0) return;
+
+        float foulChance = 0.014f + committing.Tactic.Fouling / 4000f + fouled.Tactic.Provoking / 6000f;
+        if (Random.value > foulChance) return;
+
+        Player offender = committing.StartingPlayers[Random.Range(0, committing.StartingPlayers.Count)];
+        Player victim = fouled.StartingPlayers[Random.Range(0, fouled.StartingPlayers.Count)];
+
+        Card card = DecideCard(committing, offender);
+        InjuryType injury = DecideInjury(card, victim);
+
+        match.RecordFoul(card, offender, victim, injury, match.currentMin);
+    }
+
+    private Card DecideCard(Team committing, Player offender)
+    {
+        float aggression = offender.GetStats().Aggression;
+        float fouling = committing.Tactic.Fouling;
+
+        float redChance = 0.006f + aggression / 5000f;                 // genuinely rare
+        float yellowChance = 0.14f + aggression / 600f + fouling / 900f; // ~14–40%
+
+        float r = Random.value;
+        if (r < redChance) return Card.Red;
+        if (r < redChance + yellowChance) return Card.Yellow;
+        return Card.None;
+    }
+
+    private InjuryType DecideInjury(Card card, Player victim)
+    {
+        float durability = victim.GetStats().Durability;
+        float injuryChance = 0.03f + (card != Card.None ? 0.05f : 0f) + (100f - durability) / 2000f;
+        if (Random.value > injuryChance) return InjuryType.None;
+
+        // Of the fouls that DO injure: mostly knocks, occasionally worse, death astronomically rare.
+        float s = Random.value;
+        if (s < 0.62f) return InjuryType.Knock;
+        if (s < 0.86f) return InjuryType.Standard;
+        if (s < 0.975f) return InjuryType.Hamstring;
+        if (s < 0.999f) return InjuryType.ACL;
+        return InjuryType.Death;
+    }
+
     private void StartingPhase(Team attacking, Team defending)
     {
-        if (Random.Range(0, 10f + match.HomeTeam.Tactic.Stability + match.AwayTeam.Tactic.Stability) <= 10)
+        // An unfamiliar side (recently changed setup) is far more prone to early mistakes —
+        // the cost the team pays until it re-drills the new tactic.
+        float mistakeThreshold = 10f + (1f - attacking.Tactic.Familiarity01) * 7f;
+
+        if (Random.Range(0, 10f + match.HomeTeam.Tactic.Stability + match.AwayTeam.Tactic.Stability) <= mistakeThreshold)
         {
             int i = Random.Range(0, 3);
             match.AddHighlight(new MistakeHighlight(attacking, match.currentMin, attacking.StartingPlayers[Random.Range(0, attacking.StartingPlayers.Count)]));
@@ -44,7 +104,12 @@ public class MatchEngine
             }
         }
 
-        float controlScore = WeightedAverage((attacking.Tactic.Control, 1f), (100 - attacking.Tactic.Intensity, 1f));
+        // Whether to build patiently (Build) or go direct (straight to Advance). High Tempo (from the
+        // formation) skips build-up and goes direct more often; low Tempo favours building from the back.
+        float controlScore = WeightedAverage(
+            (attacking.Tactic.Control, 1f),
+            (100 - attacking.Tactic.Intensity, 1f),
+            (100 - attacking.Tactic.Tempo, 1f));
         float rand = Random.Range(0, 100f);
 
         if (rand < controlScore)
@@ -416,8 +481,8 @@ public class MatchEngine
 
     public float BuildLogic(Team attacking, Team defending, float overflow = 0f, bool debug = false)
     {
-        var atkStats = attacking.Defenders.AverageStats();
-        var defStats = defending.Attackers.AverageStats();
+        var atkStats = attacking.Defenders.AverageStats(attacking.Tactic);
+        var defStats = defending.Attackers.AverageStats(defending.Tactic);
 
         var parameters = new Phase.Parameters
         {
@@ -460,8 +525,8 @@ public class MatchEngine
 
     public float ProgressLogic(Team attacking, Team defending, float overflow = 0f, bool debug = false)
     {
-        var atkStats = attacking.Midfielders.AverageStats();
-        var defStats = defending.Midfielders.AverageStats();
+        var atkStats = attacking.Midfielders.AverageStats(attacking.Tactic);
+        var defStats = defending.Midfielders.AverageStats(defending.Tactic);
 
         var parameters = new Phase.Parameters
         {
@@ -506,8 +571,8 @@ public class MatchEngine
 
     public float ProbeLogic(Team attacking, Team defending, float overflow = 0f, bool debug = false)
     {
-        var atkStats = attacking.Attackers.Union(attacking.Midfielders).ToArray().AverageStats();
-        var defStats = defending.Defenders.AverageStats();
+        var atkStats = attacking.Attackers.Union(attacking.Midfielders).ToArray().AverageStats(attacking.Tactic);
+        var defStats = defending.Defenders.AverageStats(defending.Tactic);
 
         var parameters = new Phase.Parameters
         {
@@ -555,8 +620,8 @@ public class MatchEngine
 
     public float AdvanceLogic(Team attacking, Team defending, float overflow = 0f, bool debug = false)
     {
-        var atkStats = attacking.Midfielders.AverageStats();
-        var defStats = defending.Midfielders.AverageStats();
+        var atkStats = attacking.Midfielders.AverageStats(attacking.Tactic);
+        var defStats = defending.Midfielders.AverageStats(defending.Tactic);
 
         var parameters = new Phase.Parameters
         {
@@ -601,8 +666,8 @@ public class MatchEngine
 
     public float PenetrateLogic(Team attacking, Team defending, float overflow = 0f, bool debug = false)
     {
-        var atkStats = attacking.Attackers.AverageStats();
-        var defStats = defending.Defenders.AverageStats();
+        var atkStats = attacking.Attackers.AverageStats(attacking.Tactic);
+        var defStats = defending.Defenders.AverageStats(defending.Tactic);
 
         var parameters = new Phase.Parameters
         {
@@ -648,8 +713,8 @@ public class MatchEngine
 
     public float CounterLogic(Team attacking, Team defending, float overflow = 0f, bool debug = false)
     {
-        var atkStats = attacking.Midfielders.Union(attacking.Defenders).ToArray().AverageStats();
-        var defStats = defending.Midfielders.Union(defending.Attackers).ToArray().AverageStats();
+        var atkStats = attacking.Midfielders.Union(attacking.Defenders).ToArray().AverageStats(attacking.Tactic);
+        var defStats = defending.Midfielders.Union(defending.Attackers).ToArray().AverageStats(defending.Tactic);
 
         var parameters = new Phase.Parameters
         {
@@ -692,8 +757,8 @@ public class MatchEngine
 
     public float BreakLogic(Team attacking, Team defending, float overflow = 0f, bool debug = false)
     {
-        var atkStats = attacking.Attackers.AverageStats();
-        var defStats = defending.Defenders.AverageStats();
+        var atkStats = attacking.Attackers.AverageStats(attacking.Tactic);
+        var defStats = defending.Defenders.AverageStats(defending.Tactic);
 
         var parameters = new Phase.Parameters
         {

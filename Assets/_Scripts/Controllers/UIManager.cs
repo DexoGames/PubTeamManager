@@ -137,6 +137,13 @@ public class UIManager : MonoBehaviour
         matchSimPageUI.Show(fixture);
     }
 
+    /// <summary>Returns from the half-time tactics page back into the live match without restarting it.</summary>
+    public void ResumeMatchFromTactics()
+    {
+        HideAllUI();
+        matchSimPageUI.ResumeDisplay();
+    }
+
     private void HideAllUI()
     {
         IsHomeActive = false;

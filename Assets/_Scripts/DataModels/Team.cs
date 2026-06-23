@@ -156,6 +156,42 @@ public class Team : ScriptableObject
         }
     }
 
+    /// <summary>Players currently fit, alive and unsuspended — selectable for a match.</summary>
+    public List<Player> AvailablePlayers => Players.FindAll(p => p.IsAvailable);
+
+    /// <summary>Players in the first XI who can't actually play (injured/suspended/deceased).</summary>
+    public List<Player> UnavailableStarters => StartingPlayers.FindAll(p => !p.IsAvailable);
+
+    /// <summary>
+    /// Swaps any unavailable players out of the starting XI for the best available substitute at that
+    /// position, so a simulated line-up only contains players who can play. Best-effort: if there aren't
+    /// enough fit subs the depleted XI is left as-is. Kit numbers are keyed by player, so order changes
+    /// don't disturb them.
+    /// </summary>
+    public void EnsureAvailableLineup()
+    {
+        if (Players.Count < 12 || Formation == null) return;
+
+        int slots = Mathf.Min(11, Formation.Positions.Length);
+        for (int i = 0; i < slots && i < Players.Count; i++)
+        {
+            if (Players[i].IsAvailable) continue;
+
+            Player.Position slot = Formation.Positions[i].ID;
+            int best = -1;
+            int bestRating = int.MinValue;
+            for (int j = 11; j < Players.Count; j++)
+            {
+                if (!Players[j].IsAvailable) continue;
+                int rating = Players[j].GetAverage(slot);
+                if (rating > bestRating) { bestRating = rating; best = j; }
+            }
+
+            if (best == -1) break; // no fit subs left
+            (Players[i], Players[best]) = (Players[best], Players[i]);
+        }
+    }
+
     public List<Competition> GetAllCompetitions()
     {
         return FixturesManager.Instance.Competitions.Where(c => c.Teams.Contains(this)).ToList();

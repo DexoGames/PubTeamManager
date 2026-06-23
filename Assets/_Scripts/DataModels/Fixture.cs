@@ -43,6 +43,11 @@ public class Fixture : ISaveable
     internal void SimulateFixture()
     {
         //Debug.Log($"SIMULATING {HomeTeam.TeamName} VS {AwayTeam.TeamName}");
+
+        // Don't field injured/suspended players in the simulated XI.
+        HomeTeam.EnsureAvailableLineup();
+        AwayTeam.EnsureAvailableLineup();
+
         Match match = new Match(HomeTeam, AwayTeam);
         Result = match.SimulateMatch();
 
@@ -72,6 +77,13 @@ public class Fixture : ISaveable
         {
             league.UpdateStandings(this);
         }
+
+        // Turn this match's fouls into bookings/suspensions/injuries for the player's team.
+        InjuryManager.Instance?.ProcessMatchConsequences(this);
+
+        // Playing settles both sides further into their current setup (familiarity muscle memory).
+        HomeTeam.Tactic?.AdvanceFamiliarity();
+        AwayTeam.Tactic?.AdvanceFamiliarity();
     }
 
     /// <summary>Records the starting XIs (PersonIDs) for both teams into the Result.</summary>

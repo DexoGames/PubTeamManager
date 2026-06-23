@@ -33,8 +33,8 @@ public class TrainingPageUI : UIPage
     [Header("Positional sub-panel")]
     [SerializeField] private GameObject positionalPanel;
     [SerializeField] private TMP_Dropdown positionDropdown;
-    [SerializeField] private Transform playerListContainer;
-    [SerializeField] private GameObject playerRowPrefab;
+    [Tooltip("Up to MAX_POSITIONAL_PLAYERS (5) slot widgets; click an empty one to add a player, X to remove.")]
+    [SerializeField] private PlayerSlotUI[] playerSlots;
     [SerializeField] private TextMeshProUGUI selectedCountText;
 
     [Header("Position strength colours (match the Tactics menu's StrengthColors)")]
@@ -57,9 +57,7 @@ public class TrainingPageUI : UIPage
     // Lookups for highlighting / row management
     private readonly Dictionary<DrillId, Image> drillButtonImages = new Dictionary<DrillId, Image>();
     private readonly Dictionary<DrillId, Color> drillBaseColors = new Dictionary<DrillId, Color>();
-    private readonly Dictionary<int, Toggle> playerToggles = new Dictionary<int, Toggle>();
     private Player.Position[] dropdownPositions;
-    private bool syncingToggles;
 
     private void Awake()
     {
@@ -245,7 +243,7 @@ public class TrainingPageUI : UIPage
         if (positionalPanel != null) positionalPanel.SetActive(isPositional);
         if (!isPositional) return;
 
-        RefreshPlayerRows();
+        SetupSlots();
         UpdateSelectedCount();
     }
 
@@ -270,79 +268,68 @@ public class TrainingPageUI : UIPage
         if (dropdownPositions != null && index >= 0 && index < dropdownPositions.Length)
             selectedPosition = dropdownPositions[index];
 
-        RefreshPlayerRows();   // refresh per-position strength display
+        // Slot labels are just names (position-independent); the picker's per-player description reads the
+        // new position live, so no slot rebuild is needed — just refresh the preview.
         UpdateInfoPanel();
     }
 
-    private void RefreshPlayerRows()
+    // ————————————————————— player slots (click to add, X to remove) —————————————————————
+
+    private void SetupSlots()
     {
-        if (playerListContainer == null || playerRowPrefab == null) return;
+        if (playerSlots == null) return;
 
-        Game.ClearContainer(playerListContainer);
-        playerToggles.Clear();
-
-        Team team = TeamManager.Instance?.MyTeam;
-        if (team == null) return;
-
-        foreach (var player in team.Players)
+        int max = Mathf.Min(playerSlots.Length, TrainingSession.MAX_POSITIONAL_PLAYERS);
+        for (int i = 0; i < playerSlots.Length; i++)
         {
-            GameObject row = Instantiate(playerRowPrefab, playerListContainer);
-            var rowUI = row.GetComponent<PlayerRowUI>();
+            PlayerSlotUI slot = playerSlots[i];
+            if (slot == null) continue;
 
-            // Name + position strength (coloured). Falls back to a child search if no PlayerRowUI.
-            var label = rowUI != null && rowUI.nameLabel != null ? rowUI.nameLabel : row.GetComponentInChildren<TextMeshProUGUI>();
-            if (label != null)
-            {
-                Player.PositionStrength strength = player.RawStats.Positions.TryGetValue(selectedPosition, out var s)
-                    ? s : Player.PositionStrength.None;
-                string hex = ColorUtility.ToHtmlStringRGB(StrengthColor(strength));
-                string nameLink = LinkBuilder.BuildLink(player); // clickable → opens player details
-                label.text = $"{nameLink}\n<size=75%><color=#{hex}>{strength}</color></size>";
-            }
+            // Hide any slots beyond the cap.
+            slot.gameObject.SetActive(i < max);
+            if (i >= max) continue;
 
-            // Current ability rating (A/B/C…) in the selected position, as a sprite.
-            if (rowUI != null && rowUI.ratingImage != null)
-            {
-                Sprite ratingSprite = UIStatDisplay.GetRatingSprite(player.GetRating(selectedPosition));
-                rowUI.ratingImage.sprite = ratingSprite;
-                rowUI.ratingImage.enabled = ratingSprite != null;
-            }
-
-            var toggle = rowUI != null && rowUI.toggle != null ? rowUI.toggle : row.GetComponentInChildren<Toggle>();
-            if (toggle != null)
-            {
-                int id = player.PersonID;
-                toggle.SetIsOnWithoutNotify(selectedPlayerIds.Contains(id));
-                toggle.onValueChanged.AddListener(isOn => OnPlayerToggled(id, isOn));
-                playerToggles[id] = toggle;
-            }
+            slot.Setup(CandidatesForPicking, OnSlotsChanged, "Add player to train", SlotDescriber);
+            slot.SetPlayerSilent(i < selectedPlayerIds.Count ? selectedPlayerIds[i] : -1);
         }
     }
 
-    private void OnPlayerToggled(int playerId, bool isOn)
+    /// <summary>The squad, minus any player already sitting in a slot (so you can't pick the same one twice).</summary>
+    private IEnumerable<Player> CandidatesForPicking()
     {
-        if (syncingToggles) return;
+        Team team = TeamManager.Instance?.MyTeam;
+        if (team == null) return Enumerable.Empty<Player>();
 
-        if (isOn)
-        {
-            if (selectedPlayerIds.Count >= TrainingSession.MAX_POSITIONAL_PLAYERS)
-            {
-                // Reject the 6th selection — revert the toggle.
-                syncingToggles = true;
-                if (playerToggles.TryGetValue(playerId, out var t)) t.SetIsOnWithoutNotify(false);
-                syncingToggles = false;
-                Debug.LogWarning($"[Training UI] Max {TrainingSession.MAX_POSITIONAL_PLAYERS} players for positional training.");
-                return;
-            }
-            if (!selectedPlayerIds.Contains(playerId)) selectedPlayerIds.Add(playerId);
-        }
-        else
-        {
-            selectedPlayerIds.Remove(playerId);
-        }
+        var taken = new HashSet<int>();
+        if (playerSlots != null)
+            foreach (var s in playerSlots)
+                if (s != null && !s.IsEmpty) taken.Add(s.PlayerId);
 
+        return team.Players.Where(p => !taken.Contains(p.PersonID));
+    }
+
+    private void OnSlotsChanged()
+    {
+        RebuildSelectedFromSlots();
         UpdateSelectedCount();
         UpdateInfoPanel();
+    }
+
+    private void RebuildSelectedFromSlots()
+    {
+        selectedPlayerIds.Clear();
+        if (playerSlots == null) return;
+        foreach (var s in playerSlots)
+            if (s != null && !s.IsEmpty) selectedPlayerIds.Add(s.PlayerId);
+    }
+
+    /// <summary>Per-candidate line shown in the picker: their strength + rating at the selected position.</summary>
+    private string SlotDescriber(Player p)
+    {
+        Player.PositionStrength strength = p.RawStats.Positions.TryGetValue(selectedPosition, out var s)
+            ? s : Player.PositionStrength.None;
+        string hex = ColorUtility.ToHtmlStringRGB(StrengthColor(strength));
+        return $"<color=#{hex}>{strength}</color> · {p.GetRating(selectedPosition)} @ {selectedPosition}";
     }
 
     private void UpdateSelectedCount()

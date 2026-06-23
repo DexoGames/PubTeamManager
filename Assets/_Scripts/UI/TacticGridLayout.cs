@@ -76,6 +76,9 @@ public class TacticGridLayout : MonoBehaviour
         // 2. CRITICAL FIX: Clear the stale list of toggle references.
         toggles.Clear();
 
+        // Make sure any reliance instructions already active have a chosen player (so labels show it).
+        if (team != null && team.Tactic != null) team.Tactic.EnsureReliancePlayers();
+
         if (togglePrefab == null)
         {
             Debug.LogError("Toggle Prefab is not assigned in the inspector!", this);
@@ -108,8 +111,11 @@ public class TacticGridLayout : MonoBehaviour
             // 4. Add the listener to the new toggle instance.
             newToggle.OnToggleChange.AddListener(() => ToggleClick(newToggle));
 
-            // 5. Set its initial state.
-            newToggle.Set(team.Tactic.Instructions.Contains(newToggle.instruction));
+            // 5. Set its initial state SILENTLY — don't trigger ToggleClick (or the reliance picker) on build.
+            bool active = team.Tactic.Instructions.Contains(newToggle.instruction);
+            newToggle.SetSilent(active);
+            if (active && newToggle.instruction != null && newToggle.instruction.hasReliance)
+                newToggle.SetReliantPlayer(team.Tactic.GetReliancePlayer(newToggle.instruction));
         }
 
         // 6. After creating all toggles, update their interactable status.
@@ -119,21 +125,47 @@ public class TacticGridLayout : MonoBehaviour
     void ToggleClick(TacticsToggle clickedToggle)
     {
         if (clickedToggle == null) return; // Safety check
+        TacticInstruction instr = clickedToggle.instruction;
 
         if (clickedToggle.toggle.isOn)
         {
-            if (!IsInstructionValid(clickedToggle.instruction))
+            if (!IsInstructionValid(instr))
             {
-                clickedToggle.Set(false); // Revert the toggle state
+                clickedToggle.SetSilent(false); // Revert the toggle state (no re-trigger)
                 return;
             }
-            team.Tactic.AddInstruction(clickedToggle.instruction);
+
+            // A reliance instruction needs a player chosen before it's committed.
+            if (instr != null && instr.hasReliance)
+            {
+                bool opened = PlayerPickerPopup.Show(
+                    team.StartingPlayers,
+                    picked =>
+                    {
+                        team.Tactic.AddInstruction(instr, picked);
+                        clickedToggle.SetReliantPlayer(picked);
+                        AfterToggleChange();
+                    },
+                    $"{instr.tacticName} — rely on which player?",
+                    describe: null,
+                    onCancelled: () => clickedToggle.SetSilent(false)); // didn't pick → revert, don't add
+                if (opened) return; // wait for the picker
+                // Picker prefab unavailable → fall through and add with an auto-bound player (match start).
+            }
+
+            team.Tactic.AddInstruction(instr);
         }
         else
         {
-            team.Tactic.RemoveInstruction(clickedToggle.instruction);
+            team.Tactic.RemoveInstruction(instr);
+            clickedToggle.SetReliantPlayer(null); // reset label (no-op visual for non-reliance)
         }
 
+        AfterToggleChange();
+    }
+
+    void AfterToggleChange()
+    {
         UpdateAllTogglesInteractability();
         OnTacticChange.Invoke();
     }

@@ -15,8 +15,13 @@ public class TacticsPageUI : UIPage
     [SerializeField] TabController tabController;
     [SerializeField] BenchManager benchManager;
     [SerializeField] FormationDisplayModeControl displayModeControl;
+    [Tooltip("Button shown only when the page was opened from half-time, to go back into the match.")]
+    [SerializeField] GameObject resumeMatchButton;
 
     Team team;
+
+    /// <summary>True when the tactics page was opened mid-match (half-time) and should offer a Resume button.</summary>
+    bool returnToMatchMode;
 
     public UnityEvent OnTacticChange;
 
@@ -39,12 +44,28 @@ public class TacticsPageUI : UIPage
         formationUI.SetFormations(team);
         benchManager.ClearContainer();
         benchManager.Setup(formationUI, team);
+
+        if (resumeMatchButton != null) resumeMatchButton.SetActive(returnToMatchMode);
     }
 
     /// <summary>Persist tactic changes when the player navigates away from the tactics page.</summary>
     protected override void OnHide()
     {
         SaveManager.Instance?.SaveCore();
+    }
+
+    /// <summary>Called by MatchSimPageUI before opening this page at half-time, to show the Resume button.</summary>
+    public void EnterReturnToMatchMode()
+    {
+        returnToMatchMode = true;
+    }
+
+    /// <summary>Resume-match button hook: go back into the live match with the edited tactic.</summary>
+    public void ResumeMatch()
+    {
+        returnToMatchMode = false;
+        if (resumeMatchButton != null) resumeMatchButton.SetActive(false);
+        UIManager.Instance.ResumeMatchFromTactics();
     }
 
 

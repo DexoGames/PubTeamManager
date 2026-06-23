@@ -36,6 +36,121 @@ public class Player : Person
     public int Fatigue { get; private set; }
     public float TacticFamiliarity { get; set; } = 0f;
 
+    // ————————————————————— Availability (injuries / suspensions / death) —————————————————————
+
+    /// <summary>Current injury, if any (None when fit). Death is permanent and handled via <see cref="IsDeceased"/>.</summary>
+    public InjuryType CurrentInjury = InjuryType.None;
+
+    /// <summary>Date the current injury heals (null when fit). Cleared by <see cref="TickInjuryRecovery"/>.</summary>
+    public System.DateTime? InjuredUntil;
+
+    /// <summary>Matches still to sit out through suspension (decremented as the team plays).</summary>
+    public int MatchesSuspended;
+
+    /// <summary>Yellow cards accrued this season; every <see cref="YELLOW_SUSPENSION_THRESHOLD"/> earns a ban.</summary>
+    public int YellowCards;
+
+    /// <summary>True if the player has died (very rare event) — permanently unavailable.</summary>
+    public bool IsDeceased;
+
+    /// <summary>Yellow cards that trigger a one-match ban.</summary>
+    public const int YELLOW_SUSPENSION_THRESHOLD = 5;
+
+    [JsonIgnore] private System.DateTime Today => CalenderManager.Instance != null ? CalenderManager.Instance.CurrentDay.Date : System.DateTime.MinValue;
+
+    [JsonIgnore]
+    public bool IsInjured =>
+        !IsDeceased && CurrentInjury != InjuryType.None && CurrentInjury != InjuryType.Death
+        && InjuredUntil.HasValue && InjuredUntil.Value.Date >= Today;
+
+    [JsonIgnore] public bool IsSuspended => MatchesSuspended > 0;
+
+    /// <summary>True only if fit, unsuspended and alive — i.e. selectable for a match.</summary>
+    [JsonIgnore] public bool IsAvailable => !IsDeceased && !IsInjured && !IsSuspended;
+
+    /// <summary>Applies an injury (taking the longer of any existing one). Death is permanent.</summary>
+    public void ApplyInjury(InjuryType type, System.DateTime today)
+    {
+        if (type == InjuryType.None) return;
+
+        if (type == InjuryType.Death)
+        {
+            IsDeceased = true;
+            CurrentInjury = InjuryType.Death;
+            InjuredUntil = null;
+            return;
+        }
+
+        System.DateTime until = today.Date.AddDays(InjuryDurationDays(type));
+        if (!IsInjured || (InjuredUntil.HasValue && until > InjuredUntil.Value))
+        {
+            CurrentInjury = type;
+            InjuredUntil = until;
+        }
+    }
+
+    /// <summary>Clears an injury once its recovery date has passed.</summary>
+    public void TickInjuryRecovery(System.DateTime today)
+    {
+        if (CurrentInjury == InjuryType.None || CurrentInjury == InjuryType.Death) return;
+        if (InjuredUntil.HasValue && InjuredUntil.Value.Date < today.Date)
+        {
+            CurrentInjury = InjuryType.None;
+            InjuredUntil = null;
+        }
+    }
+
+    /// <summary>Records a yellow; returns true if it tipped the player into a suspension.</summary>
+    public bool AddYellowCard()
+    {
+        YellowCards++;
+        if (YellowCards % YELLOW_SUSPENSION_THRESHOLD == 0)
+        {
+            MatchesSuspended += 1;
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>Straight red — a one-match ban (violent conduct could be extended by the caller).</summary>
+    public void ApplyRedCard(int matches = 1) => MatchesSuspended += Mathf.Max(1, matches);
+
+    /// <summary>Counts off one match of a suspension (called when the player's team completes a match).</summary>
+    public void ServeOneSuspensionMatch()
+    {
+        if (MatchesSuspended > 0) MatchesSuspended--;
+    }
+
+    /// <summary>Typical lay-off in days for each injury severity.</summary>
+    public static int InjuryDurationDays(InjuryType type)
+    {
+        switch (type)
+        {
+            case InjuryType.Knock: return UnityEngine.Random.Range(2, 7);
+            case InjuryType.Standard: return UnityEngine.Random.Range(10, 26);
+            case InjuryType.Hamstring: return UnityEngine.Random.Range(21, 46);
+            case InjuryType.ACL: return UnityEngine.Random.Range(180, 301);
+            default: return 0;
+        }
+    }
+
+    /// <summary>Human-readable availability for squad/selection UI.</summary>
+    [JsonIgnore]
+    public string AvailabilityStatus
+    {
+        get
+        {
+            if (IsDeceased) return "Deceased";
+            if (IsInjured)
+            {
+                string when = InjuredUntil.HasValue ? $", back ~{CalenderManager.ShortDateWordsNoYear(InjuredUntil.Value)}" : "";
+                return $"Injured ({CurrentInjury}{when})";
+            }
+            if (IsSuspended) return $"Suspended ({MatchesSuspended})";
+            return "Available";
+        }
+    }
+
     /// <summary>
     /// Temporary per-skill "Boost" layer from training (0..MAX_BOOST each).
     /// Added on top of raw skills in the stats pipeline; builds with training and
@@ -219,6 +334,17 @@ public class Player : Person
         if(!ignoreMorale) newStats = MoraleModifier(newStats, Morale);
 
         return newStats;
+    }
+
+    /// <summary>
+    /// Intelligence used for the tactical complexity / squad-IQ checks AND shown in the tactics PositionUI,
+    /// so the displayed value always matches what the squad IQ actually uses. This is the player's EFFECTIVE
+    /// intelligence (i.e. <see cref="GetStats"/>().Intelligence): it reflects their training boost, current
+    /// morale, and the off-position penalty for the slot they're playing in.
+    /// </summary>
+    public int TacticalIntelligence()
+    {
+        return GetStats().Intelligence;
     }
 
     /// <summary>
@@ -676,6 +802,16 @@ public static class PlayerExtensions
         return AverageStats(players.ToList(), tactic);
     }
 
+    /// <summary>
+    /// Average effective stats across a group of players. When a <paramref name="tactic"/> is supplied
+    /// (i.e. during a match) two tactical effects fold in here — the single seam that turns "raw players"
+    /// into "players executing this tactic":
+    ///   • Complexity / intelligence — when the squad average is too low, below-bar players take a
+    ///     proportional cut to their mental stats (~50% at 10 below the bar).
+    ///   • Reliance — a reliance instruction's chosen player counts for extra weight on the SPECIFIC stats
+    ///     that reliance names, so his strengths AND weaknesses in those stats sway the team more.
+    /// Called with no tactic (the default) it is a plain unweighted average, as before, for UI/display.
+    /// </summary>
     public static Player.Stats AverageStats(this List<Player> players, Tactic tactic = null)
     {
         Player.Stats avgStats = new Player.Stats
@@ -688,33 +824,47 @@ public static class PlayerExtensions
         int count = players.Count;
         if (count == 0) return avgStats;
 
-        var avgSkills = new int[Player.SKILL_NO];
-        var totalSkills = new int[Player.SKILL_NO];
-        float totalHeight = 0f;
+        // Per-stat totals + per-stat weights — a reliance can amplify only specific stats of one player.
+        var totalSkills = new double[Player.SKILL_NO];
+        var statWeight = new double[Player.SKILL_NO];
+        double totalHeight = 0, heightWeight = 0;
 
         for (int i = 0; i < count; i++)
         {
-            var stats = players[i].GetStats();
+            Player p = players[i];
+            var stats = p.GetStats();
 
-            for (int j = 0; j < Player.SKILL_NO+1; j++)
+            // Complexity penalty — ONLY when the squad's average intelligence has fallen short of the
+            // tactic's demand. Below-bar players take a proportional cut to their mental stats.
+            if (tactic != null && tactic.ShouldApplyComplexityPenalty)
             {
-                if (j == Player.SKILL_NO)
-                {
-                    totalHeight += stats.Height;
-                    continue;
-                }
-
-                totalSkills[j] += (int)(stats.Skills[j]);
+                float reduction = tactic.ComplexityPenaltyFraction(stats.Intelligence);
+                if (reduction > 0f)
+                    foreach (PlayerStat st in Tactic.ComplexityAffectedStats)
+                        stats.SetStat(st, Mathf.RoundToInt(stats.GetStat(st) * (1f - reduction)));
             }
+
+            // Reliance weighting: only the reliant player, only the named stats, count extra.
+            bool reliant = tactic != null && tactic.IsReliantPlayer(p);
+
+            for (int j = 0; j < Player.SKILL_NO; j++)
+            {
+                float w = reliant ? 1f + tactic.RelianceBonus(p, (PlayerStat)j) : 1f;
+                totalSkills[j] += stats.Skills[j] * w;
+                statWeight[j] += w;
+            }
+
+            float hw = reliant ? 1f + tactic.RelianceBonus(p, PlayerStat.Height) : 1f;
+            totalHeight += stats.Height * hw;
+            heightWeight += hw;
         }
 
-        for(int i = 0; i < Player.SKILL_NO; i++)
-        {
-            avgSkills[i] = totalSkills[i] / count;
-        }
+        var avgSkills = new int[Player.SKILL_NO];
+        for (int j = 0; j < Player.SKILL_NO; j++)
+            avgSkills[j] = statWeight[j] > 0 ? (int)(totalSkills[j] / statWeight[j]) : 0;
 
-        avgStats.Height = Mathf.RoundToInt(totalHeight);
         avgStats.Skills = avgSkills;
+        avgStats.Height = heightWeight > 0 ? (int)(totalHeight / heightWeight) : 0;
 
         return avgStats;
     }

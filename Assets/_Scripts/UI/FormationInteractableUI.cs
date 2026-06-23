@@ -114,6 +114,10 @@ public class FormationInteractableUI : FormationUI
                 ((BenchPositionUI)closest).SwapTo(((BenchPositionUI)pos).GetOriginalPos());
                 ((BenchPositionUI)pos).SwapTo(closestPos);
             }
+
+            // A starting/bench swap can change who's on the pitch (and their positions), so the squad IQ
+            // changes → refresh the tactic read-outs (complexity colour, squad-IQ warning, stat sliders).
+            TacticsPageUI.Instance?.OnTacticChange?.Invoke();
         }
         else
         {

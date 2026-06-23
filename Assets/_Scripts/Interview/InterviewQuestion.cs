@@ -12,20 +12,26 @@ public enum InterviewQuestionType
 {
     // Stat-specific questions
     AskAboutStat,
-    
+
     // General questions
     BiggestStrength,
     BiggestWeakness,
-    
+
     // Personality/social questions
     BestPersonalityFit,
     WorstPersonalityFit,
-    
+
     // Position questions
     PreferredPosition,
-    
+
     // Ambition questions
-    CareerGoals
+    CareerGoals,
+
+    // ————— Personality-probing questions (give CLUES that narrow down the hidden personality) —————
+    HandleCriticism,    // reveals how defensive/receptive/dismissive they are
+    WorkEthic,          // reveals conscientiousness (grafter vs coaster)
+    BigGameMentality,   // reveals composure under pressure
+    Leadership          // reveals how outgoing / dominant they are
 }
 
 /// <summary>
@@ -60,8 +66,16 @@ public class InterviewQuestion
                 "What kind of personalities do you struggle to work with?",
             InterviewQuestionType.PreferredPosition => 
                 "What position do you prefer to play?",
-            InterviewQuestionType.CareerGoals => 
+            InterviewQuestionType.CareerGoals =>
                 "What are your career ambitions?",
+            InterviewQuestionType.HandleCriticism =>
+                "How do you take it when the gaffer gets on your back?",
+            InterviewQuestionType.WorkEthic =>
+                "What does a day off look like for you?",
+            InterviewQuestionType.BigGameMentality =>
+                "How do you feel walking out for a massive game?",
+            InterviewQuestionType.Leadership =>
+                "What sort of voice are you in the dressing room?",
             _ => "Tell me about yourself."
         };
     }
@@ -88,6 +102,10 @@ public static class InterviewAnswerGenerator
             InterviewQuestionType.WorstPersonalityFit => AnswerWorstPersonalityFit(player),
             InterviewQuestionType.PreferredPosition => AnswerPreferredPosition(player),
             InterviewQuestionType.CareerGoals => AnswerCareerGoals(player),
+            InterviewQuestionType.HandleCriticism => AnswerHandleCriticism(player),
+            InterviewQuestionType.WorkEthic => AnswerWorkEthic(player),
+            InterviewQuestionType.BigGameMentality => AnswerBigGameMentality(player),
+            InterviewQuestionType.Leadership => AnswerLeadership(player),
             _ => new InterviewAnswer("I'm not sure what to say about that.", null, null)
         };
     }
@@ -258,6 +276,133 @@ public static class InterviewAnswerGenerator
         return new InterviewAnswer(response, null, null);
     }
 
+    // ————————————————————— Personality-probing answers (return personality CLUES) —————————————————————
+    // Each of these narrows the hidden personality to a small candidate set. The answer TEXT is unique
+    // per personality (their own voice), while the CLUE is the group of personalities that would answer
+    // in that style — intersect several and you can pin the personality down.
+
+    private static InterviewAnswer AnswerHandleCriticism(Player player)
+    {
+        string response = player.Personality switch
+        {
+            PersonalityType.Aggressive => "Honestly? It winds me up. I back myself and I don't like being told I'm wrong.",
+            PersonalityType.Cocky => "I hear it — but nine times out of ten I'm right and the gaffer comes round to my way.",
+            PersonalityType.Calm => "I take it on the chin. It's just information; I use it and move on.",
+            PersonalityType.Smart => "I welcome it, as long as it's specific. Feedback is data — I act on it.",
+            PersonalityType.Driven => "I love it. Tell me what's wrong and I'll work twice as hard to fix it.",
+            PersonalityType.Cautious => "I listen carefully. I'd rather hear it early than make the same mistake twice.",
+            PersonalityType.Shy => "It... gets to me a bit, if I'm honest. But I really do want to get it right.",
+            PersonalityType.Kind => "I take it to heart, because I never want to let the lads down.",
+            PersonalityType.Lazy => "Eh. In one ear, out the other. No point stressing over it.",
+            PersonalityType.Silly => "Ha! I just nod along and crack a joke. Keeps it light!",
+            _ => "I try to take it well."
+        };
+        return new InterviewAnswer(response, player.Personality.ToString(), null, CriticismGroup(player.Personality));
+    }
+
+    private static InterviewAnswer AnswerWorkEthic(Player player)
+    {
+        string response = player.Personality switch
+        {
+            PersonalityType.Driven => "Day off? I'll still be in the gym or watching clips of my marker.",
+            PersonalityType.Smart => "I review my numbers and rest deliberately — recovery is part of the work.",
+            PersonalityType.Cautious => "I do my stretches, eat right, get an early night. I don't cut corners.",
+            PersonalityType.Aggressive => "I train. Sitting still does my head in — I'd rather be grafting.",
+            PersonalityType.Lazy => "Sofa, telly, maybe a nap. Or two. Got to recharge, haven't you?",
+            PersonalityType.Silly => "Mate, gaming all day and a kebab. Living the dream!",
+            PersonalityType.Cocky => "I don't need extra sessions — I'm already better than most. I relax.",
+            PersonalityType.Calm => "A quiet one. Walk the dog, see family, switch off properly.",
+            PersonalityType.Kind => "I usually help out — see my nan, do a bit for the local club.",
+            PersonalityType.Shy => "Nothing flash. Stay in, read, keep myself to myself really.",
+            _ => "A bit of rest, a bit of training."
+        };
+        return new InterviewAnswer(response, player.Personality.ToString(), null, WorkEthicGroup(player.Personality));
+    }
+
+    private static InterviewAnswer AnswerBigGameMentality(Player player)
+    {
+        string response = player.Personality switch
+        {
+            PersonalityType.Cocky => "Big crowd, big stage? That's MY stage. Bring it on.",
+            PersonalityType.Aggressive => "I love it. The bigger the game, the more I want to hurt them.",
+            PersonalityType.Driven => "That's what all the work is for. I can't wait for those games.",
+            PersonalityType.Calm => "Same as any other game. I keep my head and do my job.",
+            PersonalityType.Smart => "I prepare the same way, so the occasion doesn't change my decisions.",
+            PersonalityType.Kind => "Exciting! I just want to do the lads and the fans proud.",
+            PersonalityType.Shy => "A bit nervous, to be honest... but the nerves keep me sharp.",
+            PersonalityType.Cautious => "I do worry about it. I just try to focus on what I can control.",
+            PersonalityType.Silly => "Big game, five-a-side, whatever — I'm just there for a laugh!",
+            PersonalityType.Lazy => "It's only a game, innit? I don't really get worked up.",
+            _ => "I just try to play my game."
+        };
+        return new InterviewAnswer(response, player.Personality.ToString(), null, BigGameGroup(player.Personality));
+    }
+
+    private static InterviewAnswer AnswerLeadership(Player player)
+    {
+        string response = player.Personality switch
+        {
+            PersonalityType.Aggressive => "Loud. I organise, I demand, and I'll let you know if you're slacking.",
+            PersonalityType.Cocky => "I'm the main voice — lads look to me, and rightly so.",
+            PersonalityType.Driven => "I lead by setting the standard, and I'll drag others up to it.",
+            PersonalityType.Calm => "I'm not loud. I let my game do the talking and stay steady.",
+            PersonalityType.Smart => "I talk when it matters — a word in the right ear, the right time.",
+            PersonalityType.Cautious => "I'm measured. I'd rather quietly organise than shout the odds.",
+            PersonalityType.Kind => "I'm the one picking lads up, keeping spirits up when it's tough.",
+            PersonalityType.Silly => "I'm the joker! I keep everyone loose — morale's my department.",
+            PersonalityType.Shy => "I keep myself to myself, really. I'm not one for big speeches.",
+            PersonalityType.Lazy => "I'm pretty quiet. Don't really go in for all the shouting.",
+            _ => "I do my bit in the dressing room."
+        };
+        return new InterviewAnswer(response, player.Personality.ToString(), null, LeadershipGroup(player.Personality));
+    }
+
+    private static PersonalityType[] CriticismGroup(PersonalityType p)
+    {
+        var defensive = new[] { PersonalityType.Aggressive, PersonalityType.Cocky };
+        var sensitive = new[] { PersonalityType.Shy, PersonalityType.Kind };
+        var dismissive = new[] { PersonalityType.Lazy, PersonalityType.Silly };
+        var receptive = new[] { PersonalityType.Calm, PersonalityType.Smart, PersonalityType.Driven, PersonalityType.Cautious };
+        if (Array.IndexOf(defensive, p) >= 0) return defensive;
+        if (Array.IndexOf(sensitive, p) >= 0) return sensitive;
+        if (Array.IndexOf(dismissive, p) >= 0) return dismissive;
+        return receptive;
+    }
+
+    private static PersonalityType[] WorkEthicGroup(PersonalityType p)
+    {
+        var grafters = new[] { PersonalityType.Driven, PersonalityType.Smart, PersonalityType.Cautious, PersonalityType.Aggressive };
+        var coasters = new[] { PersonalityType.Lazy, PersonalityType.Silly, PersonalityType.Cocky };
+        var balanced = new[] { PersonalityType.Calm, PersonalityType.Kind, PersonalityType.Shy };
+        if (Array.IndexOf(grafters, p) >= 0) return grafters;
+        if (Array.IndexOf(coasters, p) >= 0) return coasters;
+        return balanced;
+    }
+
+    private static PersonalityType[] BigGameGroup(PersonalityType p)
+    {
+        var thrive = new[] { PersonalityType.Cocky, PersonalityType.Aggressive, PersonalityType.Driven };
+        var composed = new[] { PersonalityType.Calm, PersonalityType.Smart, PersonalityType.Kind };
+        var nervy = new[] { PersonalityType.Shy, PersonalityType.Cautious };
+        var loose = new[] { PersonalityType.Silly, PersonalityType.Lazy };
+        if (Array.IndexOf(thrive, p) >= 0) return thrive;
+        if (Array.IndexOf(composed, p) >= 0) return composed;
+        if (Array.IndexOf(nervy, p) >= 0) return nervy;
+        return loose;
+    }
+
+    private static PersonalityType[] LeadershipGroup(PersonalityType p)
+    {
+        var vocal = new[] { PersonalityType.Aggressive, PersonalityType.Cocky, PersonalityType.Driven };
+        var byExample = new[] { PersonalityType.Calm, PersonalityType.Smart, PersonalityType.Cautious };
+        var morale = new[] { PersonalityType.Kind, PersonalityType.Silly };
+        var quiet = new[] { PersonalityType.Shy, PersonalityType.Lazy };
+        if (Array.IndexOf(vocal, p) >= 0) return vocal;
+        if (Array.IndexOf(byExample, p) >= 0) return byExample;
+        if (Array.IndexOf(morale, p) >= 0) return morale;
+        return quiet;
+    }
+
     #region Helper Methods
 
     /// <summary>
@@ -327,6 +472,17 @@ public static class InterviewAnswerGenerator
         {
             PlayerStat[] flashyStats = { PlayerStat.Shooting, PlayerStat.Dribbling, PlayerStat.Pace, PlayerStat.Creativity };
             return flashyStats[UnityEngine.Random.Range(0, flashyStats.Length)];
+        }
+
+        // Shy players won't show off their best — they name something middling instead.
+        if (player.Personality == PersonalityType.Shy)
+        {
+            var sorted = new List<(PlayerStat stat, int value)>();
+            for (int i = 0; i < Player.SKILL_NO; i++)
+                sorted.Add(((PlayerStat)i, player.RawStats.Skills[i]));
+            sorted = sorted.OrderBy(s => s.value).ToList();
+            int mid = Mathf.Clamp(sorted.Count / 2, 0, sorted.Count - 1);
+            return sorted[mid].stat;
         }
 
         // Smart and Driven players are accurate
@@ -406,16 +562,25 @@ public class InterviewAnswer
     public string ResponseText { get; private set; }
     public object ActualValue { get; private set; }
     public object PerceivedValue { get; private set; }
-    
+
+    /// <summary>
+    /// For personality-probing questions: the set of personalities consistent with this answer. The
+    /// interview manager intersects these across questions to narrow down the hidden personality.
+    /// Null for non-personality questions.
+    /// </summary>
+    public PersonalityType[] PossiblePersonalities { get; private set; }
+
     /// <summary>
     /// Whether the player's perception matches reality.
     /// </summary>
     public bool IsAccurate => ActualValue?.ToString() == PerceivedValue?.ToString();
 
-    public InterviewAnswer(string responseText, object actualValue, object perceivedValue)
+    public InterviewAnswer(string responseText, object actualValue, object perceivedValue,
+                           PersonalityType[] possiblePersonalities = null)
     {
         ResponseText = responseText;
         ActualValue = actualValue;
         PerceivedValue = perceivedValue;
+        PossiblePersonalities = possiblePersonalities;
     }
 }

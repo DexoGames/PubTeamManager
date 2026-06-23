@@ -60,6 +60,7 @@ public class GameManager : MonoBehaviour
         if (ScheduleManager.Instance != null)
         {
             ScheduleManager.Instance.OnTrainingDay += () => TrainingManager.Instance?.ExecuteTraining();
+            ScheduleManager.Instance.OnInterviewDay += () => RecruitmentManager.Instance?.NotifyInterviewDay();
         }
 
         UIManager.Instance.Setup();

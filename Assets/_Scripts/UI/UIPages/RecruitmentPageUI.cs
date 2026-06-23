@@ -44,6 +44,18 @@ public class RecruitmentPageUI : UIPage
     {
         if (RecruitmentManager.Instance == null) return;
 
+        // Interviews are only available on a scheduled interview day, once per day.
+        if (!RecruitmentManager.Instance.CanInterviewToday)
+        {
+            if (headerText != null) headerText.text = "No Interviews Today";
+            if (candidateInfoText != null)
+                candidateInfoText.text = RecruitmentManager.Instance.IsInterviewDay
+                    ? "You've already held your interviews today. Come back on the next interview day."
+                    : "Interviews are only held on scheduled interview days — check your calendar.";
+            SetButtonsActive(false);
+            return;
+        }
+
         RecruitmentManager.Instance.StartInterviewSession();
         candidates = RecruitmentManager.Instance.CurrentCandidates;
         currentIndex = 0;
@@ -119,6 +131,17 @@ public class RecruitmentPageUI : UIPage
     {
         if (!interviewStarted) return;
 
+        // Squad cap: the player must release someone before signing a new player.
+        if (RecruitmentManager.Instance.IsSquadFull)
+        {
+            if (candidateInfoText != null)
+                candidateInfoText.text =
+                    $"<b>Squad full ({RecruitmentManager.Instance.SquadSize}/{RecruitmentManager.MAX_SQUAD_SIZE}).</b>\n" +
+                    $"Release a player from your squad before signing {candidates[currentIndex].FullName}.\n" +
+                    "(Open your squad and release someone, then press Hire again.)";
+            return;
+        }
+
         bool success = InterviewManager.Instance.HireInterviewee();
         if (success)
         {
@@ -157,12 +180,19 @@ public class RecruitmentPageUI : UIPage
         ShowCurrentCandidate();
     }
 
+    /// <summary>Called by an InterviewQuestionButton after a question is asked, to refresh the read-out.</summary>
+    public void OnQuestionAsked()
+    {
+        UpdateQuestionsRemaining();
+    }
+
     private void UpdateQuestionsRemaining()
     {
         if (questionsRemainingText == null) return;
 
         int remaining = InterviewManager.Instance.QuestionsRemaining;
-        questionsRemainingText.text = $"Questions remaining: {remaining}";
+        string personality = InterviewManager.Instance.NarrowedPersonalitiesText();
+        questionsRemainingText.text = $"Questions remaining: {remaining}\nPersonality: {personality}";
     }
 
     private void SetButtonsActive(bool active)

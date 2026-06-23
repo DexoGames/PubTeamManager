@@ -12,6 +12,12 @@ public class MatchSimPageUI : UIPage
     [SerializeField] TextMeshProUGUI _timerText;
     [SerializeField] Button _advanceButton, _pauseButton;
 
+    [Header("In-match tactics")]
+    [Tooltip("Label showing the current mentality; updated by the More Attacking/Defensive buttons.")]
+    [SerializeField] TextMeshProUGUI _mentalityText;
+    [Tooltip("Shown only at half-time: opens the team-talk minigame + structural tactic changes.")]
+    [SerializeField] GameObject _halfTimePanel;
+
     [SerializeField] Transform _eventsContainer;
     [SerializeField] MatchEventUI _matchEventPrefab;
 
@@ -59,6 +65,7 @@ public class MatchSimPageUI : UIPage
 
         SetState(State.PreKickoff);
         SetPauseButton();
+        UpdateMentalityUI();
 
         _fixtureUI.SetFixtureText(_fixture, true);
         UpdateTimer(0);
@@ -77,8 +84,95 @@ public class MatchSimPageUI : UIPage
 
     void SimMatch()
     {
+        // Don't field injured/suspended players.
+        _fixture.HomeTeam.EnsureAvailableLineup();
+        _fixture.AwayTeam.EnsureAvailableLineup();
+
         match = new Match(_fixture.HomeTeam, _fixture.AwayTeam, true);
         match.BroadcastHighlight.AddListener(AddHighlight);
+
+        // Put the player's tactic into live-match mode (resets any in-match mentality nudge).
+        TeamManager.Instance.MyTeam.Tactic?.BeginMatch();
+        UpdateMentalityUI();
+
+        // Allow one half-time team talk this match.
+        TeamTalkController.Instance?.ResetForMatch();
+    }
+
+    // ————————————————————— In-match tactical changes (request 2) —————————————————————
+
+    /// <summary>Hook to a "More Attacking" button — available at any point in the match.</summary>
+    public void MoreAttacking() => ShiftMentality(+1);
+
+    /// <summary>Hook to a "More Defensive" button — available at any point in the match.</summary>
+    public void MoreDefensive() => ShiftMentality(-1);
+
+    void ShiftMentality(int delta)
+    {
+        Team myTeam = TeamManager.Instance.MyTeam;
+        Tactic t = myTeam != null ? myTeam.Tactic : null;
+        if (t == null) return;
+
+        Mentality before = t.EffectiveMentality;
+        Mentality after = t.ShiftMentalityInMatch(delta);
+        UpdateMentalityUI();
+
+        if (after != before)
+            PrintEvent(myTeam, $"Touchline shout — switching to a {MentalityLabel(after)} approach.",
+                       match != null ? match.currentMin.Base : 0);
+    }
+
+    void UpdateMentalityUI()
+    {
+        if (_mentalityText == null) return;
+        Tactic t = TeamManager.Instance.MyTeam != null ? TeamManager.Instance.MyTeam.Tactic : null;
+        _mentalityText.text = t != null ? MentalityLabel(t.EffectiveMentality) : "";
+    }
+
+    public static string MentalityLabel(Mentality m)
+    {
+        switch (m)
+        {
+            case Mentality.UltraDefensive: return "Ultra-Defensive";
+            case Mentality.Defensive: return "Defensive";
+            case Mentality.Cautious: return "Cautious";
+            case Mentality.Balanced: return "Balanced";
+            case Mentality.Positive: return "Positive";
+            case Mentality.Attacking: return "Attacking";
+            case Mentality.UltraAttacking: return "All-Out Attack";
+            default: return m.ToString();
+        }
+    }
+
+    /// <summary>In-match mentality slider hook (0–6): set the live mentality to a specific level.</summary>
+    public void SetMentalityInMatch(int targetIndex)
+    {
+        Tactic t = TeamManager.Instance.MyTeam != null ? TeamManager.Instance.MyTeam.Tactic : null;
+        if (t == null) return;
+        ShiftMentality(targetIndex - t.EffectiveMentalityIndex);
+    }
+
+    // ————————————————————— Half-time: full tactics access —————————————————————
+
+    /// <summary>
+    /// Half-time only: open the full tactics page to make structural changes (formation, instructions,
+    /// dependencies). Use during open play is impossible — only shouts/mentality are available then.
+    /// </summary>
+    public void OpenHalfTimeTactics()
+    {
+        if (_state != State.HalfTime) return;
+        TacticsPageUI.Instance?.EnterReturnToMatchMode();
+        UIManager.Instance.ShowTactics();
+    }
+
+    /// <summary>Re-shows the match screen after half-time tactics editing, WITHOUT restarting the match.</summary>
+    public void ResumeDisplay()
+    {
+        UIManager.Instance.ShowNavigationButtons(false);
+        DisplayUI();
+        UpdateMatchUI();
+        UpdateMentalityUI();
+        SetState(_state); // refresh the half-time panel + advance button for the preserved state
     }
 
     void AddHighlight(Highlight highlight)
@@ -160,10 +254,16 @@ public class MatchSimPageUI : UIPage
         if (half == Half.First)
         {
             SetState(State.HalfTime);
+            // Half-time: structural tactic changes (formation/instructions/dependencies) are now allowed.
+            TeamManager.Instance.MyTeam.Tactic.IsHalfTime = true;
         }
         else
         {
             SetState(State.FullTime);
+
+            // End live-match mode: clears the temporary mentality nudge + half-time window. Familiarity is
+            // advanced for both teams inside FinaliseResult (the match counts as a "session").
+            TeamManager.Instance.MyTeam.Tactic.EndMatch();
 
             _fixture.FinaliseResult();
 
@@ -177,6 +277,14 @@ public class MatchSimPageUI : UIPage
         _state = newState;
 
         SetAdvanceButton();
+        UpdateHalfTimePanel();
+    }
+
+    /// <summary>The half-time panel (team-talk minigame + structural tactic changes) only shows at half-time.</summary>
+    void UpdateHalfTimePanel()
+    {
+        if (_halfTimePanel != null)
+            _halfTimePanel.SetActive(_state == State.HalfTime);
     }
 
     void SetAdvanceButton()
@@ -232,6 +340,8 @@ public class MatchSimPageUI : UIPage
                 break;
 
             case State.HalfTime:
+                // Leaving half-time closes the structural-change window.
+                TeamManager.Instance.MyTeam.Tactic.IsHalfTime = false;
                 _currentSimulation = StartCoroutine(SimulateHalf(Half.Second));
                 SetState(State.SecondHalf);
                 break;

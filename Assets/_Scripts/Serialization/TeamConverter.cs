@@ -44,6 +44,10 @@ public class TeamConverter : JsonConverter<Team>
         writer.WritePropertyName("Stats");
         serializer.Serialize(writer, value.Stats);
 
+        // Tactic snapshot (formation, instructions, player dependencies, mentality, familiarity).
+        writer.WritePropertyName("Tactic");
+        serializer.Serialize(writer, value.Tactic != null ? value.Tactic.CaptureState() : null);
+
         writer.WriteEndObject();
     }
 
@@ -104,6 +108,14 @@ public class TeamConverter : JsonConverter<Team>
                 ClubStats stats = obj["Stats"]?.ToObject<ClubStats>(serializer) ?? new ClubStats();
 
                 team.RestoreTeamState(manager, stats);
+
+                // Restore the saved tactic on top of the freshly-built default one.
+                var tacticToken = obj["Tactic"];
+                if (tacticToken != null && tacticToken.Type != JTokenType.Null)
+                {
+                    TacticState tacticState = tacticToken.ToObject<TacticState>(serializer);
+                    team.Tactic?.ApplyState(tacticState);
+                }
             }
         }
 

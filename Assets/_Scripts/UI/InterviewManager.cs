@@ -1,5 +1,7 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 /// <summary>
@@ -9,11 +11,14 @@ using UnityEngine;
 public class InterviewManager : MonoBehaviour
 {
     [SerializeField] DialogueUI dialogue;
-    
+
     Player interviewee;
     InterviewContext interviewContext;
     List<InterviewQuestion> askedQuestions = new List<InterviewQuestion>();
     const int MAX_QUESTIONS = 5;
+
+    /// <summary>Personalities still consistent with the clue answers given so far (narrows as you probe).</summary>
+    public List<Person.PersonalityType> NarrowedPersonalities { get; private set; } = new List<Person.PersonalityType>();
 
     public static InterviewManager Instance { get; private set; }
 
@@ -36,7 +41,11 @@ public class InterviewManager : MonoBehaviour
     {
         interviewee = player;
         askedQuestions.Clear();
-        
+
+        // Start with every personality possible; clue questions narrow this down.
+        NarrowedPersonalities = new List<Person.PersonalityType>(
+            (Person.PersonalityType[])Enum.GetValues(typeof(Person.PersonalityType)));
+
         interviewContext = new InterviewContext(player);
         dialogue.Setup(interviewContext);
     }
@@ -78,10 +87,27 @@ public class InterviewManager : MonoBehaviour
 
         askedQuestions.Add(question);
         InterviewAnswer answer = InterviewAnswerGenerator.GenerateAnswer(interviewee, question);
-        
+
+        // Personality-probing questions narrow the candidate set (intersection of clue groups).
+        if (answer != null && answer.PossiblePersonalities != null)
+        {
+            NarrowedPersonalities = NarrowedPersonalities
+                .Where(p => Array.IndexOf(answer.PossiblePersonalities, p) >= 0)
+                .ToList();
+        }
+
         dialogue.UpdateDialogue(answer.ResponseText);
-        
+
         return answer;
+    }
+
+    /// <summary>Human-readable summary of how far the personality has been narrowed down.</summary>
+    public string NarrowedPersonalitiesText()
+    {
+        if (NarrowedPersonalities == null || NarrowedPersonalities.Count == 0) return "Unknown";
+        if (NarrowedPersonalities.Count >= Game.GetEnumLength<Person.PersonalityType>())
+            return "Unknown — ask some personality questions";
+        return string.Join(" / ", NarrowedPersonalities);
     }
 
     /// <summary>
@@ -136,6 +162,20 @@ public class InterviewManager : MonoBehaviour
             new InterviewQuestion(InterviewQuestionType.WorstPersonalityFit),
             new InterviewQuestion(InterviewQuestionType.PreferredPosition),
             new InterviewQuestion(InterviewQuestionType.CareerGoals)
+        };
+    }
+
+    /// <summary>
+    /// Personality-probing questions whose answers narrow down the hidden personality type.
+    /// </summary>
+    public static List<InterviewQuestion> GetPersonalityQuestions()
+    {
+        return new List<InterviewQuestion>
+        {
+            new InterviewQuestion(InterviewQuestionType.HandleCriticism),
+            new InterviewQuestion(InterviewQuestionType.WorkEthic),
+            new InterviewQuestion(InterviewQuestionType.BigGameMentality),
+            new InterviewQuestion(InterviewQuestionType.Leadership)
         };
     }
 

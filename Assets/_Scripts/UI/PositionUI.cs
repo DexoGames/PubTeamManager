@@ -144,7 +144,7 @@ public class PositionUI : MonoBehaviour
 
     protected virtual void UpdateIntelligence(Player player)
     {
-        float intelligenceValue = player.RawStats.Intelligence;
+        float intelligenceValue = player.TacticalIntelligence();
         Color intelligenceColor = Color.Lerp(Color.red, Color.green, intelligenceValue / 100f);
 
         UpdateTextStat(StatType.Intelligence, intelligenceValue.ToString(), intelligenceColor);

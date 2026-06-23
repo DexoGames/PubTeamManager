@@ -99,6 +99,9 @@ public class TrainingSession
                 DecayAll(team);
                 break;
         }
+
+        // Any training session counts as time spent drilling the current tactic → builds familiarity.
+        team.Tactic?.AdvanceFamiliarity();
     }
 
     private void ExecuteBoost(Team team)
@@ -116,6 +119,8 @@ public class TrainingSession
 
     private void ExecuteTacticFamiliarity(Team team)
     {
+        // Per-player tactical sharpness. Team-wide tactic Familiarity is advanced for ALL training types
+        // in Execute() (a session is a session), so it isn't bumped again here.
         foreach (var player in team.Players)
         {
             float intelligenceMultiplier = player.GetStats().Intelligence / 50f;

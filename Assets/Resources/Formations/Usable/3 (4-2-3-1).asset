@@ -40,7 +40,7 @@ MonoBehaviour:
     Complexity: 35
     Intensity: 55
     Control: 60
-    Threat: 60
+    Threat: 55
     Security: 40
     Tempo: 45
   Inferiors:

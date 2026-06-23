@@ -39,6 +39,9 @@ public class FormationUI : MonoBehaviour
         {
             allPositions[p].Reassign(formations[i].Positions[p], allPositions[p].player);
         }
+
+        // Formation affects Complexity (and the stat sliders) → refresh the tactic read-outs.
+        TacticsPageUI.Instance?.OnTacticChange?.Invoke();
     }
 
     public void SpawnFormation(Formation formation)

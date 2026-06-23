@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -5,12 +6,36 @@ using UnityEngine;
 /// <summary>
 /// Manages the free agent pool and recruitment process.
 /// Interview day flow: 5 candidates presented one-at-a-time, hire 1 or reject forever.
+/// Interviews are only available ON a scheduled interview day, and only one session per such day.
 /// </summary>
 public class RecruitmentManager : MonoBehaviour
 {
     public static RecruitmentManager Instance { get; private set; }
 
     public List<Player> FreeAgentPool { get; private set; } = new List<Player>();
+
+    /// <summary>Maximum squad size — to hire when full you must release someone first.</summary>
+    public const int MAX_SQUAD_SIZE = 25;
+
+    /// <summary>Set to the day the schedule fires an interview day; interviews are only available then.</summary>
+    public DateTime InterviewDay { get; private set; } = DateTime.MinValue;
+
+    /// <summary>The day a session was already used (one interview session per interview day).</summary>
+    private DateTime sessionUsedDay = DateTime.MinValue;
+
+    private DateTime CurrentDay => CalenderManager.Instance != null ? CalenderManager.Instance.CurrentDay.Date : DateTime.MinValue;
+
+    /// <summary>True when today is the scheduled interview day.</summary>
+    public bool IsInterviewDay => InterviewDay.Date == CurrentDay && CurrentDay != DateTime.MinValue;
+
+    /// <summary>True when an interview session can still be started today.</summary>
+    public bool CanInterviewToday => IsInterviewDay && sessionUsedDay.Date != CurrentDay;
+
+    public int SquadSize => TeamManager.Instance != null && TeamManager.Instance.MyTeam != null
+        ? TeamManager.Instance.MyTeam.Players.Count : 0;
+
+    /// <summary>True when the squad is at the cap — a new hire requires releasing a player first.</summary>
+    public bool IsSquadFull => SquadSize >= MAX_SQUAD_SIZE;
 
     /// <summary>Current interview session candidates (5 per session).</summary>
     public List<Player> CurrentCandidates { get; private set; } = new List<Player>();
@@ -64,6 +89,17 @@ public class RecruitmentManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Called by the schedule when today is an interview day — opens up interviewing for the day and
+    /// tops up the free-agent pool with fresh faces.
+    /// </summary>
+    public void NotifyInterviewDay()
+    {
+        InterviewDay = CurrentDay;
+        RefreshPool();
+        Debug.Log("[Recruitment] Interview day — candidates available.");
+    }
+
+    /// <summary>
     /// Gets exactly 5 candidates for this interview session and starts the session.
     /// </summary>
     public List<Player> StartInterviewSession()
@@ -74,8 +110,11 @@ public class RecruitmentManager : MonoBehaviour
         IsSessionActive = true;
 
         // Pick 5 random candidates from the pool
-        var shuffled = FreeAgentPool.OrderBy(x => Random.value).Take(CANDIDATES_PER_SESSION).ToList();
+        var shuffled = FreeAgentPool.OrderBy(x => UnityEngine.Random.value).Take(CANDIDATES_PER_SESSION).ToList();
         CurrentCandidates = shuffled;
+
+        // One session per interview day.
+        sessionUsedDay = CurrentDay;
 
         Debug.Log($"[Recruitment] Interview session started with {CurrentCandidates.Count} candidates.");
         return CurrentCandidates;
@@ -100,6 +139,13 @@ public class RecruitmentManager : MonoBehaviour
     {
         if (HasHiredThisSession || player == null) return false;
 
+        // Squad cap: you must release a player before signing a new one.
+        if (IsSquadFull)
+        {
+            Debug.Log($"[Recruitment] Squad full ({SquadSize}/{MAX_SQUAD_SIZE}) — release a player before hiring.");
+            return false;
+        }
+
         Team myTeam = TeamManager.Instance.MyTeam;
         player.Team = myTeam;
         myTeam.Players.Add(player);
@@ -113,6 +159,16 @@ public class RecruitmentManager : MonoBehaviour
 
         Debug.Log($"[Recruitment] Hired {player.FirstName} {player.Surname}!");
         return true;
+    }
+
+    /// <summary>
+    /// Releases an existing squad player to make room, then hires the new one. Used when the squad is
+    /// full and the manager chooses who to drop for the new signing.
+    /// </summary>
+    public bool HirePlayerReplacing(Player newPlayer, Player toRelease)
+    {
+        if (toRelease != null) ReleasePlayer(toRelease, returnToPool: false);
+        return HirePlayer(newPlayer);
     }
 
     /// <summary>

@@ -371,6 +371,11 @@ public class SaveManager : MonoBehaviour
         {
             ScheduleManager.Instance.GenerateSchedule(core.CurrentDay);
             ScheduleManager.Instance.OnTrainingDay += () => TrainingManager.Instance?.ExecuteTraining();
+            ScheduleManager.Instance.OnInterviewDay += () => RecruitmentManager.Instance?.NotifyInterviewDay();
+
+            // If the save was made on an interview day, make interviewing available immediately.
+            if (ScheduleManager.Instance.GetTodaysEntry().Type == ScheduleEntryType.Interview)
+                RecruitmentManager.Instance?.NotifyInterviewDay();
         }
 
         Debug.Log("[Save] Full restore complete.");
