@@ -312,9 +312,41 @@ public class MatchEngine
         float rand2 = rand1;
         ShotOutcome outcome = (rand2 < finalGoalChance) ? ShotOutcome.Goal : ShotOutcome.Saved;
 
-        match.RecordShot(shotType, outcome, attackingTeam, shooter, keeper, baseXG, currentMinute);
+        // Credit an assist on most goals (not own goals) to a weighted-random team-mate of the scorer.
+        Player assister = (outcome == ShotOutcome.Goal && shotType != ShotType.Own_Goal)
+            ? DecideAssister(attackingTeam, shooter)
+            : null;
+
+        match.RecordShot(shotType, outcome, attackingTeam, shooter, keeper, baseXG, currentMinute, assister);
 
         return outcome == ShotOutcome.Goal;
+    }
+
+    /// <summary>Picks who set up a goal — a team-mate weighted by creative/passing stats, or none (~25% solo).</summary>
+    private Player DecideAssister(Team team, Player scorer)
+    {
+        if (Random.value < 0.25f) return null;
+
+        var candidates = team.StartingPlayers.Where(p => p != scorer).ToList();
+        if (candidates.Count == 0) return null;
+
+        float total = 0f;
+        foreach (var p in candidates) total += AssistWeight(p);
+        if (total <= 0f) return candidates[Random.Range(0, candidates.Count)];
+
+        float r = Random.Range(0f, total);
+        foreach (var p in candidates)
+        {
+            r -= AssistWeight(p);
+            if (r <= 0f) return p;
+        }
+        return candidates[candidates.Count - 1];
+    }
+
+    private static float AssistWeight(Player p)
+    {
+        var s = p.GetStats();
+        return 1f + s.Passing + s.Creativity + s.Crossing * 0.5f;
     }
 
     private ShotType SelectShotType(Phase.Type phase, float baseXG)
@@ -481,8 +513,8 @@ public class MatchEngine
 
     public float BuildLogic(Team attacking, Team defending, float overflow = 0f, bool debug = false)
     {
-        var atkStats = attacking.Defenders.AverageStats(attacking.Tactic);
-        var defStats = defending.Attackers.AverageStats(defending.Tactic);
+        var atkStats = attacking.Defenders.AverageStats(attacking.Tactic, PlayerGroup.Defenders);
+        var defStats = defending.Attackers.AverageStats(defending.Tactic, PlayerGroup.Attackers);
 
         var parameters = new Phase.Parameters
         {
@@ -525,8 +557,8 @@ public class MatchEngine
 
     public float ProgressLogic(Team attacking, Team defending, float overflow = 0f, bool debug = false)
     {
-        var atkStats = attacking.Midfielders.AverageStats(attacking.Tactic);
-        var defStats = defending.Midfielders.AverageStats(defending.Tactic);
+        var atkStats = attacking.Midfielders.AverageStats(attacking.Tactic, PlayerGroup.Midfielders);
+        var defStats = defending.Midfielders.AverageStats(defending.Tactic, PlayerGroup.Midfielders);
 
         var parameters = new Phase.Parameters
         {
@@ -571,8 +603,8 @@ public class MatchEngine
 
     public float ProbeLogic(Team attacking, Team defending, float overflow = 0f, bool debug = false)
     {
-        var atkStats = attacking.Attackers.Union(attacking.Midfielders).ToArray().AverageStats(attacking.Tactic);
-        var defStats = defending.Defenders.AverageStats(defending.Tactic);
+        var atkStats = attacking.Attackers.Union(attacking.Midfielders).ToArray().AverageStats(attacking.Tactic, PlayerGroup.MidfieldAndAttack);
+        var defStats = defending.Defenders.AverageStats(defending.Tactic, PlayerGroup.Defenders);
 
         var parameters = new Phase.Parameters
         {
@@ -620,8 +652,8 @@ public class MatchEngine
 
     public float AdvanceLogic(Team attacking, Team defending, float overflow = 0f, bool debug = false)
     {
-        var atkStats = attacking.Midfielders.AverageStats(attacking.Tactic);
-        var defStats = defending.Midfielders.AverageStats(defending.Tactic);
+        var atkStats = attacking.Midfielders.AverageStats(attacking.Tactic, PlayerGroup.Midfielders);
+        var defStats = defending.Midfielders.AverageStats(defending.Tactic, PlayerGroup.Midfielders);
 
         var parameters = new Phase.Parameters
         {
@@ -666,8 +698,8 @@ public class MatchEngine
 
     public float PenetrateLogic(Team attacking, Team defending, float overflow = 0f, bool debug = false)
     {
-        var atkStats = attacking.Attackers.AverageStats(attacking.Tactic);
-        var defStats = defending.Defenders.AverageStats(defending.Tactic);
+        var atkStats = attacking.Attackers.AverageStats(attacking.Tactic, PlayerGroup.Attackers);
+        var defStats = defending.Defenders.AverageStats(defending.Tactic, PlayerGroup.Defenders);
 
         var parameters = new Phase.Parameters
         {
@@ -713,8 +745,8 @@ public class MatchEngine
 
     public float CounterLogic(Team attacking, Team defending, float overflow = 0f, bool debug = false)
     {
-        var atkStats = attacking.Midfielders.Union(attacking.Defenders).ToArray().AverageStats(attacking.Tactic);
-        var defStats = defending.Midfielders.Union(defending.Attackers).ToArray().AverageStats(defending.Tactic);
+        var atkStats = attacking.Midfielders.Union(attacking.Defenders).ToArray().AverageStats(attacking.Tactic, PlayerGroup.DefenseAndMidfield);
+        var defStats = defending.Midfielders.Union(defending.Attackers).ToArray().AverageStats(defending.Tactic, PlayerGroup.MidfieldAndAttack);
 
         var parameters = new Phase.Parameters
         {
@@ -757,8 +789,8 @@ public class MatchEngine
 
     public float BreakLogic(Team attacking, Team defending, float overflow = 0f, bool debug = false)
     {
-        var atkStats = attacking.Attackers.AverageStats(attacking.Tactic);
-        var defStats = defending.Defenders.AverageStats(defending.Tactic);
+        var atkStats = attacking.Attackers.AverageStats(attacking.Tactic, PlayerGroup.Attackers);
+        var defStats = defending.Defenders.AverageStats(defending.Tactic, PlayerGroup.Defenders);
 
         var parameters = new Phase.Parameters
         {

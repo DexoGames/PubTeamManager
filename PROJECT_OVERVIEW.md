@@ -204,20 +204,35 @@ creates new instances linked to the same series, then **archives + unloads** the
   the formation **base-replaces** the tactic's Complexity/Intensity/Control/Threat/Security (so 5-3-2 starts
   defensive, 4-3-3 attacking), and **Tempo** drives the match engine's build-up choice (see §5).
 - **Tactic** (`Tactics/Tactic.cs`): runtime per-team state, now the hub of the deep tactics systems. Holds the
-  chosen `Formation`, the `TacticInstruction` list, the **reliance player bindings** (`ReliancePlayers`), an overall
+  chosen `Formation`, the `TacticInstruction` list, the **reliance slot bindings** (`RelianceSlots`), an overall
   **`Mentality`**, a **`Familiarity`** score, the 12 derived `TacticStat`s, and a formation-derived **`Tempo`**.
   `RecalculateStats()` = `ApplyFormationBase()` (formation sets the base for Complexity/Intensity/Control/Threat/
-  Security + Tempo) + instructions + mentality + instruction floors/ceilings, then clamps. Now **serialized** via
-  `CaptureState()`/`ApplyState()` ↔ `TacticState` (written by `TeamConverter`).
+  Security + Tempo) + instructions + **complementary synergies** + mentality + instruction floors/ceilings, then
+  clamps. Now **serialized** via `CaptureState()`/`ApplyState()` ↔ `TacticState` (written by `TeamConverter`).
+  - **Complementary instructions** (`TacticInstruction.complementaryInstructions`): a one-directional synergy list.
+    Each entry names a partner `TacticInstruction` + a list of `TacticStat` perks; when both the owner and the
+    partner are active, the owner adds those perks (step "1b" of `RecalculateStats`). List it on both to make a
+    pairing mutual. (Mirror of `incompatibleInstructions`, which forbids pairs rather than rewarding them.)
   - **Mentality** (`Mentality` enum, UltraDefensive…UltraAttacking): one dial shifting a band of stats
     (Threat↑/Security↓/Intensity↑/width/…, extremes cost Stability). `BaseMentality` persists; `InMatchMentalityShift`
     is a temporary in-match nudge reset at full time (`BeginMatch`/`EndMatch`/`ShiftMentalityInMatch`).
-  - **Reliance** (a property of `TacticInstruction`): an instruction may carry a reliance (`hasReliance` + a
-    `Reliance { PlayerStat[] stats; float multiplier }`). When that instruction is active it leans on **one chosen
-    player** (`ReliancePlayers[instructionName]`, picked via the UI, or auto-bound for AI via
-    `EnsureReliancePlayers`): in `AverageStats(tactic)` that player's named stats get `multiplier`× weight, so his
-    strengths *and* weaknesses in those stats sway the team more (`IsReliantPlayer`/`RelianceBonus`). Any extra
-    trade-off (e.g. +Complexity) is just authored `statModifications` on the same instruction.
+  - **Reliance** (a property of `TacticInstruction`): an instruction may carry a reliance —
+    `Reliance { PlayerStat[] stats; float multiplier; PlayerGroup[] eligibleGroups; float familiarityPenalty }`.
+    An instruction **counts as a reliance when its `eligibleGroups` is non-empty** — there's no separate flag;
+    `TacticInstruction.hasReliance` is a derived getter (`eligibleGroups.Length > 0`).
+    When active it leans on **one player by SQUAD SLOT** (`RelianceSlots[instructionName]` = index in
+    `Team.Players`, not a PersonID) — so it **follows the slot**: a subbed-on player inherits the reliance, and a
+    formation change keeps it on the same player. In `AverageStats(tactic)` that slot's player gets `multiplier`×
+    weight on his named `stats` (`IsReliantPlayer`/`RelianceBonus`). **`eligibleGroups`** (reusing `PlayerGroup`)
+    does triple duty: it filters the picker; it **auto-disables** the instruction if the player later moves out of
+    all those groups; and it **scopes which phases of play the effect applies to**. The match engine evaluates one
+    position band per phase (Defenders for build-up, Attackers for finishing, the unions for transitions, …), and a
+    reliance amplifies its stats only in phases whose band is *within* `eligibleGroups` — so a defenders reliance
+    sways the build-up but not the finish, a target-man (attackers) reliance the finish but not the build-up
+    (`RelianceBonus(player, stat, phaseGroup)` → `ReliancePhaseActive`). **`familiarityPenalty`** knocks the instruction's habituation weight
+    when a sub/swap *changes* the reliant player (0 = no effect). All this is enforced by **`RefreshReliances()`**,
+    called on every tactic/lineup/formation change and at match start (auto-bind missing, auto-disable invalid,
+    apply change penalties). Any other trade-off (e.g. +Complexity) is just authored `statModifications`.
   - **Familiarity** (0–100, **muscle-memory model**): each tactical setting (the formation, and each instruction)
     has a habituation `weight` in `SettingWeights` (0 = used to OFF, 1 = used to ON). `Familiarity` is a **blend**:
     `FORMATION_FAMILIARITY_SHARE` (≈40%) from how drilled the team is in the **current formation** (one weight per

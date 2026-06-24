@@ -26,6 +26,9 @@ public class Match
         public Player shooter;
         [JsonConverter(typeof(PersonRefConverter))]
         public Player assister;
+        /// <summary>The keeper who faced this shot (the defending side's GK) — lets us attribute saves.</summary>
+        [JsonConverter(typeof(PersonRefConverter))]
+        public Player keeper;
         public float xG;
         public Minute minute;
 
@@ -33,13 +36,14 @@ public class Match
         // [JsonConstructor] is required for Shot to deserialize (same pattern as Foul below).
         // Without it, loading a saved match throws "Error setting value to 'shooter' on 'Match+Shot'".
         [JsonConstructor]
-        public Shot(ShotType type, ShotOutcome result, Team team, Player shooter, Player assister, float xG, Minute minute)
+        public Shot(ShotType type, ShotOutcome result, Team team, Player shooter, Player assister, Player keeper, float xG, Minute minute)
         {
             this.type = type;
             this.result = result;
             this.team = team;
             this.shooter = shooter;
             this.assister = assister;
+            this.keeper = keeper;
             this.xG = xG;
             this.minute = minute;
         }
@@ -74,8 +78,8 @@ public class Match
 
         public Result(Team home, Team away)
         {
-            this.home = new TeamStats { team = home, goals = new List<Shot>(), fouls = new List<Foul>() };
-            this.away = new TeamStats { team = away, goals = new List<Shot>(), fouls = new List<Foul>() };
+            this.home = new TeamStats { team = home, goals = new List<Shot>(), shots = new List<Shot>(), fouls = new List<Foul>() };
+            this.away = new TeamStats { team = away, goals = new List<Shot>(), shots = new List<Shot>(), fouls = new List<Foul>() };
         }
     }
 
@@ -84,12 +88,20 @@ public class Match
         [JsonConverter(typeof(TeamRefConverter))]
         public Team team;
         public List<Shot> goals;
+        /// <summary>EVERY shot this team took (any outcome) — goals are the subset with result == Goal.
+        /// Powers the shots/saves/assists stat leaderboards. Trimmed by Fixture.SlimForArchive on old matches.</summary>
+        public List<Shot> shots;
         public List<Foul> fouls;
         public float possession;
 
         /// <summary>PersonIDs of the starting XI. Captured at FinaliseResult so archived
         /// (slimmed) matches can still show who played even after fouls/possession are dropped.</summary>
         public List<int> lineup;
+
+        /// <summary>The keeper who played, captured at FinaliseResult. The single source of truth for clean-sheet
+        /// and goals-conceded attribution — independent of how many shots were faced and kept through archiving.</summary>
+        [JsonConverter(typeof(PersonRefConverter))]
+        public Player keeper;
     }
 
     private readonly Team home;
@@ -175,7 +187,7 @@ public class Match
         }
     }
 
-    public void RecordShot(ShotType type, ShotOutcome outcome, Team shootingTeam, Player shooter, Player goalkeeper, float xG, Minute minute)
+    public void RecordShot(ShotType type, ShotOutcome outcome, Team shootingTeam, Player shooter, Player goalkeeper, float xG, Minute minute, Player assister = null)
     {
         AddHighlight(new ShotHighlight(shootingTeam, minute, shooter, goalkeeper, type, outcome));
 
@@ -185,9 +197,15 @@ public class Match
             result = outcome,
             team = shootingTeam,
             shooter = shooter,
+            assister = assister,
+            keeper = goalkeeper,
             xG = xG,
             minute = minute,
         };
+
+        // Record EVERY shot (the lists are reference types, so writing through the struct copy is fine).
+        if (shootingTeam == HomeTeam) result.home.shots.Add(shot);
+        else result.away.shots.Add(shot);
 
         if (outcome == ShotOutcome.Goal)
         {

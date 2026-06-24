@@ -112,13 +112,20 @@ The tactics page (`TacticsPageUI`) already has the formation editor and instruct
    short do below-bar players get penalised). This is how the player *sees* the complexity trade-off.
 
 ### 2d. Reliances — now a property of instructions
-A **reliance** is authored **on a `TacticInstruction` asset** (tick **Has Reliance**, choose which `PlayerStat`s
-it amplifies + a multiplier), so it sits in `TacticGridLayout` like any other instruction. Toggling a reliance
-instruction on opens the shared player picker to choose the **one** reliant player (his named stats then sway the
-team more — strengths *and* weaknesses). **Full steps in §8.2** (plus the shared `PlayerPickerPopup`, §8.1).
+A **reliance** is authored **on a `TacticInstruction` asset** (it *becomes* a reliance by filling in its **eligible
+position groups** — no separate flag — then set its amplified `PlayerStat`s + multiplier and a **familiarity
+penalty**), so it sits in
+`TacticGridLayout` like any other instruction. Toggling it on opens the shared picker (filtered to eligible
+starters) to choose the **one** reliant player; the binding is by **squad slot**, so it follows subs and survives
+formation changes, and auto-disables if the player moves into a disallowed group. **Full steps in §8.2** (plus the
+shared `PlayerPickerPopup`, §8.1).
 
-> A reliance's trade-off is yours to author: give the instruction `statModifications` (e.g. +Complexity) if you
-> want leaning on a player to also raise the squad-IQ demand. Reliances don't affect Familiarity.
+> Author the trade-offs: `eligibleGroups` keeps a reliance sensible (e.g. crosses → wide/forward only) **and now
+> also scopes *when* it bites** — the match engine plays out position-band phases (build-up ≈ defenders, finishing ≈
+> attackers, transitions ≈ the unions), and a reliance only sways phases whose band sits inside its groups (a
+> defenders reliance lifts the build-up, not the finish). `familiarityPenalty` is how much *changing* the reliant
+> player (a sub) dents familiarity (0 for minor ones); and normal `statModifications` (e.g. +Complexity) make
+> leaning on a player also raise the squad-IQ demand.
 
 ### 2e. (Optional) more named instructions for variety
 The mentality dial already gives the full defensive→attacking range. If you also want extra **named**
@@ -126,6 +133,15 @@ instructions (HighLine, LowBlock, CounterPress, etc.), author them as before:
 **Assets → Create → Tactic → Instruction** in `Resources/Tactics/Instructions/`, set their `statModifications`
 / `tacticDependencies` / `incompatibleInstructions`, then add them to the `TacticGridLayout.tactics` list.
 They flow through the new system unchanged (and now persist).
+
+**Synergies (`complementaryInstructions`).** To reward pairs that work well together, fill an instruction's
+**Complementary Instructions** list: each entry is a **partner instruction** + a list of **tactic-stat perks**
+(a `TacticStat` + amount, just like `statModifications`). When *both* the owner and the partner are active, the
+owner's perks are added (applied as step "1b" of `RecalculateStats`, after base instruction stats, before
+mentality). It's **one-directional** — e.g. give *High Press* a perk that only lands when *High Line* is also on;
+list the synergy on both assets if you want each to perk the other. (This is the positive mirror of
+`incompatibleInstructions`.) Keep the design rule in mind: a perk is an upside, so consider an authored downside on
+the same instruction — e.g. High Press + High Line gains Threat but the High Line already carries a Security cost.
 
 ### 2f. Complexity slider colour + squad-IQ warning — `ComplexitySlider`
 The squad-IQ feedback lives in its **own component** so plain stat sliders carry none of it. On the **Complexity
@@ -262,7 +278,7 @@ Shy player underplays his best stat. Max 5 questions per candidate.
 | Formation's share of Familiarity (≈40% drop on a fresh switch) | `Tactic.FORMATION_FAMILIARITY_SHARE` (0.4) | rest comes from instructions; raise = formation matters more |
 | Familiarity → mistakes | `MatchEngine.StartingPhase` | `mistakeThreshold` |
 | Intelligence bar (= Complexity) & penalty | `Tactic.IntelligenceThreshold` / `ShouldApplyComplexityPenalty` / `ComplexityPenaltyFraction` (`INTELLIGENCE_PENALTY_PER_POINT` 0.05, cap 0.9) | penalty only if **XI average** < bar; uses `Player.TacticalIntelligence` = effective `GetStats().Intelligence` (boost + morale + off-position), on-pitch XI only, shown in PositionUI. **Proportional** cut ≈50% at 10 below the bar to the mental stats `Tactic.ComplexityAffectedStats` (all mental bar Intelligence) |
-| Reliance stats + multiplier | each reliance **instruction asset** (`hasReliance` + `reliance` on the `TacticInstruction`) | which of the reliant player's stats sway the team, and by how much |
+| Reliance (eligible groups, stats, multiplier, familiarity penalty) | the `reliance` on a `TacticInstruction` (a non-empty **Eligible Groups** makes it a reliance — `hasReliance` is derived) | which position groups may hold it **and which phases it affects** (auto-disables if the player leaves them); which stats sway the team & by how much; how hard a player-change dents familiarity |
 | Foul/card/injury rates | `MatchEngine.TryFoul/DecideCard/DecideInjury` | |
 | Injury durations | `Player.InjuryDurationDays` | |
 | Injury morale impact (per severity) | `InjuryManager.ApplyInjuryMorale` | victim vs teammate bands |
@@ -312,7 +328,8 @@ is the editor build.
 | `PlayerSlotUI` | a "click to add / X to remove" player slot (training) |
 
 > **Reliance = an instruction property.** There's no separate dependency component anymore. A `TacticInstruction`
-> asset has a **Has Reliance** tick + a **Reliance** (which `PlayerStat`s + a multiplier). It lives in
+> *becomes* a reliance the moment its **Reliance → Eligible Groups** list is non-empty (no separate flag — `hasReliance`
+> is derived from it); the Reliance also holds the amplified `PlayerStat`s + multiplier. It lives in
 > `TacticGridLayout.tactics` like any instruction; toggling it on opens the picker to choose the reliant player.
 
 ### 8.1 The shared picker — `PlayerPickerPopup` (REQUIRED for 8.2 and 8.3)
@@ -337,19 +354,31 @@ It's **instantiated on demand from a Resources prefab** — no scene object to p
 A reliance is authored on a `TacticInstruction` ScriptableObject and used like any other instruction — no new
 component or panel.
 1. **Author the instruction:** Create/open a `TacticInstruction` asset (`Resources/Tactics/Instructions/`).
-   Tick **Has Reliance**, then under **Reliance** set:
+   It becomes a reliance **simply by filling in Eligible Groups** — there's no separate flag to tick (`hasReliance`
+   is derived: any group ⇒ reliance, none ⇒ plain instruction). Under **Reliance** set:
+   - **Eligible Groups** (`PlayerGroup[]`) — which position groups may hold this reliance (union of the listed
+     groups). **This is what makes it a reliance** — leave it empty for a plain instruction. E.g. a "focus crosses
+     towards" → `WidePlayers` + `Attackers` (no centre-backs/keepers). It does three things: **filters the picker**,
+     **auto-disables** the instruction if the player later moves out of all of them, and **scopes which phases of
+     play the boost applies to** — the engine resolves position-band phases (build-up ≈ defenders, finishing ≈
+     attackers, transitions ≈ the mid+def / mid+att unions), and the reliance only amplifies its stats in a phase
+     whose band is *within* these groups. So a `Defenders`-only reliance lifts the build-up phase but not the
+     finish; pick `MidfieldAndAttack` / `Outfield` for a reliance you want felt further up or across the team.
+     (`Goalkeeper` has no match phase, so a keeper-only reliance won't bite in the sim.)
    - **Stats** — which of the reliant player's stats count more toward the team (e.g. Passing, Creativity for a
      playmaker; Heading, Strength for a target man);
    - **Multiplier** — extra weight on those stats (`1` = the reliant player counts double for them, `2` = triple).
+   - **Familiarity Penalty** (0–1) — how hard a *change* of the reliant player (a sub/swap) dents familiarity.
+     `0` = no effect (a minor reliance); higher = the instruction must be re-drilled.
    Add normal `statModifications` too if you want it to also shift tactic stats / Complexity.
-2. **Add it to the grid:** put the asset in `TacticGridLayout.tactics`, same as any instruction (it'll appear as a
-   toggle in the Attacking/Defending tab you place it on). No special UI needed — `TacticGridLayout` detects
-   `hasReliance` and runs the picker.
-3. Done. Toggling it on opens the picker (your **starting XI**); pick the reliant player and the toggle reads
-   "Name: Surname", the binding is stored, and `OnTacticChange` fires so the read-outs update. Toggle off → removed.
-   Cancel the picker → it flips back off. (AI managers and your default-template reliances auto-bind to the
-   best-suited starter at match start via `Tactic.EnsureReliancePlayers`. A reliant player later benched just goes
-   dormant until back in the XI.)
+2. **Add it to the grid:** put the asset in `TacticGridLayout.tactics`, same as any instruction (it appears as a
+   toggle on whichever tab you place it). No special UI — `TacticGridLayout` detects `hasReliance` and runs the picker.
+3. Done. Toggling it on opens the picker (your **eligible** starters only); pick the reliant player and the toggle
+   reads "Name: Surname". The binding is by **squad slot**, so it follows substitutions (a subbed-on player inherits
+   it) and stays on the same player across formation changes. Toggle off → removed; cancel the picker → flips back off.
+   `Tactic.RefreshReliances()` runs on every tactic/lineup/formation change and at match start to auto-bind AI/default
+   reliances, apply the familiarity penalty when the slot's player changes, and auto-disable any reliance whose
+   player has moved into a disallowed position group.
 
 ### 8.3 Training: five player slots (replaces the old toggle list)
 `TrainingPageUI`'s positional sub-panel now uses `PlayerSlotUI` slots instead of the old per-player toggle list.

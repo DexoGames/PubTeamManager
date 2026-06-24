@@ -38,10 +38,15 @@ public class Tactic
     public List<TacticInstruction> Instructions { get; private set; } = new();
 
     /// <summary>
-    /// For each active reliance instruction, the chosen reliant player's ID, keyed by instruction name. A
-    /// reliance instruction leans on one player: his named stats count more in the team's group averages.
+    /// For each active reliance instruction, the SQUAD INDEX (slot in Team.Players) it leans on, keyed by
+    /// instruction name. Index-based so the reliance follows the slot: if that starter is subbed, the reliance
+    /// transfers to whoever fills the slot; changing formation keeps it on the same player.
     /// </summary>
-    public Dictionary<string, int> ReliancePlayers { get; private set; } = new();
+    public Dictionary<string, int> RelianceSlots { get; private set; } = new();
+
+    /// <summary>Per reliance: the PersonID the team is currently "drilled" relying on, used to detect when a
+    /// sub/swap has actually changed the reliant player (for the familiarity penalty). Rebuilt at runtime; not saved.</summary>
+    [System.NonSerialized] private Dictionary<string, int> _relianceDrilled = new();
 
     /// <summary>Persistent base mentality the player sets in the tactics screen.</summary>
     public Mentality BaseMentality = Mentality.Balanced;
@@ -147,7 +152,7 @@ public class Tactic
     /// <summary>
     /// Adds an instruction. If it's a reliance instruction, the reliant player is set from
     /// <paramref name="reliancePlayer"/> (the UI passes the picked player); leave null for AI/defaults and a
-    /// sensible player is auto-bound later via <see cref="EnsureReliancePlayers"/>.
+    /// sensible eligible player is auto-bound later via <see cref="RefreshReliances"/>.
     /// </summary>
     public void AddInstruction(TacticInstruction instruction, Player reliancePlayer = null)
     {
@@ -155,7 +160,10 @@ public class Tactic
 
         Instructions.Add(instruction);
         if (instruction.hasReliance && reliancePlayer != null)
-            ReliancePlayers[instruction.name] = reliancePlayer.PersonID;
+        {
+            RelianceSlots[instruction.name] = reliancePlayer.GetTeamIndex();
+            _relianceDrilled[instruction.name] = reliancePlayer.PersonID; // initial pick — no penalty
+        }
         RecalculateStats();
     }
 
@@ -164,58 +172,84 @@ public class Tactic
         if (!Instructions.Contains(instruction)) return;
 
         Instructions.RemoveAll(i => i == instruction);
-        if (instruction != null) ReliancePlayers.Remove(instruction.name);
+        if (instruction != null)
+        {
+            RelianceSlots.Remove(instruction.name);
+            _relianceDrilled.Remove(instruction.name);
+        }
         RecalculateStats();
     }
 
     public void ResetInstructions()
     {
         Instructions.Clear();
-        ReliancePlayers.Clear();
+        RelianceSlots.Clear();
+        _relianceDrilled.Clear();
         RecalculateStats();
     }
 
     // ————————————————————— reliances (instructions that lean on one player) —————————————————————
 
-    /// <summary>Sets/updates which player a reliance instruction leans on (null clears the binding).</summary>
+    /// <summary>Sets/updates which player a reliance instruction leans on (null clears it). Stores the squad slot.</summary>
     public void SetReliancePlayer(TacticInstruction instruction, Player player)
     {
         if (instruction == null || !instruction.hasReliance) return;
-        if (player == null) ReliancePlayers.Remove(instruction.name);
-        else ReliancePlayers[instruction.name] = player.PersonID;
+        if (player == null)
+        {
+            RelianceSlots.Remove(instruction.name);
+            _relianceDrilled.Remove(instruction.name);
+        }
+        else
+        {
+            RelianceSlots[instruction.name] = player.GetTeamIndex();
+            _relianceDrilled[instruction.name] = player.PersonID;
+        }
         RecalculateStats();
     }
 
-    /// <summary>The player a reliance instruction currently leans on (null if unset / not a reliance).</summary>
-    public Player GetReliancePlayer(TacticInstruction instruction)
+    /// <summary>The player currently filling a reliance instruction's slot (null if unset / out of range).</summary>
+    public Player GetReliancePlayer(TacticInstruction instruction) => ResolveReliancePlayer(instruction);
+
+    private Player ResolveReliancePlayer(TacticInstruction instruction)
     {
-        if (instruction == null || PersonManager.Instance == null) return null;
-        return ReliancePlayers.TryGetValue(instruction.name, out int id) ? PersonManager.Instance.GetPlayer(id) : null;
+        if (instruction == null || Team == null || Team.Players == null) return null;
+        if (!RelianceSlots.TryGetValue(instruction.name, out int slot)) return null;
+        return slot >= 0 && slot < Team.Players.Count ? Team.Players[slot] : null;
     }
 
-    /// <summary>True if any active reliance instruction leans on this player (fast pre-check for AverageStats).</summary>
-    public bool IsReliantPlayer(Player player)
+    /// <summary>
+    /// True if any active reliance leans on this player's slot AND fires in the given phase (fast pre-check for
+    /// AverageStats). <paramref name="phaseGroup"/> is the position band the match engine is currently evaluating;
+    /// pass null for a non-phase / team-wide context (the reliance then applies unconditionally).
+    /// </summary>
+    public bool IsReliantPlayer(Player player, PlayerGroup? phaseGroup = null)
     {
-        if (player == null || ReliancePlayers.Count == 0) return false;
+        if (player == null || RelianceSlots.Count == 0) return false;
+        int idx = player.GetTeamIndex();
         foreach (var instr in Instructions)
             if (instr != null && instr.hasReliance &&
-                ReliancePlayers.TryGetValue(instr.name, out int id) && id == player.PersonID)
+                RelianceSlots.TryGetValue(instr.name, out int slot) && slot == idx &&
+                ReliancePhaseActive(instr.reliance.eligibleGroups, phaseGroup))
                 return true;
         return false;
     }
 
     /// <summary>
-    /// Extra weight the player's given stat gets from the active reliances on him — how much more that stat
-    /// counts toward the team's effective ability (his strengths AND weaknesses in it amplified).
+    /// Extra weight the player's given stat gets from the active reliances on his slot — how much more that
+    /// stat counts toward the team's effective ability (his strengths AND weaknesses in it amplified). The bonus
+    /// only counts a reliance whose eligible groups cover the phase being evaluated (see <paramref name="phaseGroup"/>),
+    /// so e.g. a defenders reliance amplifies a defensive phase but not the finishing phase. Null = unconditional.
     /// </summary>
-    public float RelianceBonus(Player player, PlayerStat stat)
+    public float RelianceBonus(Player player, PlayerStat stat, PlayerGroup? phaseGroup = null)
     {
-        if (player == null || ReliancePlayers.Count == 0) return 0f;
+        if (player == null || RelianceSlots.Count == 0) return 0f;
+        int idx = player.GetTeamIndex();
         float bonus = 0f;
         foreach (var instr in Instructions)
         {
             if (instr == null || !instr.hasReliance) continue;
-            if (!ReliancePlayers.TryGetValue(instr.name, out int id) || id != player.PersonID) continue;
+            if (!RelianceSlots.TryGetValue(instr.name, out int slot) || slot != idx) continue;
+            if (!ReliancePhaseActive(instr.reliance.eligibleGroups, phaseGroup)) continue;
             var stats = instr.reliance.stats;
             if (stats != null && Array.IndexOf(stats, stat) >= 0)
                 bonus += instr.reliance.multiplier;
@@ -223,20 +257,140 @@ public class Tactic
         return bonus;
     }
 
+    // ————————————————————— reliance phase-gating —————————————————————
+    //
+    // A reliance's eligibleGroups do double duty: they say who can HOLD it (picker / auto-disable) AND which
+    // phases of play it influences. The match engine evaluates one position band per phase (Defenders for build-up,
+    // Attackers for finishing, the unions for transitions, …). A reliance fires in a phase only when that phase's
+    // band is WITHIN the reliance's eligible bands — so a defenders-only reliance sways the build-up but not the
+    // finish, a target-man (attackers) reliance sways the finish but not the build-up, and so on.
+
+    [System.Flags]
+    private enum Bands { None = 0, GK = 1, Def = 2, Mid = 4, Atk = 8 }
+
+    /// <summary>The position bands a <see cref="PlayerGroup"/> spans (for phase gating). Wide/Outfield span all
+    /// outfield bands — there's no wide-specific match phase, so a wide reliance applies wherever its player does.</summary>
+    private static Bands BandsOf(PlayerGroup g) => g switch
+    {
+        PlayerGroup.Goalkeeper          => Bands.GK,
+        PlayerGroup.Defenders           => Bands.Def,
+        PlayerGroup.Midfielders         => Bands.Mid,
+        PlayerGroup.Attackers           => Bands.Atk,
+        PlayerGroup.DefenseAndMidfield  => Bands.Def | Bands.Mid,
+        PlayerGroup.MidfieldAndAttack   => Bands.Mid | Bands.Atk,
+        PlayerGroup.GoalkeeperAndDefense => Bands.GK | Bands.Def,
+        PlayerGroup.Outfield            => Bands.Def | Bands.Mid | Bands.Atk,
+        PlayerGroup.WidePlayers         => Bands.Def | Bands.Mid | Bands.Atk,
+        _                               => Bands.None
+    };
+
+    private static Bands BandsOf(PlayerGroup[] groups)
+    {
+        Bands b = Bands.None;
+        if (groups != null) foreach (var g in groups) b |= BandsOf(g);
+        return b;
+    }
+
+    /// <summary>Does a reliance with these eligible groups influence the phase evaluating <paramref name="phaseGroup"/>?
+    /// True when the phase's bands are a subset of the eligible bands. Null phase = team-wide → always true.</summary>
+    private static bool ReliancePhaseActive(PlayerGroup[] eligibleGroups, PlayerGroup? phaseGroup)
+    {
+        if (phaseGroup == null) return true;
+        Bands ctx = BandsOf(phaseGroup.Value);
+        Bands elig = BandsOf(eligibleGroups);
+        return ctx != Bands.None && (ctx & elig) == ctx; // ctx ⊆ elig
+    }
+
+    /// <summary>The starting-XI players eligible to be picked for this reliance (filtered by its position groups).</summary>
+    public IEnumerable<Player> EligibleReliancePlayers(TacticInstruction instruction)
+    {
+        if (Team == null) return Enumerable.Empty<Player>();
+        return Team.StartingPlayers.Where(p => IsEligible(p, instruction.reliance));
+    }
+
+    /// <summary>Is the player currently in one of the reliance's allowed position groups? (No groups = not a
+    /// reliance, so this never gates an active one — returns true as a harmless guard.)</summary>
+    private bool IsEligible(Player player, TacticInstruction.Reliance reliance)
+    {
+        var groups = reliance.eligibleGroups;
+        if (groups == null || groups.Length == 0) return true;
+        foreach (var g in groups)
+            if (Team.GetGroup(g).Contains(player)) return true;
+        return false;
+    }
+
     /// <summary>
-    /// Auto-binds any active reliance instruction with no chosen player yet (AI managers, or the player's
-    /// default-template instructions) to the starting player strongest in that reliance's stats. Call when the
-    /// XI exists (match start, tactics screen).
+    /// Re-validates every reliance — call whenever the lineup/formation/tactic changes or a match starts:
+    ///  • auto-binds any reliance with no player yet (AI / defaults) to the best ELIGIBLE starter;
+    ///  • auto-DISABLES (removes) a reliance whose slot is empty or whose player has moved out of its groups;
+    ///  • applies the per-reliance familiarity penalty when a sub/swap has changed who fills the slot.
     /// </summary>
-    public void EnsureReliancePlayers()
+    public void RefreshReliances()
     {
         if (Team == null || Team.Players == null || Team.Players.Count < 11) return;
+
+        bool changed = false;
+        List<TacticInstruction> toRemove = null;
+
         foreach (var instr in Instructions)
         {
-            if (instr == null || !instr.hasReliance || ReliancePlayers.ContainsKey(instr.name)) continue;
-            Player auto = AutoPickReliancePlayer(instr);
-            if (auto != null) ReliancePlayers[instr.name] = auto.PersonID;
+            if (instr == null || !instr.hasReliance) continue;
+
+            // Auto-bind missing (AI / default-template reliances) to the best eligible starter.
+            if (!RelianceSlots.ContainsKey(instr.name))
+            {
+                Player auto = AutoPickReliancePlayer(instr);
+                if (auto == null) { (toRemove ??= new List<TacticInstruction>()).Add(instr); continue; }
+                RelianceSlots[instr.name] = auto.GetTeamIndex();
+                _relianceDrilled[instr.name] = auto.PersonID;
+                changed = true;
+            }
+
+            Player current = ResolveReliancePlayer(instr);
+
+            // Invalid: slot empty, or the player has moved out of the allowed groups → disable the instruction.
+            if (current == null || !IsEligible(current, instr.reliance))
+            {
+                (toRemove ??= new List<TacticInstruction>()).Add(instr);
+                continue;
+            }
+
+            // Familiarity penalty when a sub/swap has changed who fills the slot since we last accounted for it.
+            if (_relianceDrilled.TryGetValue(instr.name, out int drilledId))
+            {
+                if (drilledId != current.PersonID)
+                {
+                    ApplyReliancePenalty(instr);
+                    _relianceDrilled[instr.name] = current.PersonID;
+                    changed = true;
+                }
+            }
+            else
+            {
+                _relianceDrilled[instr.name] = current.PersonID; // first time seen (e.g. after load) — no penalty
+            }
         }
+
+        if (toRemove != null)
+            foreach (var instr in toRemove)
+            {
+                Instructions.Remove(instr);
+                RelianceSlots.Remove(instr.name);
+                _relianceDrilled.Remove(instr.name);
+                changed = true;
+            }
+
+        if (changed) RecalculateStats();
+    }
+
+    /// <summary>Knocks an instruction's habituation weight toward neutral by its reliance familiarityPenalty.</summary>
+    private void ApplyReliancePenalty(TacticInstruction instruction)
+    {
+        float pen = Mathf.Clamp01(instruction.reliance.familiarityPenalty);
+        if (pen <= 0f) return;
+        string key = $"inst:{instruction.name}";
+        float w = SettingWeights.TryGetValue(key, out var v) ? v : DEFAULT_INSTRUCTION_WEIGHT;
+        SettingWeights[key] = Mathf.Lerp(w, DEFAULT_INSTRUCTION_WEIGHT, pen);
     }
 
     private Player AutoPickReliancePlayer(TacticInstruction instruction)
@@ -248,6 +402,7 @@ public class Tactic
         int bestScore = int.MinValue;
         foreach (var p in Team.StartingPlayers)
         {
+            if (!IsEligible(p, instruction.reliance)) continue; // only eligible players
             int score = 0;
             var s = p.GetStats();
             if (stats != null) foreach (var st in stats) score += s.GetStat(st);
@@ -371,7 +526,7 @@ public class Tactic
     /// <summary>Recomputes the starting-XI intelligence average — call once at the start of each match.</summary>
     public void RefreshMatchCache()
     {
-        EnsureReliancePlayers();
+        RefreshReliances();
         CachedStartingIntelligence = CurrentStartingIntelligence();
     }
 
@@ -529,6 +684,20 @@ public class Tactic
         // (Reliances are ordinary instructions handled in step 1 — their stat effects are authored
         //  statModifications; their per-player weighting is applied at match time in AverageStats, not here.)
 
+        // 1b. Complementary synergies — an instruction grants extra perks when a partner it pairs well with is
+        //     also active. Runs after step 1 so the full active set is known and the order doesn't matter.
+        foreach (var instruction in Instructions)
+        {
+            if (instruction?.complementaryInstructions == null) continue;
+            foreach (var comp in instruction.complementaryInstructions)
+            {
+                if (comp.instruction == null || comp.perks == null) continue;
+                if (!Instructions.Contains(comp.instruction)) continue;
+                foreach (var perk in comp.perks)
+                    ModifyStat(perk.stat, perk.value);
+            }
+        }
+
         // 2. Overall mentality — one dial spanning very defensive → very open.
         ApplyMentality();
 
@@ -616,7 +785,7 @@ public class Tactic
         {
             FormationName = Formation != null ? Formation.name : null,
             InstructionNames = Instructions.Where(i => i != null).Select(i => i.name).ToList(),
-            ReliancePlayers = new Dictionary<string, int>(ReliancePlayers),
+            RelianceSlots = new Dictionary<string, int>(RelianceSlots),
             MentalityIndex = (int)BaseMentality,
             SettingWeights = new Dictionary<string, float>(SettingWeights)
         };
@@ -642,7 +811,8 @@ public class Tactic
                 .ToList();
         }
 
-        ReliancePlayers = state.ReliancePlayers ?? new Dictionary<string, int>();
+        RelianceSlots = state.RelianceSlots ?? new Dictionary<string, int>();
+        _relianceDrilled = new Dictionary<string, int>(); // rebuilt by RefreshReliances; no load penalty
         BaseMentality = (Mentality)Mathf.Clamp(state.MentalityIndex, 0, GetEnumLength<Mentality>() - 1);
         SettingWeights = state.SettingWeights ?? new Dictionary<string, float>();
 
@@ -666,7 +836,7 @@ public class TacticState
 {
     public string FormationName;
     public List<string> InstructionNames = new();
-    public Dictionary<string, int> ReliancePlayers = new();
+    public Dictionary<string, int> RelianceSlots = new();
     public int MentalityIndex = (int)Mentality.Balanced;
     public Dictionary<string, float> SettingWeights = new();
 }

@@ -6,6 +6,9 @@ public class TeamDetailsUI : UIPage
 {
     public static TeamDetailsUI Instance { get; private set; }
 
+    /// <summary>The team currently being shown — read by stat widgets that rank this club's players.</summary>
+    public Team CurrentTeam { get; private set; }
+
     [SerializeField] private TextMeshProUGUI _teamTitleText, _stadiumCapacityText, _formationText, _managerText;
     //[SerializeField] private TextMeshProUGUI _statAttacking, _statDefending, _statMental, _statPhysical;
     [SerializeField] private Transform _teamContainer;
@@ -29,6 +32,7 @@ public class TeamDetailsUI : UIPage
     protected override void OnShow(Team team)
     {
         base.OnShow(team);
+        CurrentTeam = team;
         Game.ClearContainer(_teamContainer);
 
         _teamTitleText.text = team.Name;

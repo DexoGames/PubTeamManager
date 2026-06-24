@@ -55,10 +55,29 @@ public class TacticGridLayout : MonoBehaviour
         if (tacticsPage != null)
         {
             OnTacticChange.AddListener(tacticsPage.OnTacticChange.Invoke);
+            // Re-sync the toggles when the tactic changes elsewhere (e.g. a formation change or player swap
+            // that auto-disables a now-invalid reliance) so a disabled instruction's toggle turns off.
+            tacticsPage.OnTacticChange.AddListener(SyncToggleStates);
         }
 
         // Initial generation of the grid.
         GenerateGrid();
+    }
+
+    /// <summary>Pushes the current tactic's instruction set onto the toggles (no events fired).</summary>
+    void SyncToggleStates()
+    {
+        if (team == null || team.Tactic == null) return;
+        foreach (TacticsToggle t in toggles)
+        {
+            if (t == null) continue;
+            bool active = team.Tactic.Instructions.Contains(t.instruction);
+            t.SetSilent(active);
+            t.SetReliantPlayer(active && t.instruction != null && t.instruction.hasReliance
+                ? team.Tactic.GetReliancePlayer(t.instruction)
+                : null);
+        }
+        UpdateAllTogglesInteractability();
     }
 
     /// <summary>
@@ -76,8 +95,8 @@ public class TacticGridLayout : MonoBehaviour
         // 2. CRITICAL FIX: Clear the stale list of toggle references.
         toggles.Clear();
 
-        // Make sure any reliance instructions already active have a chosen player (so labels show it).
-        if (team != null && team.Tactic != null) team.Tactic.EnsureReliancePlayers();
+        // Re-validate reliances before building (auto-bind, auto-disable invalid, apply change penalties).
+        if (team != null && team.Tactic != null) team.Tactic.RefreshReliances();
 
         if (togglePrefab == null)
         {
@@ -139,7 +158,7 @@ public class TacticGridLayout : MonoBehaviour
             if (instr != null && instr.hasReliance)
             {
                 bool opened = PlayerPickerPopup.Show(
-                    team.StartingPlayers,
+                    team.Tactic.EligibleReliancePlayers(instr),   // only players in the reliance's position groups
                     picked =>
                     {
                         team.Tactic.AddInstruction(instr, picked);

@@ -798,8 +798,8 @@ public class Player : Person
 
 public static class PlayerExtensions
 {
-    public static Player.Stats AverageStats(this Player[] players, Tactic tactic = null){
-        return AverageStats(players.ToList(), tactic);
+    public static Player.Stats AverageStats(this Player[] players, Tactic tactic = null, PlayerGroup? phaseGroup = null){
+        return AverageStats(players.ToList(), tactic, phaseGroup);
     }
 
     /// <summary>
@@ -809,10 +809,13 @@ public static class PlayerExtensions
     ///   • Complexity / intelligence — when the squad average is too low, below-bar players take a
     ///     proportional cut to their mental stats (~50% at 10 below the bar).
     ///   • Reliance — a reliance instruction's chosen player counts for extra weight on the SPECIFIC stats
-    ///     that reliance names, so his strengths AND weaknesses in those stats sway the team more.
+    ///     that reliance names, so his strengths AND weaknesses in those stats sway the team more. The reliance
+    ///     only fires when <paramref name="phaseGroup"/> (the position band this average represents) is within the
+    ///     reliance's eligible groups — so it influences only the phases it's "about" (e.g. a defenders reliance
+    ///     sways the build-up phase, not the finish).
     /// Called with no tactic (the default) it is a plain unweighted average, as before, for UI/display.
     /// </summary>
-    public static Player.Stats AverageStats(this List<Player> players, Tactic tactic = null)
+    public static Player.Stats AverageStats(this List<Player> players, Tactic tactic = null, PlayerGroup? phaseGroup = null)
     {
         Player.Stats avgStats = new Player.Stats
         {
@@ -844,17 +847,18 @@ public static class PlayerExtensions
                         stats.SetStat(st, Mathf.RoundToInt(stats.GetStat(st) * (1f - reduction)));
             }
 
-            // Reliance weighting: only the reliant player, only the named stats, count extra.
-            bool reliant = tactic != null && tactic.IsReliantPlayer(p);
+            // Reliance weighting: only the reliant player, only the named stats, and only in the phases this
+            // reliance is "about" (phaseGroup within its eligible groups), count extra.
+            bool reliant = tactic != null && tactic.IsReliantPlayer(p, phaseGroup);
 
             for (int j = 0; j < Player.SKILL_NO; j++)
             {
-                float w = reliant ? 1f + tactic.RelianceBonus(p, (PlayerStat)j) : 1f;
+                float w = reliant ? 1f + tactic.RelianceBonus(p, (PlayerStat)j, phaseGroup) : 1f;
                 totalSkills[j] += stats.Skills[j] * w;
                 statWeight[j] += w;
             }
 
-            float hw = reliant ? 1f + tactic.RelianceBonus(p, PlayerStat.Height) : 1f;
+            float hw = reliant ? 1f + tactic.RelianceBonus(p, PlayerStat.Height, phaseGroup) : 1f;
             totalHeight += stats.Height * hw;
             heightWeight += hw;
         }

@@ -40,7 +40,9 @@ public class FormationUI : MonoBehaviour
             allPositions[p].Reassign(formations[i].Positions[p], allPositions[p].player);
         }
 
-        // Formation affects Complexity (and the stat sliders) → refresh the tactic read-outs.
+        // Formation moved players → re-validate reliances (a reliant player may now be out of his groups),
+        // then refresh the tactic read-outs.
+        currentTeam.Tactic?.RefreshReliances();
         TacticsPageUI.Instance?.OnTacticChange?.Invoke();
     }
 

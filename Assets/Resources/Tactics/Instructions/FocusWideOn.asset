@@ -10,18 +10,23 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7d5f83aa929aa0c4ca7bb823e8957365, type: 3}
-  m_Name: PassTo
+  m_Name: FocusWideOn
   m_EditorClassIdentifier: Assembly-CSharp::TacticInstruction
-  tacticName: Focus Play Around
-  description: 
+  tacticName: Focus Wide Attacks With
+  description: Rely on this player for wide attacks
   statModifications: []
   dependencies: []
-  tacticDependencies:
-  - stat: 7
-    minimumValue: 40
-    inverse: 0
-  hasReliance: 1
+  tacticDependencies: []
   reliance:
-    stats: 0100000003000000060000000700000008000000
-    multiplier: 1
+    stats: 0300000004000000010000000000000008000000
+    multiplier: 2
+    eligibleGroups: 08000000
+    familiarityPenalty: 0.2
   incompatibleInstructions: []
+  complementaryInstructions:
+  - instruction: {fileID: 11400000, guid: f8938aeec9867d34f81c3a62eb397dc3, type: 2}
+    perks:
+    - stat: 7
+      value: 5
+    - stat: 11
+      value: 5

@@ -20,6 +20,7 @@ public class UIManager : MonoBehaviour
     private SchedulePageUI schedulePageUI;
     private TrainingPageUI trainingPageUI;
     private RecruitmentPageUI recruitmentPageUI;
+    private StatsPageUI statsPageUI;
 
     private void Awake()
     {
@@ -47,6 +48,7 @@ public class UIManager : MonoBehaviour
         schedulePageUI = SchedulePageUI.Instance;
         trainingPageUI = TrainingPageUI.Instance;
         recruitmentPageUI = RecruitmentPageUI.Instance;
+        statsPageUI = StatsPageUI.Instance;   // may be null until the page is added to the scene
 
         //START PAGE IS THE HOME PAGE
         ShowHomePage();
@@ -122,6 +124,12 @@ public class UIManager : MonoBehaviour
         recruitmentPageUI.Show();
     }
 
+    public void ShowStats()
+    {
+        HideAllUI();
+        statsPageUI?.Show();
+    }
+
     public void ShowHomePage()
     {
         Debug.Log($"[TRACE] UIManager.ShowHomePage — homePageUI null? {homePageUI == null}");
@@ -157,6 +165,7 @@ public class UIManager : MonoBehaviour
         schedulePageUI.Hide();
         trainingPageUI.Hide();
         recruitmentPageUI.Hide();
+        statsPageUI?.Hide();
     }
 
     public void ShowNavigationButtons(bool show)

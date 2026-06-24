@@ -91,9 +91,15 @@ public class Fixture : ISaveable
     {
         var r = Result;
         if (HomeTeam != null && HomeTeam.Players != null && HomeTeam.Players.Count >= 11)
+        {
             r.home.lineup = HomeTeam.StartingPlayers.Select(p => p.PersonID).ToList();
+            r.home.keeper = HomeTeam.Goalkeeper;
+        }
         if (AwayTeam != null && AwayTeam.Players != null && AwayTeam.Players.Count >= 11)
+        {
             r.away.lineup = AwayTeam.StartingPlayers.Select(p => p.PersonID).ToList();
+            r.away.keeper = AwayTeam.Goalkeeper;
+        }
         Result = r; // struct write-back
     }
 
@@ -114,6 +120,8 @@ public class Fixture : ISaveable
         var r = Result;
         r.home.fouls = new List<Match.Foul>();
         r.away.fouls = new List<Match.Foul>();
+        r.home.shots = new List<Match.Shot>();   // keep goals; drop the full shot log on archived matches
+        r.away.shots = new List<Match.Shot>();
         r.home.possession = 0f;
         r.away.possession = 0f;
         Result = r;
