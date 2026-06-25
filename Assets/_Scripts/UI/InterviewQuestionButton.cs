@@ -27,6 +27,14 @@ public class InterviewQuestionButton : MonoBehaviour
     {
         if (InterviewManager.Instance == null) return;
 
+        // Comparison opens the player picker first; it consumes the question + refreshes the page once a player
+        // is chosen (or costs nothing if cancelled), so we return early here.
+        if (questionType == InterviewQuestionType.CompareToPlayer)
+        {
+            InterviewManager.Instance.AskComparison();
+            return;
+        }
+
         if (questionType == InterviewQuestionType.AskAboutStat)
             InterviewManager.Instance.AskAboutStat(stat);
         else

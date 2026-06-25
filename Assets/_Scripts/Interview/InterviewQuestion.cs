@@ -27,6 +27,9 @@ public enum InterviewQuestionType
     // Ambition questions
     CareerGoals,
 
+    // Comparison question — uses the player picker to choose any squad member to compare against
+    CompareToPlayer,
+
     // ————— Personality-probing questions (give CLUES that narrow down the hidden personality) —————
     HandleCriticism,    // reveals how defensive/receptive/dismissive they are
     WorkEthic,          // reveals conscientiousness (grafter vs coaster)
@@ -68,6 +71,8 @@ public class InterviewQuestion
                 "What position do you prefer to play?",
             InterviewQuestionType.CareerGoals =>
                 "What are your career ambitions?",
+            InterviewQuestionType.CompareToPlayer =>
+                "How do you rate yourself against another player?",
             InterviewQuestionType.HandleCriticism =>
                 "How do you take it when the gaffer gets on your back?",
             InterviewQuestionType.WorkEthic =>
@@ -104,12 +109,54 @@ public static class InterviewAnswerGenerator
             InterviewQuestionType.WorstPersonalityFit => AnswerWorstPersonalityFit(player),
             InterviewQuestionType.PreferredPosition => AnswerPreferredPosition(player),
             InterviewQuestionType.CareerGoals => AnswerCareerGoals(player),
+            // CompareToPlayer needs a chosen rival, so it's generated via GenerateComparisonAnswer (after the
+            // player picker) rather than here; this is just a safe fallback.
+            InterviewQuestionType.CompareToPlayer => new InterviewAnswer("Compared to who, boss?", null, null),
             InterviewQuestionType.HandleCriticism => AnswerHandleCriticism(player),
             InterviewQuestionType.WorkEthic => AnswerWorkEthic(player),
             InterviewQuestionType.BigGameMentality => AnswerBigGameMentality(player),
             InterviewQuestionType.Leadership => AnswerLeadership(player),
             _ => new InterviewAnswer("I'm not sure what to say about that.", null, null)
         };
+    }
+
+    /// <summary>
+    /// Comparison answer (the rival is chosen via the player picker). Scores ability as the signed square root of
+    /// each per-stat difference, summed — so an all-round gap reads big while no single stat can dominate. The
+    /// personality bucket biases where the boundary sits (a cocky type rates themselves up, a modest one down) and
+    /// doubles as the clue. Bands run: on another level → an edge → about the same → an edge to them → miles off.
+    /// </summary>
+    public static InterviewAnswer GenerateComparisonAnswer(Player me, Player other)
+    {
+        if (me == null || other == null) return new InterviewAnswer("Compared to who, boss?", null, null);
+
+        float total = 0f;
+        for (int i = 0; i < Player.SKILL_NO; i++)
+        {
+            int diff = me.RawStats.Skills[i] - other.RawStats.Skills[i];
+            total += Mathf.Sign(diff) * Mathf.Sqrt(Mathf.Abs(diff));
+        }
+
+        var (bucket, group) = Bucket(me.Personality,
+            G(PersonalityType.Cocky, PersonalityType.Aggressive, PersonalityType.Driven),                  // talk themselves up
+            G(PersonalityType.Shy, PersonalityType.Kind, PersonalityType.Cautious, PersonalityType.Calm),  // play it down
+            G(PersonalityType.Smart, PersonalityType.Lazy, PersonalityType.Silly));                        // call it straight
+
+        float bias = bucket == 0 ? 12f : bucket == 1 ? -12f : 0f;
+        float perceived = total + bias;
+
+        string them = other.FullName;
+        int band = perceived >= 45f ? 2 : perceived >= 18f ? 1 : perceived > -18f ? 0 : perceived > -45f ? -1 : -2;
+
+        string response = band switch
+        {
+            2  => $"Honestly? I'm miles better than {them}. Not close.",
+            1  => $"I'd back myself over {them} — I've got the edge.",
+            0  => $"Me and {them}? About the same, I reckon.",
+            -1 => $"{them}'s got a bit on me, in fairness.",
+            _  => $"{them}? They're on another level to me, I'll be honest."
+        };
+        return new InterviewAnswer(response, Mathf.RoundToInt(total), Mathf.RoundToInt(perceived), group);
     }
 
     // ————————————————————— bucketing —————————————————————
@@ -145,7 +192,7 @@ public static class InterviewAnswerGenerator
 
         string response = i switch
         {
-            0 => $"My {name}? {rating} — one of the best bits of my game, that.",
+            0 => $"My {name}? {rating}. One of the best bits of my game, that.",
             1 => $"My {name} is... {rating}, I'd say. I don't like to talk myself up.",
             _ => $"I'd put my {name} at about {rating}. Sounds right to me."
         };
@@ -170,8 +217,8 @@ public static class InterviewAnswerGenerator
 
         string response = (i, standout) switch
         {
-            (0, true)  => $"Easy — my {name}. It's miles ahead of anything else I do.",
-            (0, false) => $"My {name}, for sure — though honestly I'm dangerous all over the pitch.",
+            (0, true)  => $"Easy! My {name}. It's miles ahead of anything else I do.",
+            (0, false) => $"My {name}, for sure. Though honestly I'm dangerous all over the pitch.",
             (1, true)  => $"People are kind about my {name}. I suppose it's my main thing.",
             (1, false) => $"I wouldn't single one out... my {name}, maybe? I just try to do a bit of everything.",
             (2, true)  => $"My {name} is clearly my strongest area.",
@@ -195,11 +242,11 @@ public static class InterviewAnswerGenerator
         string response = (i, glaring) switch
         {
             (0, true)  => $"Weakness? If pushed... my {name}. But I more than make up for it elsewhere.",
-            (0, false) => "Weakness? Honestly, I don't really have one you could point at.",
+            (0, false) => "Weakness? None spring to mind.",
             (1, true)  => $"My {name}, hands down. I know it's a problem and I'm working hard on it.",
             (1, false) => $"My {name} could be sharper, but there's nothing I'd call a real flaw.",
             (2, true)  => $"Statistically it's my {name}. I just play around it.",
-            _          => $"Maybe my {name}? Nothing major though — I'm grand."
+            _          => $"Maybe my {name}? Nothing major though."
         };
         return new InterviewAnswer(response, worst.ToString(), worst.ToString(), group);
     }
@@ -218,11 +265,11 @@ public static class InterviewAnswerGenerator
 
         string response = (i, versatile) switch
         {
-            (0, true)  => $"Play me anywhere across the line — but I'm at my best at {pos}.",
-            (0, false) => $"{pos}. That's my position; don't be playing me out of it.",
-            (1, true)  => $"Happy wherever you need me — I can fill in all over — though {pos} suits me best.",
+            (0, true)  => $"Play me anywhere across the line. But I'm at my best at {pos}.",
+            (0, false) => $"{pos}. That's my position, don't be playing me out of it.",
+            (1, true)  => $"Happy wherever you need me! I can fill in all over — though {pos} suits me best.",
             (1, false) => $"I'll play where you ask, but I'm really a {pos}.",
-            (2, true)  => $"I can cover a few roles; on balance {pos} is probably my strongest.",
+            (2, true)  => $"I can cover a few roles. On balance {pos} is probably my strongest.",
             _          => $"I'm a {pos}. That's where I'm most comfortable."
         };
         return new InterviewAnswer(response, best.ToString(), best.ToString(), group);
@@ -238,7 +285,7 @@ public static class InterviewAnswerGenerator
 
         string response = i switch
         {
-            0 => "I want to win everything — trophies, awards, the lot. Not here to make up numbers.",
+            0 => "I want to win everything! Trophies, awards, the lot. Not here to make up numbers.",
             1 => "Play well, stay fit, win a few things with a good group. A solid career'll do me.",
             _ => "Enjoy my football, score a few worldies, have a laugh. Whatever comes, comes."
         };
@@ -256,7 +303,7 @@ public static class InterviewAnswerGenerator
         string fit = player.GetBestCompatiblePersonality().ToString().ToLower();
         string response = i switch
         {
-            0 => $"I get on with everyone, me — {fit} types especially. Good people.",
+            0 => $"I get on with everyone! Me, {fit} types especially. Good people.",
             1 => $"I work best with {fit} sorts. The rest can be hard work, if I'm honest.",
             _ => $"{fit} teammates suit me. Easy to play alongside."
         };
@@ -293,9 +340,9 @@ public static class InterviewAnswerGenerator
 
         string response = i switch
         {
-            0 => "Honestly? It winds me up. I back myself and I don't like being told I'm wrong.",
+            0 => "I usually back myself.",
             1 => "It... gets to me a bit, if I'm honest. But I really do want to get it right.",
-            2 => "Eh. In one ear, out the other — no point stressing over it.",
+            2 => "I mean... I'll hear them out, but there's no point stressing over it.",
             _ => "I welcome it, as long as it's specific. Tell me what's wrong and I'll fix it."
         };
         return new InterviewAnswer(response, player.Personality.ToString(), null, group);
@@ -304,15 +351,15 @@ public static class InterviewAnswerGenerator
     private static InterviewAnswer AnswerWorkEthic(Player player)
     {
         var (i, group) = Bucket(player.Personality,
-            G(PersonalityType.Driven, PersonalityType.Smart, PersonalityType.Cautious, PersonalityType.Aggressive), // grafters
+            G(PersonalityType.Driven, PersonalityType.Smart, PersonalityType.Aggressive), // grafters
             G(PersonalityType.Lazy, PersonalityType.Silly, PersonalityType.Cocky),                                  // coasters
-            G(PersonalityType.Calm, PersonalityType.Kind, PersonalityType.Shy));                                    // balanced
+            G(PersonalityType.Calm, PersonalityType.Kind, PersonalityType.Shy, PersonalityType.Cautious));                                    // balanced
 
         string response = i switch
         {
             0 => "Day off? I'll still get a session in or watch clips. Can't sit still.",
             1 => "Sofa, telly, maybe a kebab. Got to recharge, haven't you?",
-            _ => "A quiet one — family, early night, look after myself properly."
+            _ => "A quiet one! Family, early night, look after myself properly."
         };
         return new InterviewAnswer(response, player.Personality.ToString(), null, group);
     }
@@ -327,10 +374,10 @@ public static class InterviewAnswerGenerator
 
         string response = i switch
         {
-            0 => "Big stage? That's MY stage. The bigger the game, the more I want it.",
+            0 => "The bigger the game, the more I want it.",
             1 => "Same as any other game. I keep my head and do my job.",
-            2 => "A bit nervous, to be honest... but the nerves keep me sharp.",
-            _ => "Big game, five-a-side, whatever — I'm here to have fun!"
+            2 => "A bit nervous, to be honest... but the nerves keep me sharp!",
+            _ => "Big game, five-a-side, whatever. I'm here to have fun!"
         };
         return new InterviewAnswer(response, player.Personality.ToString(), null, group);
     }
@@ -346,8 +393,8 @@ public static class InterviewAnswerGenerator
         string response = i switch
         {
             0 => "Loud. I organise, I demand, and I'll let you know if you're slacking.",
-            1 => "I talk when it matters — a word in the right ear at the right time.",
-            2 => "I'm the one keeping spirits up, having a laugh, picking lads up.",
+            1 => "I talk when it matters. A word in the right ear at the right time.",
+            2 => "I'm the one keeping spirits up, having a laugh, picking the lads up.",
             _ => "I keep myself to myself, really. Not one for big speeches."
         };
         return new InterviewAnswer(response, player.Personality.ToString(), null, group);
@@ -403,7 +450,7 @@ public static class InterviewAnswerGenerator
 
     private static string StatValueToDescription(int value) => value switch
     {
-        >= 90 => "world-class",
+        >= 90 => "amazing",
         >= 80 => "excellent",
         >= 70 => "very good",
         >= 60 => "good",

@@ -101,6 +101,46 @@ public class InterviewManager : MonoBehaviour
         return answer;
     }
 
+    /// <summary>
+    /// Comparison question: opens the shared player picker (any squad member); once one is chosen it generates the
+    /// comparison answer, narrows the personality, and consumes a question. Cancelling the picker costs nothing.
+    /// </summary>
+    public void AskComparison()
+    {
+        if (interviewee == null)
+        {
+            Debug.LogWarning("No interviewee set. Call StartInterview first.");
+            return;
+        }
+        if (askedQuestions.Count >= MAX_QUESTIONS)
+        {
+            Debug.Log("[Interview] Maximum questions reached (5). Make your decision!");
+            return;
+        }
+
+        Team myTeam = TeamManager.Instance != null ? TeamManager.Instance.MyTeam : null;
+        if (myTeam == null || myTeam.Players == null || myTeam.Players.Count == 0) return;
+
+        PlayerPickerPopup.Show(
+            myTeam.Players,
+            picked =>
+            {
+                if (picked == null) return;
+
+                askedQuestions.Add(new InterviewQuestion(InterviewQuestionType.CompareToPlayer));
+                InterviewAnswer answer = InterviewAnswerGenerator.GenerateComparisonAnswer(interviewee, picked);
+
+                if (answer.PossiblePersonalities != null)
+                    NarrowedPersonalities = NarrowedPersonalities
+                        .Where(p => Array.IndexOf(answer.PossiblePersonalities, p) >= 0)
+                        .ToList();
+
+                dialogue.UpdateDialogue(answer.ResponseText);
+                RecruitmentPageUI.Instance?.OnQuestionAsked();
+            },
+            $"Compare {interviewee.FullName} to…");
+    }
+
     /// <summary>Human-readable summary of how far the personality has been narrowed down.</summary>
     public string NarrowedPersonalitiesText()
     {
