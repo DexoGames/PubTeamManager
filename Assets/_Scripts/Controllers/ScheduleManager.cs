@@ -37,9 +37,9 @@ public class ScheduleManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Generates the schedule from a start date. Priority order: matches (fixed) → pub socials (the day
-    /// after each match) → weekly training → fortnightly interviews → rest. Every scheduled activity is
-    /// guaranteed to happen: on a clash it shifts forward to the next free day rather than being dropped.
+    /// Generates the schedule from a start date. Priority order: matches (fixed) → fortnightly interviews
+    /// (fixed cadence, their own day) → pub socials (day after each match) → weekly training → rest. Matches and
+    /// interviews sit on fixed dates and never move; pub/training shift forward to the next free day on a clash.
     /// </summary>
     public void GenerateSchedule(DateTime startDate)
     {
@@ -67,20 +67,29 @@ public class ScheduleManager : MonoBehaviour
             matchDays.Add(d);
         }
 
-        // 2. Pub socials — the day after each match day (shifted forward on a clash).
+        // 2. Interviews — fortnightly on a FIXED cadence (anchored to the epoch, not 'today'). Placed right after
+        //    matches so nothing lower-priority can ever bump them. Each occurrence sits on its cadence date, only
+        //    shifting forward past a fixed MATCH (so it always gets its own day). Because the shift depends only on
+        //    fixed matches it's identical on every daily regeneration → the date never wanders; and the past-date
+        //    skip is keyed on the PLACED day, not the raw cadence day, so a shifted interview never vanishes before
+        //    you reach it. Start one cadence before the window so an occurrence shifted into 'today' isn't missed.
+        DateTime target = interviewEpoch.AddDays(INTERVIEW_INTERVAL);
+        while (target.AddDays(INTERVIEW_INTERVAL) <= start) target = target.AddDays(INTERVIEW_INTERVAL);
+        for (; target < end; target = target.AddDays(INTERVIEW_INTERVAL))
+        {
+            DateTime placed = target.Date;
+            while (placed < end && schedule.ContainsKey(placed)) placed = placed.AddDays(1); // only matches occupy days here
+            if (placed >= start && placed < end)
+                schedule[placed] = new ScheduleEntry(placed, ScheduleEntryType.Interview, "Interview Day");
+        }
+
+        // 3. Pub socials — the day after each match day (shifted forward on a clash, incl. past an interview day).
         foreach (var matchDay in matchDays.OrderBy(d => d))
             PlaceActivity(matchDay.AddDays(1), end, ScheduleEntryType.PubTrip, "Pub Trip");
 
-        // 3. Training — once per week, preferring Wednesday, shifted on a clash.
+        // 4. Training — once per week, preferring Wednesday, shifted on a clash.
         for (DateTime weekStart = start; weekStart < end; weekStart = weekStart.AddDays(7))
             PlaceActivity(PreferredWeekday(weekStart, DayOfWeek.Wednesday), end, ScheduleEntryType.Training, "Training Day");
-
-        // 4. Interviews — fortnightly on a fixed cadence (anchored to the epoch, not 'today', so the
-        //    rolling regeneration doesn't push them back a day each advance). Shifted on a clash.
-        DateTime interview = interviewEpoch.AddDays(INTERVIEW_INTERVAL);
-        while (interview < start) interview = interview.AddDays(INTERVIEW_INTERVAL);
-        for (; interview < end; interview = interview.AddDays(INTERVIEW_INTERVAL))
-            PlaceActivity(interview, end, ScheduleEntryType.Interview, "Interview Day");
 
         // 5. Everything else is a rest day.
         for (DateTime d = start; d < end; d = d.AddDays(1))

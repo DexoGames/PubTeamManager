@@ -28,6 +28,8 @@ public class PositionUI : MonoBehaviour
 
     public int id;
     public CanvasGroup fader;
+    Image background;
+    Color originalBackground;
 
     [HideInInspector] public Player player;
     [HideInInspector] public Formation.Position playerPosition;
@@ -42,6 +44,8 @@ public class PositionUI : MonoBehaviour
     {
         uiDisplays = new Dictionary<StatType, List<Component>>();
         UIStatDisplay[] allDisplays = GetComponentsInChildren<UIStatDisplay>(true);
+        background = GetComponent<Image>();
+        originalBackground = background.color;
 
         foreach (UIStatDisplay display in allDisplays)
         {
@@ -88,6 +92,8 @@ public class PositionUI : MonoBehaviour
         UpdateIntelligence(player);
         UpdateMorale(player);
         UpdateOtherPositions(player);
+
+        background.color = player.IsAvailable? originalBackground : Color.darkRed;
     }
 
     protected virtual void UpdatePosition(Formation.Position position)
@@ -103,7 +109,10 @@ public class PositionUI : MonoBehaviour
     {
         string surnameLink = LinkBuilder.BuildLink(player, player.Surname);
 
-        UpdateTextStat(StatType.Surname, surnameLink);
+        if (player.IsAvailable)
+        {
+            UpdateTextStat(StatType.Surname, surnameLink);
+        }
     }
 
     protected virtual void UpdateBestRating(Player player)

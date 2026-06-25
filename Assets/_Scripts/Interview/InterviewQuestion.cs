@@ -54,17 +54,17 @@ public class InterviewQuestion
     {
         return Type switch
         {
-            InterviewQuestionType.AskAboutStat when TargetStat.HasValue => 
+            InterviewQuestionType.AskAboutStat when TargetStat.HasValue =>
                 $"How would you rate your {TargetStat.Value.ToString().ToLower()}?",
-            InterviewQuestionType.BiggestStrength => 
+            InterviewQuestionType.BiggestStrength =>
                 "What would you say is your biggest strength?",
-            InterviewQuestionType.BiggestWeakness => 
+            InterviewQuestionType.BiggestWeakness =>
                 "What would you say is your biggest weakness?",
-            InterviewQuestionType.BestPersonalityFit => 
+            InterviewQuestionType.BestPersonalityFit =>
                 "What kind of teammates do you work best with?",
-            InterviewQuestionType.WorstPersonalityFit => 
+            InterviewQuestionType.WorstPersonalityFit =>
                 "What kind of personalities do you struggle to work with?",
-            InterviewQuestionType.PreferredPosition => 
+            InterviewQuestionType.PreferredPosition =>
                 "What position do you prefer to play?",
             InterviewQuestionType.CareerGoals =>
                 "What are your career ambitions?",
@@ -82,15 +82,17 @@ public class InterviewQuestion
 }
 
 /// <summary>
-/// Generates interview answers based on player stats and personality.
-/// Personality affects honesty and self-perception.
+/// Generates interview answers. Each question sorts the 10 personalities into a small number of response
+/// "buckets" (~3), and the answer TEXT is keyed on the bucket — so different personalities can give the same
+/// answer to one question. Crucially the bucketing DIFFERS per question, and every answer returns its bucket as
+/// the personality clue, so asking several questions and intersecting the buckets narrows the hidden personality.
+///
+/// Ability questions add shape-based variation on top: whether one stat/position is a clear standout or one of
+/// many, with the threshold for "standout" shifted by the personality bucket (a boastful type calls something
+/// their standout readily; a modest type rarely does).
 /// </summary>
 public static class InterviewAnswerGenerator
 {
-    /// <summary>
-    /// Generate an answer for the given question from this player.
-    /// Returns the answer text and optionally the "true" value for comparison.
-    /// </summary>
     public static InterviewAnswer GenerateAnswer(Player player, InterviewQuestion question)
     {
         return question.Type switch
@@ -110,338 +112,266 @@ public static class InterviewAnswerGenerator
         };
     }
 
+    // ————————————————————— bucketing —————————————————————
+
+    /// <summary>Finds which response bucket a personality falls in. Returns the index and the bucket's members
+    /// (the members double as the personality clue). Buckets should cover all 10 personalities.</summary>
+    private static (int index, PersonalityType[] group) Bucket(PersonalityType p, params PersonalityType[][] buckets)
+    {
+        for (int i = 0; i < buckets.Length; i++)
+            if (Array.IndexOf(buckets[i], p) >= 0) return (i, buckets[i]);
+        return (buckets.Length - 1, buckets[buckets.Length - 1]); // fallback (shouldn't happen if buckets are complete)
+    }
+
+    private static PersonalityType[] G(params PersonalityType[] members) => members;
+
+    // ————————————————————— ability questions (bucket × stat-shape) —————————————————————
+
     private static InterviewAnswer AnswerAboutStat(Player player, PlayerStat stat)
     {
-        int actualValue = player.RawStats.GetStat(stat);
-        int perceivedValue = GetPerceivedStatValue(player, stat, actualValue);
-        string rating = StatValueToDescription(perceivedValue);
-        
-        string response = player.Personality switch
-        {
-            PersonalityType.Cocky => $"My {stat.ToString().ToLower()}? It's {rating}. One of my best attributes, honestly.",
-            PersonalityType.Shy => $"Um, I think my {stat.ToString().ToLower()} is... {rating}? I'm not sure.",
-            PersonalityType.Aggressive => $"My {stat.ToString().ToLower()} is {rating}. I'll prove it on the pitch.",
-            PersonalityType.Kind => $"I'd say my {stat.ToString().ToLower()} is {rating}. I'm always trying to improve though!",
-            PersonalityType.Lazy => $"Eh, my {stat.ToString().ToLower()}? It's {rating}, I guess.",
-            PersonalityType.Driven => $"My {stat.ToString().ToLower()} is currently {rating}, but I'm working hard to improve it every day.",
-            PersonalityType.Smart => $"Objectively speaking, my {stat.ToString().ToLower()} is {rating}.",
-            PersonalityType.Silly => $"Haha, my {stat.ToString().ToLower()}? Let's just say it's {rating}!",
-            PersonalityType.Cautious => $"I'd carefully estimate my {stat.ToString().ToLower()} at {rating}.",
-            PersonalityType.Calm => $"My {stat.ToString().ToLower()} is {rating}. Nothing special, but consistent.",
-            _ => $"My {stat.ToString().ToLower()} is {rating}."
-        };
+        // Bucketed by self-rating bias: over-raters / under-raters / honest.
+        var (i, group) = Bucket(player.Personality,
+            G(PersonalityType.Cocky, PersonalityType.Aggressive, PersonalityType.Silly),
+            G(PersonalityType.Shy, PersonalityType.Cautious, PersonalityType.Kind),
+            G(PersonalityType.Smart, PersonalityType.Driven, PersonalityType.Calm, PersonalityType.Lazy));
 
-        return new InterviewAnswer(response, actualValue, perceivedValue);
+        int actual = player.RawStats.GetStat(stat);
+        int bias = i == 0 ? UnityEngine.Random.Range(8, 18)
+                 : i == 1 ? UnityEngine.Random.Range(-18, -6)
+                          : UnityEngine.Random.Range(-4, 5);
+        int perceived = Mathf.Clamp(actual + bias, 0, 100);
+        string rating = StatValueToDescription(perceived);
+        string name = stat.ToString().ToLower();
+
+        string response = i switch
+        {
+            0 => $"My {name}? {rating} — one of the best bits of my game, that.",
+            1 => $"My {name} is... {rating}, I'd say. I don't like to talk myself up.",
+            _ => $"I'd put my {name} at about {rating}. Sounds right to me."
+        };
+        return new InterviewAnswer(response, actual, perceived, group);
     }
 
     private static InterviewAnswer AnswerBiggestStrength(Player player)
     {
-        // Find actual best stat
-        PlayerStat actualBest = GetBestStat(player);
-        int actualBestValue = player.RawStats.GetStat(actualBest);
-        
-        // Personality might affect what they claim
-        PlayerStat claimedBest = GetPerceivedBestStat(player);
-        
-        string response = player.Personality switch
-        {
-            PersonalityType.Cocky => $"Where do I even start? I'd say my {claimedBest.ToString().ToLower()} is world-class.",
-            PersonalityType.Shy => $"I think... maybe my {claimedBest.ToString().ToLower()}? People have said it's decent.",
-            PersonalityType.Aggressive => $"My {claimedBest.ToString().ToLower()}. I dominate with it.",
-            PersonalityType.Kind => $"I've been told my {claimedBest.ToString().ToLower()} is pretty good!",
-            PersonalityType.Lazy => $"Probably my {claimedBest.ToString().ToLower()}. It comes naturally.",
-            PersonalityType.Driven => $"I take pride in my {claimedBest.ToString().ToLower()}. I've worked incredibly hard on it.",
-            PersonalityType.Smart => $"Statistically, my {claimedBest.ToString().ToLower()} is my strongest attribute.",
-            PersonalityType.Silly => $"Easy! My {claimedBest.ToString().ToLower()}! Watch me show off sometime!",
-            PersonalityType.Cautious => $"I'd say my {claimedBest.ToString().ToLower()}, though I try not to rely on just one thing.",
-            PersonalityType.Calm => $"Definitely my {claimedBest.ToString().ToLower()}. It's reliable.",
-            _ => $"My {claimedBest.ToString().ToLower()} is my biggest strength."
-        };
+        // Bucketed by bravado: boastful / humble / matter-of-fact.
+        var (i, group) = Bucket(player.Personality,
+            G(PersonalityType.Cocky, PersonalityType.Aggressive, PersonalityType.Driven),
+            G(PersonalityType.Shy, PersonalityType.Kind, PersonalityType.Cautious, PersonalityType.Calm),
+            G(PersonalityType.Smart, PersonalityType.Lazy, PersonalityType.Silly));
 
-        return new InterviewAnswer(response, actualBest.ToString(), claimedBest.ToString());
+        PlayerStat best = GetBestStat(player);
+        string name = best.ToString().ToLower();
+
+        // "By far and away their best" vs "one of many" — and the bar for calling it a standout shifts by bucket
+        // (boastful claims it easily, humble rarely, matter-of-fact only when it's genuinely dominant).
+        int threshold = i == 0 ? 6 : i == 2 ? 12 : 20;
+        bool standout = TopGap(player) >= threshold;
+
+        string response = (i, standout) switch
+        {
+            (0, true)  => $"Easy — my {name}. It's miles ahead of anything else I do.",
+            (0, false) => $"My {name}, for sure — though honestly I'm dangerous all over the pitch.",
+            (1, true)  => $"People are kind about my {name}. I suppose it's my main thing.",
+            (1, false) => $"I wouldn't single one out... my {name}, maybe? I just try to do a bit of everything.",
+            (2, true)  => $"My {name} is clearly my strongest area.",
+            _          => $"Probably my {name}, but I'm fairly even across the board."
+        };
+        return new InterviewAnswer(response, best.ToString(), best.ToString(), group);
     }
 
     private static InterviewAnswer AnswerBiggestWeakness(Player player)
     {
-        // Find actual worst stat
-        PlayerStat actualWorst = GetWorstStat(player);
-        int actualWorstValue = player.RawStats.GetStat(actualWorst);
-        
-        // Personality affects honesty about weakness
-        PlayerStat claimedWorst = GetPerceivedWorstStat(player);
-        
-        string response = player.Personality switch
+        // Bucketed by honesty about flaws: deflect / owns it / shrugs it off.
+        var (i, group) = Bucket(player.Personality,
+            G(PersonalityType.Cocky, PersonalityType.Aggressive),
+            G(PersonalityType.Shy, PersonalityType.Kind, PersonalityType.Cautious, PersonalityType.Driven, PersonalityType.Calm),
+            G(PersonalityType.Lazy, PersonalityType.Silly, PersonalityType.Smart));
+
+        PlayerStat worst = GetWorstStat(player);
+        string name = worst.ToString().ToLower();
+        bool glaring = player.RawStats.Skills.Min() < 40; // a genuine hole vs just their lowest of a good set
+
+        string response = (i, glaring) switch
         {
-            PersonalityType.Cocky => $"Weakness? I mean, maybe my {claimedWorst.ToString().ToLower()}, but it's still better than most.",
-            PersonalityType.Shy => $"Oh, there's a lot... but I guess my {claimedWorst.ToString().ToLower()} could use work.",
-            PersonalityType.Aggressive => $"I don't have weaknesses. Fine... {claimedWorst.ToString().ToLower()}, but I make up for it.",
-            PersonalityType.Kind => $"I'm trying to improve my {claimedWorst.ToString().ToLower()}. It's a work in progress!",
-            PersonalityType.Lazy => $"Probably {claimedWorst.ToString().ToLower()}... too much effort to fix it though.",
-            PersonalityType.Driven => $"My {claimedWorst.ToString().ToLower()} needs improvement. I'm already working on a plan to fix it.",
-            PersonalityType.Smart => $"I'm aware my {claimedWorst.ToString().ToLower()} is below average. I've analyzed it thoroughly.",
-            PersonalityType.Silly => $"Haha, probably {claimedWorst.ToString().ToLower()}! But who's counting?",
-            PersonalityType.Cautious => $"I'd say my {claimedWorst.ToString().ToLower()}. I'm careful not to put myself in situations that expose it.",
-            PersonalityType.Calm => $"My {claimedWorst.ToString().ToLower()} isn't great, but I manage.",
-            _ => $"My {claimedWorst.ToString().ToLower()} is probably my weakest area."
+            (0, true)  => $"Weakness? If pushed... my {name}. But I more than make up for it elsewhere.",
+            (0, false) => "Weakness? Honestly, I don't really have one you could point at.",
+            (1, true)  => $"My {name}, hands down. I know it's a problem and I'm working hard on it.",
+            (1, false) => $"My {name} could be sharper, but there's nothing I'd call a real flaw.",
+            (2, true)  => $"Statistically it's my {name}. I just play around it.",
+            _          => $"Maybe my {name}? Nothing major though — I'm grand."
         };
-
-        return new InterviewAnswer(response, actualWorst.ToString(), claimedWorst.ToString());
-    }
-
-    private static InterviewAnswer AnswerBestPersonalityFit(Player player)
-    {
-        PersonalityType bestFit = player.GetBestCompatiblePersonality();
-        
-        string response = player.Personality switch
-        {
-            PersonalityType.Cocky => $"People who appreciate greatness. {bestFit} types usually get me.",
-            PersonalityType.Shy => $"I like working with {bestFit.ToString().ToLower()} people. They make me comfortable.",
-            PersonalityType.Aggressive => $"{bestFit} teammates. They match my energy or calm me down when needed.",
-            PersonalityType.Kind => $"I get along with everyone! But {bestFit.ToString().ToLower()} people are wonderful.",
-            PersonalityType.Lazy => $"Eh, {bestFit.ToString().ToLower()} people are chill. No drama.",
-            PersonalityType.Driven => $"{bestFit} individuals who share my work ethic and ambition.",
-            PersonalityType.Smart => $"I work best with {bestFit.ToString().ToLower()} teammates. Good synergy.",
-            PersonalityType.Silly => $"{bestFit} people! They're fun to be around!",
-            PersonalityType.Cautious => $"I prefer {bestFit.ToString().ToLower()} teammates. Predictable and reliable.",
-            PersonalityType.Calm => $"{bestFit} personalities. We understand each other.",
-            _ => $"I work well with {bestFit.ToString().ToLower()} people."
-        };
-
-        return new InterviewAnswer(response, bestFit.ToString(), bestFit.ToString());
-    }
-
-    private static InterviewAnswer AnswerWorstPersonalityFit(Player player)
-    {
-        PersonalityType worstFit = player.GetWorstCompatiblePersonality();
-        
-        string response = player.Personality switch
-        {
-            PersonalityType.Cocky => $"People who can't keep up. {worstFit} types drag me down.",
-            PersonalityType.Shy => $"I struggle with {worstFit.ToString().ToLower()} people... they're intimidating.",
-            PersonalityType.Aggressive => $"{worstFit} people annoy me. We clash constantly.",
-            PersonalityType.Kind => $"I try to get along with everyone, but {worstFit.ToString().ToLower()} people can be... challenging.",
-            PersonalityType.Lazy => $"{worstFit} types are exhausting. Too intense.",
-            PersonalityType.Driven => $"{worstFit} personalities frustrate me. Different values.",
-            PersonalityType.Smart => $"{worstFit} people. Our approaches don't align.",
-            PersonalityType.Silly => $"{worstFit} people don't get my humor. Their loss!",
-            PersonalityType.Cautious => $"{worstFit} personalities make me nervous. Too unpredictable.",
-            PersonalityType.Calm => $"I find {worstFit.ToString().ToLower()} types can be difficult.",
-            _ => $"I struggle with {worstFit.ToString().ToLower()} personalities."
-        };
-
-        return new InterviewAnswer(response, worstFit.ToString(), worstFit.ToString());
+        return new InterviewAnswer(response, worst.ToString(), worst.ToString(), group);
     }
 
     private static InterviewAnswer AnswerPreferredPosition(Player player)
     {
-        Player.Position bestPosition = player.RawStats.Positions
-            .OrderByDescending(p => p.Value)
-            .First().Key;
-        
-        string response = player.Personality switch
-        {
-            PersonalityType.Cocky => $"Put me at {bestPosition}. That's where I shine brightest.",
-            PersonalityType.Shy => $"I usually play {bestPosition}... if that's okay with you.",
-            PersonalityType.Aggressive => $"{bestPosition}. That's where I can make the biggest impact.",
-            PersonalityType.Kind => $"I'm flexible, but I'm probably best at {bestPosition}.",
-            PersonalityType.Lazy => $"{bestPosition}. It's what I know.",
-            PersonalityType.Driven => $"{bestPosition} is where I've focused my development.",
-            PersonalityType.Smart => $"Based on my skillset, {bestPosition} is optimal.",
-            PersonalityType.Silly => $"{bestPosition}! It's where the magic happens!",
-            PersonalityType.Cautious => $"I'm most comfortable at {bestPosition}.",
-            PersonalityType.Calm => $"{bestPosition} suits me well.",
-            _ => $"I prefer playing {bestPosition}."
-        };
+        // Bucketed by assertiveness about their role: demanding / flexible / reserved.
+        var (i, group) = Bucket(player.Personality,
+            G(PersonalityType.Cocky, PersonalityType.Aggressive),
+            G(PersonalityType.Kind, PersonalityType.Calm, PersonalityType.Lazy, PersonalityType.Silly, PersonalityType.Smart),
+            G(PersonalityType.Shy, PersonalityType.Cautious, PersonalityType.Driven));
 
-        return new InterviewAnswer(response, bestPosition.ToString(), bestPosition.ToString());
+        Player.Position best = BestPositionByStrength(player);
+        string pos = Player.LongPosition(best);
+        bool versatile = CountStrongPositions(player) >= 3; // can genuinely do a few roles
+
+        string response = (i, versatile) switch
+        {
+            (0, true)  => $"Play me anywhere across the line — but I'm at my best at {pos}.",
+            (0, false) => $"{pos}. That's my position; don't be playing me out of it.",
+            (1, true)  => $"Happy wherever you need me — I can fill in all over — though {pos} suits me best.",
+            (1, false) => $"I'll play where you ask, but I'm really a {pos}.",
+            (2, true)  => $"I can cover a few roles; on balance {pos} is probably my strongest.",
+            _          => $"I'm a {pos}. That's where I'm most comfortable."
+        };
+        return new InterviewAnswer(response, best.ToString(), best.ToString(), group);
     }
 
     private static InterviewAnswer AnswerCareerGoals(Player player)
     {
-        string response = player.Personality switch
-        {
-            PersonalityType.Cocky => "I'm going to be the best. Multiple trophies, individual awards - the whole package.",
-            PersonalityType.Shy => "I just want to play well and help the team... hopefully win something nice.",
-            PersonalityType.Aggressive => "I want to dominate. Be feared by every opponent.",
-            PersonalityType.Kind => "I want to inspire young players and make a positive impact on the game.",
-            PersonalityType.Lazy => "Honestly? A steady career, good paycheck, retire comfortably.",
-            PersonalityType.Driven => "I want to maximize my potential. Championships, records, legacy.",
-            PersonalityType.Smart => "Calculated progression through top leagues, then transition to coaching or management.",
-            PersonalityType.Silly => "Have fun, score some bangers, maybe get a viral celebration!",
-            PersonalityType.Cautious => "Steady improvement, avoiding injuries, long sustainable career.",
-            PersonalityType.Calm => "Consistent performance, win trophies, be remembered as reliable.",
-            _ => "I want to be the best I can be."
-        };
+        // Bucketed by ambition: hungry / steady / just-here-for-fun.
+        var (i, group) = Bucket(player.Personality,
+            G(PersonalityType.Cocky, PersonalityType.Aggressive, PersonalityType.Driven),
+            G(PersonalityType.Calm, PersonalityType.Cautious, PersonalityType.Kind, PersonalityType.Shy),
+            G(PersonalityType.Lazy, PersonalityType.Silly, PersonalityType.Smart));
 
-        return new InterviewAnswer(response, null, null);
+        string response = i switch
+        {
+            0 => "I want to win everything — trophies, awards, the lot. Not here to make up numbers.",
+            1 => "Play well, stay fit, win a few things with a good group. A solid career'll do me.",
+            _ => "Enjoy my football, score a few worldies, have a laugh. Whatever comes, comes."
+        };
+        return new InterviewAnswer(response, null, null, group);
     }
 
-    // ————————————————————— Personality-probing answers (return personality CLUES) —————————————————————
-    // Each of these narrows the hidden personality to a small candidate set. The answer TEXT is unique
-    // per personality (their own voice), while the CLUE is the group of personalities that would answer
-    // in that style — intersect several and you can pin the personality down.
+    private static InterviewAnswer AnswerBestPersonalityFit(Player player)
+    {
+        // Bucketed by warmth: gets-on-with-anyone / picky / easy-going.
+        var (i, group) = Bucket(player.Personality,
+            G(PersonalityType.Kind, PersonalityType.Calm, PersonalityType.Silly, PersonalityType.Cocky),
+            G(PersonalityType.Aggressive, PersonalityType.Smart),
+            G(PersonalityType.Shy, PersonalityType.Lazy, PersonalityType.Driven, PersonalityType.Cautious));
+
+        string fit = player.GetBestCompatiblePersonality().ToString().ToLower();
+        string response = i switch
+        {
+            0 => $"I get on with everyone, me — {fit} types especially. Good people.",
+            1 => $"I work best with {fit} sorts. The rest can be hard work, if I'm honest.",
+            _ => $"{fit} teammates suit me. Easy to play alongside."
+        };
+        return new InterviewAnswer(response, fit, fit, group);
+    }
+
+    private static InterviewAnswer AnswerWorstPersonalityFit(Player player)
+    {
+        // Same warmth bucketing as BestFit (consistent voice), different content.
+        var (i, group) = Bucket(player.Personality,
+            G(PersonalityType.Kind, PersonalityType.Calm, PersonalityType.Silly, PersonalityType.Cocky),
+            G(PersonalityType.Aggressive, PersonalityType.Smart),
+            G(PersonalityType.Shy, PersonalityType.Lazy, PersonalityType.Driven, PersonalityType.Cautious));
+
+        string clash = player.GetWorstCompatiblePersonality().ToString().ToLower();
+        string response = i switch
+        {
+            0 => $"I try with everyone, but {clash} types can be a bit much.",
+            1 => $"{clash} people. We just don't see eye to eye.",
+            _ => $"I keep clear of {clash} sorts where I can. Too much friction."
+        };
+        return new InterviewAnswer(response, clash, clash, group);
+    }
+
+    // ————————————————————— personality-probe questions (pure bucket clue) —————————————————————
 
     private static InterviewAnswer AnswerHandleCriticism(Player player)
     {
-        string response = player.Personality switch
+        var (i, group) = Bucket(player.Personality,
+            G(PersonalityType.Aggressive, PersonalityType.Cocky),                                                  // defensive
+            G(PersonalityType.Shy, PersonalityType.Kind),                                                          // sensitive
+            G(PersonalityType.Lazy, PersonalityType.Silly),                                                        // dismissive
+            G(PersonalityType.Calm, PersonalityType.Smart, PersonalityType.Driven, PersonalityType.Cautious));     // receptive
+
+        string response = i switch
         {
-            PersonalityType.Aggressive => "Honestly? It winds me up. I back myself and I don't like being told I'm wrong.",
-            PersonalityType.Cocky => "I hear it — but nine times out of ten I'm right and the gaffer comes round to my way.",
-            PersonalityType.Calm => "I take it on the chin. It's just information; I use it and move on.",
-            PersonalityType.Smart => "I welcome it, as long as it's specific. Feedback is data — I act on it.",
-            PersonalityType.Driven => "I love it. Tell me what's wrong and I'll work twice as hard to fix it.",
-            PersonalityType.Cautious => "I listen carefully. I'd rather hear it early than make the same mistake twice.",
-            PersonalityType.Shy => "It... gets to me a bit, if I'm honest. But I really do want to get it right.",
-            PersonalityType.Kind => "I take it to heart, because I never want to let the lads down.",
-            PersonalityType.Lazy => "Eh. In one ear, out the other. No point stressing over it.",
-            PersonalityType.Silly => "Ha! I just nod along and crack a joke. Keeps it light!",
-            _ => "I try to take it well."
+            0 => "Honestly? It winds me up. I back myself and I don't like being told I'm wrong.",
+            1 => "It... gets to me a bit, if I'm honest. But I really do want to get it right.",
+            2 => "Eh. In one ear, out the other — no point stressing over it.",
+            _ => "I welcome it, as long as it's specific. Tell me what's wrong and I'll fix it."
         };
-        return new InterviewAnswer(response, player.Personality.ToString(), null, CriticismGroup(player.Personality));
+        return new InterviewAnswer(response, player.Personality.ToString(), null, group);
     }
 
     private static InterviewAnswer AnswerWorkEthic(Player player)
     {
-        string response = player.Personality switch
+        var (i, group) = Bucket(player.Personality,
+            G(PersonalityType.Driven, PersonalityType.Smart, PersonalityType.Cautious, PersonalityType.Aggressive), // grafters
+            G(PersonalityType.Lazy, PersonalityType.Silly, PersonalityType.Cocky),                                  // coasters
+            G(PersonalityType.Calm, PersonalityType.Kind, PersonalityType.Shy));                                    // balanced
+
+        string response = i switch
         {
-            PersonalityType.Driven => "Day off? I'll still be in the gym or watching clips of my marker.",
-            PersonalityType.Smart => "I review my numbers and rest deliberately — recovery is part of the work.",
-            PersonalityType.Cautious => "I do my stretches, eat right, get an early night. I don't cut corners.",
-            PersonalityType.Aggressive => "I train. Sitting still does my head in — I'd rather be grafting.",
-            PersonalityType.Lazy => "Sofa, telly, maybe a nap. Or two. Got to recharge, haven't you?",
-            PersonalityType.Silly => "Mate, gaming all day and a kebab. Living the dream!",
-            PersonalityType.Cocky => "I don't need extra sessions — I'm already better than most. I relax.",
-            PersonalityType.Calm => "A quiet one. Walk the dog, see family, switch off properly.",
-            PersonalityType.Kind => "I usually help out — see my nan, do a bit for the local club.",
-            PersonalityType.Shy => "Nothing flash. Stay in, read, keep myself to myself really.",
-            _ => "A bit of rest, a bit of training."
+            0 => "Day off? I'll still get a session in or watch clips. Can't sit still.",
+            1 => "Sofa, telly, maybe a kebab. Got to recharge, haven't you?",
+            _ => "A quiet one — family, early night, look after myself properly."
         };
-        return new InterviewAnswer(response, player.Personality.ToString(), null, WorkEthicGroup(player.Personality));
+        return new InterviewAnswer(response, player.Personality.ToString(), null, group);
     }
 
     private static InterviewAnswer AnswerBigGameMentality(Player player)
     {
-        string response = player.Personality switch
+        var (i, group) = Bucket(player.Personality,
+            G(PersonalityType.Cocky, PersonalityType.Aggressive, PersonalityType.Driven), // thrive
+            G(PersonalityType.Calm, PersonalityType.Smart, PersonalityType.Kind),         // composed
+            G(PersonalityType.Shy, PersonalityType.Cautious),                             // nervy
+            G(PersonalityType.Silly, PersonalityType.Lazy));                              // loose
+
+        string response = i switch
         {
-            PersonalityType.Cocky => "Big crowd, big stage? That's MY stage. Bring it on.",
-            PersonalityType.Aggressive => "I love it. The bigger the game, the more I want to hurt them.",
-            PersonalityType.Driven => "That's what all the work is for. I can't wait for those games.",
-            PersonalityType.Calm => "Same as any other game. I keep my head and do my job.",
-            PersonalityType.Smart => "I prepare the same way, so the occasion doesn't change my decisions.",
-            PersonalityType.Kind => "Exciting! I just want to do the lads and the fans proud.",
-            PersonalityType.Shy => "A bit nervous, to be honest... but the nerves keep me sharp.",
-            PersonalityType.Cautious => "I do worry about it. I just try to focus on what I can control.",
-            PersonalityType.Silly => "Big game, five-a-side, whatever — I'm just there for a laugh!",
-            PersonalityType.Lazy => "It's only a game, innit? I don't really get worked up.",
-            _ => "I just try to play my game."
+            0 => "Big stage? That's MY stage. The bigger the game, the more I want it.",
+            1 => "Same as any other game. I keep my head and do my job.",
+            2 => "A bit nervous, to be honest... but the nerves keep me sharp.",
+            _ => "Big game, five-a-side, whatever — I'm here to have fun!"
         };
-        return new InterviewAnswer(response, player.Personality.ToString(), null, BigGameGroup(player.Personality));
+        return new InterviewAnswer(response, player.Personality.ToString(), null, group);
     }
 
     private static InterviewAnswer AnswerLeadership(Player player)
     {
-        string response = player.Personality switch
+        var (i, group) = Bucket(player.Personality,
+            G(PersonalityType.Aggressive, PersonalityType.Cocky, PersonalityType.Driven), // vocal
+            G(PersonalityType.Calm, PersonalityType.Smart, PersonalityType.Cautious),     // by example
+            G(PersonalityType.Kind, PersonalityType.Silly),                               // morale
+            G(PersonalityType.Shy, PersonalityType.Lazy));                                // quiet
+
+        string response = i switch
         {
-            PersonalityType.Aggressive => "Loud. I organise, I demand, and I'll let you know if you're slacking.",
-            PersonalityType.Cocky => "I'm the main voice — lads look to me, and rightly so.",
-            PersonalityType.Driven => "I lead by setting the standard, and I'll drag others up to it.",
-            PersonalityType.Calm => "I'm not loud. I let my game do the talking and stay steady.",
-            PersonalityType.Smart => "I talk when it matters — a word in the right ear, the right time.",
-            PersonalityType.Cautious => "I'm measured. I'd rather quietly organise than shout the odds.",
-            PersonalityType.Kind => "I'm the one picking lads up, keeping spirits up when it's tough.",
-            PersonalityType.Silly => "I'm the joker! I keep everyone loose — morale's my department.",
-            PersonalityType.Shy => "I keep myself to myself, really. I'm not one for big speeches.",
-            PersonalityType.Lazy => "I'm pretty quiet. Don't really go in for all the shouting.",
-            _ => "I do my bit in the dressing room."
+            0 => "Loud. I organise, I demand, and I'll let you know if you're slacking.",
+            1 => "I talk when it matters — a word in the right ear at the right time.",
+            2 => "I'm the one keeping spirits up, having a laugh, picking lads up.",
+            _ => "I keep myself to myself, really. Not one for big speeches."
         };
-        return new InterviewAnswer(response, player.Personality.ToString(), null, LeadershipGroup(player.Personality));
+        return new InterviewAnswer(response, player.Personality.ToString(), null, group);
     }
 
-    private static PersonalityType[] CriticismGroup(PersonalityType p)
+    // ————————————————————— stat / position helpers —————————————————————
+
+    /// <summary>Gap between the best skill and the third-best — large = one clear standout, small = several near the top.</summary>
+    private static int TopGap(Player player)
     {
-        var defensive = new[] { PersonalityType.Aggressive, PersonalityType.Cocky };
-        var sensitive = new[] { PersonalityType.Shy, PersonalityType.Kind };
-        var dismissive = new[] { PersonalityType.Lazy, PersonalityType.Silly };
-        var receptive = new[] { PersonalityType.Calm, PersonalityType.Smart, PersonalityType.Driven, PersonalityType.Cautious };
-        if (Array.IndexOf(defensive, p) >= 0) return defensive;
-        if (Array.IndexOf(sensitive, p) >= 0) return sensitive;
-        if (Array.IndexOf(dismissive, p) >= 0) return dismissive;
-        return receptive;
-    }
-
-    private static PersonalityType[] WorkEthicGroup(PersonalityType p)
-    {
-        var grafters = new[] { PersonalityType.Driven, PersonalityType.Smart, PersonalityType.Cautious, PersonalityType.Aggressive };
-        var coasters = new[] { PersonalityType.Lazy, PersonalityType.Silly, PersonalityType.Cocky };
-        var balanced = new[] { PersonalityType.Calm, PersonalityType.Kind, PersonalityType.Shy };
-        if (Array.IndexOf(grafters, p) >= 0) return grafters;
-        if (Array.IndexOf(coasters, p) >= 0) return coasters;
-        return balanced;
-    }
-
-    private static PersonalityType[] BigGameGroup(PersonalityType p)
-    {
-        var thrive = new[] { PersonalityType.Cocky, PersonalityType.Aggressive, PersonalityType.Driven };
-        var composed = new[] { PersonalityType.Calm, PersonalityType.Smart, PersonalityType.Kind };
-        var nervy = new[] { PersonalityType.Shy, PersonalityType.Cautious };
-        var loose = new[] { PersonalityType.Silly, PersonalityType.Lazy };
-        if (Array.IndexOf(thrive, p) >= 0) return thrive;
-        if (Array.IndexOf(composed, p) >= 0) return composed;
-        if (Array.IndexOf(nervy, p) >= 0) return nervy;
-        return loose;
-    }
-
-    private static PersonalityType[] LeadershipGroup(PersonalityType p)
-    {
-        var vocal = new[] { PersonalityType.Aggressive, PersonalityType.Cocky, PersonalityType.Driven };
-        var byExample = new[] { PersonalityType.Calm, PersonalityType.Smart, PersonalityType.Cautious };
-        var morale = new[] { PersonalityType.Kind, PersonalityType.Silly };
-        var quiet = new[] { PersonalityType.Shy, PersonalityType.Lazy };
-        if (Array.IndexOf(vocal, p) >= 0) return vocal;
-        if (Array.IndexOf(byExample, p) >= 0) return byExample;
-        if (Array.IndexOf(morale, p) >= 0) return morale;
-        return quiet;
-    }
-
-    #region Helper Methods
-
-    /// <summary>
-    /// Get what the player perceives their stat value to be (affected by personality).
-    /// </summary>
-    private static int GetPerceivedStatValue(Player player, PlayerStat stat, int actualValue)
-    {
-        int modifier = player.Personality switch
-        {
-            PersonalityType.Cocky => UnityEngine.Random.Range(10, 25),    // Overestimates
-            PersonalityType.Shy => UnityEngine.Random.Range(-20, -5),     // Underestimates
-            PersonalityType.Aggressive => UnityEngine.Random.Range(5, 15),
-            PersonalityType.Kind => UnityEngine.Random.Range(-5, 5),      // Honest
-            PersonalityType.Lazy => UnityEngine.Random.Range(-10, 10),    // Doesn't care enough to be accurate
-            PersonalityType.Driven => UnityEngine.Random.Range(-5, 5),    // Self-aware
-            PersonalityType.Smart => UnityEngine.Random.Range(-3, 3),     // Most accurate
-            PersonalityType.Silly => UnityEngine.Random.Range(-15, 15),   // Random
-            PersonalityType.Cautious => UnityEngine.Random.Range(-15, 0), // Conservative estimate
-            PersonalityType.Calm => UnityEngine.Random.Range(-5, 5),      // Reasonable
-            _ => 0
-        };
-
-        return Mathf.Clamp(actualValue + modifier, 0, 100);
+        int[] s = (int[])player.RawStats.Skills.Clone();
+        Array.Sort(s);
+        Array.Reverse(s); // descending
+        if (s.Length >= 3) return s[0] - s[2];
+        if (s.Length >= 2) return s[0] - s[1];
+        return 0;
     }
 
     private static PlayerStat GetBestStat(Player player)
     {
         PlayerStat best = PlayerStat.Shooting;
-        int bestValue = 0;
-
+        int bestValue = -1;
         for (int i = 0; i < Player.SKILL_NO; i++)
-        {
-            int value = player.RawStats.Skills[i];
-            if (value > bestValue)
-            {
-                bestValue = value;
-                best = (PlayerStat)i;
-            }
-        }
+            if (player.RawStats.Skills[i] > bestValue) { bestValue = player.RawStats.Skills[i]; best = (PlayerStat)i; }
         return best;
     }
 
@@ -449,109 +379,40 @@ public static class InterviewAnswerGenerator
     {
         PlayerStat worst = PlayerStat.Shooting;
         int worstValue = 101;
-
         for (int i = 0; i < Player.SKILL_NO; i++)
-        {
-            int value = player.RawStats.Skills[i];
-            if (value < worstValue)
-            {
-                worstValue = value;
-                worst = (PlayerStat)i;
-            }
-        }
+            if (player.RawStats.Skills[i] < worstValue) { worstValue = player.RawStats.Skills[i]; worst = (PlayerStat)i; }
         return worst;
     }
 
-    /// <summary>
-    /// What the player thinks is their best stat (personality affects this).
-    /// </summary>
-    private static PlayerStat GetPerceivedBestStat(Player player)
+    private static Player.Position BestPositionByStrength(Player player)
     {
-        // Cocky players might not pick their actual best - they pick something flashy
-        if (player.Personality == PersonalityType.Cocky)
-        {
-            PlayerStat[] flashyStats = { PlayerStat.Shooting, PlayerStat.Dribbling, PlayerStat.Pace, PlayerStat.Creativity };
-            return flashyStats[UnityEngine.Random.Range(0, flashyStats.Length)];
-        }
-
-        // Shy players won't show off their best — they name something middling instead.
-        if (player.Personality == PersonalityType.Shy)
-        {
-            var sorted = new List<(PlayerStat stat, int value)>();
-            for (int i = 0; i < Player.SKILL_NO; i++)
-                sorted.Add(((PlayerStat)i, player.RawStats.Skills[i]));
-            sorted = sorted.OrderBy(s => s.value).ToList();
-            int mid = Mathf.Clamp(sorted.Count / 2, 0, sorted.Count - 1);
-            return sorted[mid].stat;
-        }
-
-        // Smart and Driven players are accurate
-        if (player.Personality == PersonalityType.Smart || player.Personality == PersonalityType.Driven)
-        {
-            return GetBestStat(player);
-        }
-
-        // Most others are reasonably accurate
-        return GetBestStat(player);
+        Player.Position best = Player.Position.CM;
+        int bestValue = -1;
+        foreach (var kv in player.RawStats.Positions)
+            if ((int)kv.Value > bestValue) { bestValue = (int)kv.Value; best = kv.Key; }
+        return best;
     }
 
-    /// <summary>
-    /// What the player thinks is their worst stat (personality affects this).
-    /// </summary>
-    private static PlayerStat GetPerceivedWorstStat(Player player)
+    private static int CountStrongPositions(Player player)
     {
-        PlayerStat actualWorst = GetWorstStat(player);
-
-        // Cocky players avoid admitting their actual worst - pick something less bad
-        if (player.Personality == PersonalityType.Cocky)
-        {
-            // Find second or third worst instead
-            var sortedStats = new List<(PlayerStat stat, int value)>();
-            for (int i = 0; i < Player.SKILL_NO; i++)
-            {
-                sortedStats.Add(((PlayerStat)i, player.RawStats.Skills[i]));
-            }
-            sortedStats = sortedStats.OrderBy(s => s.value).ToList();
-            
-            // Pick 2nd or 3rd worst (index 1 or 2)
-            int index = UnityEngine.Random.Range(1, 3);
-            return sortedStats[Mathf.Min(index, sortedStats.Count - 1)].stat;
-        }
-
-        // Aggressive players also deflect
-        if (player.Personality == PersonalityType.Aggressive)
-        {
-            // Pick a mental stat instead of their actual weakness
-            PlayerStat[] deflectTo = { PlayerStat.Teamwork, PlayerStat.Intelligence };
-            return deflectTo[UnityEngine.Random.Range(0, deflectTo.Length)];
-        }
-
-        // Smart players are honest
-        if (player.Personality == PersonalityType.Smart || player.Personality == PersonalityType.Driven)
-        {
-            return actualWorst;
-        }
-
-        return actualWorst;
+        int count = 0;
+        foreach (var kv in player.RawStats.Positions)
+            if (kv.Value >= Player.PositionStrength.Good) count++;
+        return count;
     }
 
-    private static string StatValueToDescription(int value)
+    private static string StatValueToDescription(int value) => value switch
     {
-        return value switch
-        {
-            >= 90 => "world-class",
-            >= 80 => "excellent",
-            >= 70 => "very good",
-            >= 60 => "good",
-            >= 50 => "decent",
-            >= 40 => "average",
-            >= 30 => "below average",
-            >= 20 => "poor",
-            _ => "weak"
-        };
-    }
-
-    #endregion
+        >= 90 => "world-class",
+        >= 80 => "excellent",
+        >= 70 => "very good",
+        >= 60 => "good",
+        >= 50 => "decent",
+        >= 40 => "average",
+        >= 30 => "below average",
+        >= 20 => "poor",
+        _ => "weak"
+    };
 }
 
 /// <summary>
@@ -564,9 +425,9 @@ public class InterviewAnswer
     public object PerceivedValue { get; private set; }
 
     /// <summary>
-    /// For personality-probing questions: the set of personalities consistent with this answer. The
-    /// interview manager intersects these across questions to narrow down the hidden personality.
-    /// Null for non-personality questions.
+    /// The set of personalities consistent with this answer's response bucket. Every answer sets it (the bucketing
+    /// differs per question), and the interview manager intersects them across questions to narrow the hidden
+    /// personality. Null only for the fallback answer.
     /// </summary>
     public PersonalityType[] PossiblePersonalities { get; private set; }
 

@@ -1,7 +1,10 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Drives the half-time team-talk minigame and converts its result into a squad morale swing.
+/// Drives the half-time team talk and converts the result into a squad morale swing. Two paths exist:
+/// the tone-based talk (<see cref="DeliverTalk"/>, the active one — Praise/Rage/Encourage/…) and the older
+/// minigame path (<see cref="CreateRandom"/>/<see cref="ApplyResult"/>, kept dormant for now).
 /// One team talk per match. The trade-off (core design rule): a strong performance fires the squad up,
 /// but a flop actually flattens them — attempting a rousing talk and bottling it costs you.
 ///
@@ -44,6 +47,36 @@ public class TeamTalkController : MonoBehaviour
     {
         Used = false;
         Current = null;
+    }
+
+    /// <summary>
+    /// Delivers a team talk to the WHOLE squad using the same reaction system as a 1-on-1 player discussion:
+    /// each player's reaction is looked up from <c>EventsManager.ReactionTable[(response, personality)]</c>,
+    /// adjusted by <paramref name="severity"/> (derived from the half-time scoreline), and applied via
+    /// <c>Person.NewMorale</c>. Marks the talk used and returns the per-player reactions for the UI to visualise.
+    /// </summary>
+    public List<PlayerReaction> DeliverTalk(Event.Response response, EventType.Severity severity)
+    {
+        var reactions = new List<PlayerReaction>();
+
+        Team me = TeamManager.Instance != null ? TeamManager.Instance.MyTeam : null;
+        if (me == null || me.Players == null || EventsManager.Instance == null) return reactions;
+
+        var table = EventsManager.Instance.ReactionTable;
+        if (table == null) return reactions;
+
+        foreach (var p in me.Players)
+        {
+            if (!table.TryGetValue((response, p.Personality), out Event.Reaction reaction)) continue;
+
+            reaction = Event.ReactionSeverityChange(response, reaction, severity);
+            (int mood, int passion) = p.NewMorale(0, reaction, severity); // applies + clamps morale, returns the delta
+
+            reactions.Add(new PlayerReaction { player = p, reaction = reaction, mood = mood, passion = passion });
+        }
+
+        Used = true;
+        return reactions;
     }
 
     /// <summary>

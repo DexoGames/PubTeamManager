@@ -152,6 +152,23 @@ public class MatchSimPageUI : UIPage
         ShiftMentality(targetIndex - t.EffectiveMentalityIndex);
     }
 
+    /// <summary>Slider hook: a UI Slider passes a float, so bind its OnValueChanged here (rounds to a level).</summary>
+    public void SetMentalityInMatch(float targetIndex) => SetMentalityInMatch(Mathf.RoundToInt(targetIndex));
+
+    /// <summary>
+    /// Current goal difference from the PLAYER's team perspective (+ = winning), e.g. for the half-time team-talk
+    /// severity. 0 if there's no live match.
+    /// </summary>
+    public int CurrentGoalDifferenceForMyTeam()
+    {
+        if (match == null || _fixture == null) return 0;
+        Team me = TeamManager.Instance != null ? TeamManager.Instance.MyTeam : null;
+        int home = match.result.score.home;
+        int away = match.result.score.away;
+        if (_fixture.AwayTeam == me) return away - home;
+        return home - away; // home team (or fallback)
+    }
+
     // ————————————————————— Half-time: full tactics access —————————————————————
 
     /// <summary>

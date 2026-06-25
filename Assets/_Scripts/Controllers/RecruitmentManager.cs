@@ -23,13 +23,21 @@ public class RecruitmentManager : MonoBehaviour
     /// <summary>The day a session was already used (one interview session per interview day).</summary>
     private DateTime sessionUsedDay = DateTime.MinValue;
 
+    [Header("Debug")]
+    [Tooltip("TESTING ONLY — makes EVERY day an interview day with no once-per-day limit, so you can keep " +
+             "interviewing without waiting for the fortnightly schedule. Toggle live in the Inspector; leave off for normal play.")]
+    [SerializeField] private bool debugEndlessInterviews = false;
+
+    /// <summary>TESTING: every day is an interview day with unlimited sessions and a topped-up candidate pool.</summary>
+    public bool DebugEndlessInterviews { get => debugEndlessInterviews; set => debugEndlessInterviews = value; }
+
     private DateTime CurrentDay => CalenderManager.Instance != null ? CalenderManager.Instance.CurrentDay.Date : DateTime.MinValue;
 
-    /// <summary>True when today is the scheduled interview day.</summary>
-    public bool IsInterviewDay => InterviewDay.Date == CurrentDay && CurrentDay != DateTime.MinValue;
+    /// <summary>True when today is the scheduled interview day (always true with <see cref="DebugEndlessInterviews"/>).</summary>
+    public bool IsInterviewDay => debugEndlessInterviews || (InterviewDay.Date == CurrentDay && CurrentDay != DateTime.MinValue);
 
-    /// <summary>True when an interview session can still be started today.</summary>
-    public bool CanInterviewToday => IsInterviewDay && sessionUsedDay.Date != CurrentDay;
+    /// <summary>True when an interview session can still be started today (no daily limit in debug mode).</summary>
+    public bool CanInterviewToday => debugEndlessInterviews || (IsInterviewDay && sessionUsedDay.Date != CurrentDay);
 
     public int SquadSize => TeamManager.Instance != null && TeamManager.Instance.MyTeam != null
         ? TeamManager.Instance.MyTeam.Players.Count : 0;
@@ -104,6 +112,8 @@ public class RecruitmentManager : MonoBehaviour
     /// </summary>
     public List<Player> StartInterviewSession()
     {
+        if (debugEndlessInterviews) RefreshPool(); // keep fresh candidates flowing while testing
+
         CurrentCandidates.Clear();
         CurrentCandidateIndex = 0;
         HasHiredThisSession = false;

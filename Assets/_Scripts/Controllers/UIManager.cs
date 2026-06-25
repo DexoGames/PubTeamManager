@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -21,6 +23,16 @@ public class UIManager : MonoBehaviour
     private TrainingPageUI trainingPageUI;
     private RecruitmentPageUI recruitmentPageUI;
     private StatsPageUI statsPageUI;
+
+    // ————————————————————— navigation history (Back button) —————————————————————
+    // Each recorded ShowX pushes a re-show delegate; Back() pops and replays the previous one.
+    private readonly List<Action> _backStack = new List<Action>();
+    private Action _currentNav;
+    private bool _restoringNav;
+    private const int MAX_HISTORY = 50;
+
+    /// <summary>True when there's a previous page to return to (drives the Back button's enabled state).</summary>
+    public bool CanGoBack => _backStack.Count > 0;
 
     private void Awake()
     {
@@ -56,6 +68,7 @@ public class UIManager : MonoBehaviour
 
     public void ShowPlayerDetails(int personID)
     {
+        PushNav(() => ShowPlayerDetails(personID));
         HideAllUI();
 
         var player = PersonManager.Instance.GetPlayer(personID);
@@ -64,6 +77,7 @@ public class UIManager : MonoBehaviour
     }
     public void ShowManagerDetails(int personID)
     {
+        PushNav(() => ShowManagerDetails(personID));
         HideAllUI();
 
         var manager = PersonManager.Instance.GetManager(personID);
@@ -73,6 +87,7 @@ public class UIManager : MonoBehaviour
 
     public void ShowTeamDetails(int teamId)
     {
+        PushNav(() => ShowTeamDetails(teamId));
         HideAllUI();
 
         var team = TeamManager.Instance.GetTeam(teamId);
@@ -82,6 +97,7 @@ public class UIManager : MonoBehaviour
 
     public void ShowTactics()
     {
+        PushNav(() => ShowTactics());
         HideAllUI();
 
         tacticsPageUI.Show(TeamManager.Instance.MyTeam);
@@ -102,36 +118,42 @@ public class UIManager : MonoBehaviour
 
     public void ShowFixtureList()
     {
+        PushNav(() => ShowFixtureList());
         HideAllUI();
         fixtureListUI.Show();
     }
 
     public void ShowSchedule()
     {
+        PushNav(() => ShowSchedule());
         HideAllUI();
         schedulePageUI.Show();
     }
 
     public void ShowTraining()
     {
+        PushNav(() => ShowTraining());
         HideAllUI();
         trainingPageUI.Show();
     }
 
     public void ShowRecruitment()
     {
+        PushNav(() => ShowRecruitment());
         HideAllUI();
         recruitmentPageUI.Show();
     }
 
     public void ShowStats()
     {
+        PushNav(() => ShowStats());
         HideAllUI();
         statsPageUI?.Show();
     }
 
     public void ShowHomePage()
     {
+        PushNav(() => ShowHomePage());
         Debug.Log($"[TRACE] UIManager.ShowHomePage — homePageUI null? {homePageUI == null}");
         HideAllUI();
         homePageUI.Show();
@@ -166,6 +188,37 @@ public class UIManager : MonoBehaviour
         trainingPageUI.Hide();
         recruitmentPageUI.Hide();
         statsPageUI?.Hide();
+    }
+
+    /// <summary>Records the page now being shown so Back() can return to whatever was visible before it.</summary>
+    private void PushNav(Action reshow)
+    {
+        if (_restoringNav) return;            // Back() is driving — don't re-record
+        if (_currentNav != null)
+        {
+            _backStack.Add(_currentNav);
+            if (_backStack.Count > MAX_HISTORY) _backStack.RemoveAt(0);
+        }
+        _currentNav = reshow;
+    }
+
+    /// <summary>Return to the previously shown page. No-op during a live match (use the match controls) or with no history.</summary>
+    public void Back()
+    {
+        Tactic tactic = TeamManager.Instance != null && TeamManager.Instance.MyTeam != null
+            ? TeamManager.Instance.MyTeam.Tactic : null;
+        if (tactic != null && tactic.InMatch) return;
+
+        if (_backStack.Count == 0) return;
+
+        int last = _backStack.Count - 1;
+        Action prev = _backStack[last];
+        _backStack.RemoveAt(last);
+
+        _restoringNav = true;
+        prev();                 // re-shows the previous page (PushNav suppressed via _restoringNav)
+        _currentNav = prev;
+        _restoringNav = false;
     }
 
     public void ShowNavigationButtons(bool show)
