@@ -121,6 +121,10 @@ public class GameManager : MonoBehaviour
     // advance coroutines.
     void NewDay(DateTime date)
     {
+        // If the season just finished, roll into the next one BEFORE (re)building the schedule, so the new
+        // season's fixtures exist to schedule. Without this the game sticks in season 1 once fixtures run out.
+        FixturesManager.Instance?.CheckSeasonRollover();
+
         ScheduleManager.Instance?.GenerateSchedule(date);
         ScheduleManager.Instance?.ProcessToday();
         CalenderManager.Instance.RespondToAdvance();

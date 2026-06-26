@@ -54,7 +54,31 @@ around **morale** and **personality** systems rather than money/transfers.
 5. **Self-populating UI.** Pages (`UIPage`) call `Setup()` on every `UIObject` child on show, so most
    widgets refresh themselves; coordinators only handle special cases (e.g. animation).
 6. **Defensive serialization.** Mutable structs that must round-trip carry a `[JsonConstructor]`
-   (`Shot`, `Foul`, `Minute`, `Morale`); `ISaveable.OnAfterDeserialize` rebuilds derived/ignored state.
+   (`Shot`, `Foul`, `Minute`, `Morale`); `ISaveable.OnAfterDeserialize` rebuilds derived/ignored state. **Any
+   `[JsonIgnore]` field that runtime logic reads must be rebuilt in `OnAfterDeserialize`** — forgetting this is a
+   classic "works in-session, breaks after load" bug (e.g. the `Cup.roundList` stall).
+7. **Reuse one system, don't build a parallel one.** New features are layered onto existing mechanics rather than
+   duplicating them: the half-time **team talk reuses the 1-on-1 discussion reaction system**
+   (`Event.Response` + `EventsManager.ReactionTable` + `Person.NewMorale`), reliances reuse `PlayerGroup`, and the
+   `PlayerPickerPopup` is shared by reliances / training / the interview "compare" question. One tuning source, no drift.
+8. **Pure logic, thin renderers.** Game logic lives in plain testable C# (`StatLeaderboards`, `TeamTalkReactions`,
+   `InterviewAnswerGenerator`, `TeamTalkMinigame`, `MatchEngine`/`Phase`); the MonoBehaviour/`UIObject` is a thin
+   view over it. You can unit-test or A/B the logic (see `TacticLab`) without the scene.
+9. **Derive-on-read where consistency matters; denormalize only deliberately.** The stat leaderboards recompute from
+   the fixtures' event logs every time (one source of truth, team & player totals can't disagree), instead of running
+   counters that could drift. `ClubStats`/`LeagueTableEntry` *are* running counters — a deliberate, separate choice.
+
+**Gameplay design rules (every feature should respect these)**
+1. **Everything has a trade-off — any edge must carry a matching risk.** This is the project's north star. Reliances
+   amplify a player's strengths *and* weaknesses; Complexity needs squad IQ or it penalises; high familiarity is
+   great but switching setup costs it; a botched team talk *lowers* morale; a hairdryer fires up the right
+   personalities and crushes the rest. If a new mechanic is pure upside, add an authored downside.
+2. **Personality is read through behaviour, not labels.** Hidden personality is inferred by grouping answers
+   (~3 buckets/question, groupings differing per question so intersecting distinguishes them) — never shown directly.
+3. **Coarse groups over per-entity uniqueness.** Prefer ~3 grouped variations keyed on a trait/shape over 10 bespoke
+   ones; it's less to author, and the *grouping itself* becomes the signal.
+4. **Tunable, in one place.** Expose the knobs (thresholds, weights, severities) as consts/SerializeFields with a
+   tuning cheat-sheet, so balance is data not buried magic numbers.
 
 ---
 
@@ -82,16 +106,25 @@ _Scripts/
                   CompetitionEvents, ClubStats, ScheduleEntry, TrainingSession, Drill, Formation
     Tactics/      Tactic (+ Mentality/TacticState), TacticInstruction (+ Reliance), TacticStats(legacy), TacticTemplate
     MatchSim/     Highlight + subclasses (Goal/Shot/Miss/Mistake/Possession/PossessionFail/Foul)
-  TeamTalk/       TeamTalkMinigame (+ GerrymanderGame/BalanceGame), TeamTalkController
-  Utilities/      Game, Match, MatchEngine, Phase, FixtureGenerator, LinkBuilder, LinkHandler, KitColors
+  TeamTalk/       TeamTalkReactions (tones + score→severity, the ACTIVE talk), TeamTalkController,
+                  TeamTalkMinigame (+ GerrymanderGame/BalanceGame — dormant microgame path)
+  Utilities/      Game, Match, MatchEngine, Phase, StatLeaderboards (stat aggregation),
+                  FixtureGenerator, LinkBuilder, LinkHandler, KitColors
   Serialization/  GameState (=> CoreSaveState/SeasonSaveState/SeasonIndexEntry), ISaveable,
                   TeamConverter, *RefConverter (Team/Person/Competition/Fixture), ScriptableObjectRefConverter
-  Interview/      InterviewQuestion (+ InterviewAnswerGenerator)
-  UI/             page controllers (UIPages/), widgets, dialogue, contexts
+  Interview/      InterviewQuestion (+ InterviewAnswerGenerator — grouped/bucketed answers)
+  Analysis/       TacticLab (headless A/B sim harness for balancing — see "Analysis harness" below)
+  UI/             page controllers (UIPages/, incl. StatsPageUI), widgets, dialogue, contexts,
+                  BackButton, StatLeaderboardWidget/Row
+    TeamTalk/     TeamTalkUI (squad arch of morale boxes), PlayerMoraleBoxUI
     Home/         DayTimelineWidget, DayBox, CompetitionContextWidget, CupTieRowUI,
                   CurrentRoundWidget, SquadStatusWidget, AdvanceOrHomeButton, PlayerRowUI
   Interfaces/     UIPage (abstract base), IDialogueContext
 ```
+
+> **Adding a system, the house style:** pure logic in a plain C# class (testable) → a thin `UIObject`/`UIPage`
+> renderer over it → reuse a shared component (`PlayerPickerPopup`, `TacticOptionToggle`, `DialogueUI`) rather than a
+> new one → expose tunables as consts/SerializeFields → if it needs editor wiring, **write an `*_BUILD.md`** (see §14).
 
 ---
 
@@ -140,7 +173,8 @@ Global registry. `Dictionary<int, Person> _byId` + `List<Person> People`.
   `StartingPlayers` (first 11)/`Substitutes`). Owns `Manager`, `Tactic`, `ClubStats`, `KitNumbers`.
 - Team-level match stats blend player ability with tactic (`Security`, `Threat`, `Control`, …).
 - `GenerateTeam()` creates a Manager, Tactic, and 21 players. `GetAllCompetitions()`/`GetMainLeague()`/
-  `GetUpcomingFixture()` query the (current-season) FixturesManager. **Tactic is not yet serialized** (resets on load).
+  `GetUpcomingFixture()` query the (current-season) FixturesManager. **Tactic now serializes** (formation,
+  instructions, reliance slot bindings, mentality, familiarity weights) via `TeamConverter` ↔ `Tactic.CaptureState`.
 
 ### Pub (`DataModels/Pub.cs`)
 CSV data: FAS ID, name, address, postcode, easting/northing, lat/long, local authority. `PostcodePrefix`
@@ -167,9 +201,10 @@ Christmas break. Serializes `StandingsData` (sorted points→GD→GF). `Promotio
 
 ### Cup (`DataModels/Cup.cs`) — `: Competition, ISaveable`
 Single-elimination knockout, **midweek (Wednesdays)** between league weekends (ties anchored via
-`NextDayOfWeek(roundDate, Wednesday)`; next round ~2 weeks later). Byes (`autoSecondRoundTeams`) are
-`[JsonIgnore]` — **not persisted**, so only the *current round's ties* are recoverable, not a full historical
-bracket tree. `TryGenerateNextRound` advances winners; drawn ties resolved by a strength-weighted coin flip.
+`NextDayOfWeek(roundDate, Wednesday)`; next round ~2 weeks later, **floored to today** so a behind-schedule cup never
+makes an already-overdue tie). `TryGenerateNextRound` advances winners; drawn ties resolved by a strength-weighted
+coin flip. **Save/restore fixed:** byes (`autoSecondRoundTeams`) are now serialized and the round structure
+(`roundList`) is rebuilt in `OnAfterDeserialize`, so a cup loaded mid-run keeps progressing (it used to stall).
 
 > Net player calendar: a league game most **Saturdays** (Aug→~May) with a **~2-week Christmas break**, a
 > **midweek cup tie** when still in it, plus the schedule activities (§9) built around those.
@@ -319,13 +354,18 @@ No transfer market — players are hired via **interview days** (now schedule-ga
   (`OnInterviewDay` → `NotifyInterviewDay`, wired in new-game + load), **one session per day** (`CanInterviewToday`).
   A session presents 5 candidates one at a time; hire 1 or reject (permanent). **Squad cap** `MAX_SQUAD_SIZE` (25):
   when full you must release someone first — `HirePlayer` blocks, `HirePlayerReplacing(new, drop)` does both.
-- **InterviewQuestion / InterviewAnswerGenerator**: ability questions answered from real stats **filtered through
-  personality** (Cocky overplays strengths / dodges his real weakness, Shy underplays his best stat, Smart accurate;
-  `InterviewAnswer.IsAccurate` exposes actual vs perceived). Plus **personality-probing questions**
-  (HandleCriticism / WorkEthic / BigGameMentality / Leadership) whose answers carry a `PossiblePersonalities` clue.
-- **InterviewManager** (`UI/`): drives an interview via `DialogueUI` (≤5 questions); intersects clue sets into
-  `NarrowedPersonalities` (`NarrowedPersonalitiesText()` → e.g. "Cocky / Aggressive") so you can deduce the hidden
-  personality before deciding. UI helper `InterviewQuestionButton`; see `NEW_SYSTEMS_BUILD.md`.
+- **InterviewQuestion / InterviewAnswerGenerator**: each question sorts the 10 personalities into **~3 response
+  buckets**, and the answer text is keyed on the bucket — so different personalities give the same answer to a given
+  question. The **bucketing differs per question** and *every* answer returns its bucket as a `PossiblePersonalities`
+  clue, so combining questions distinguishes the hidden personality (not just the four probes — all questions narrow
+  now). Ability questions add **stat-shape** variation (a clear standout stat vs one of many; specialist vs
+  versatile), with the standout threshold shifted by bucket. A **`CompareToPlayer`** question opens the shared
+  `PlayerPickerPopup` and scores ability by *signed √ of each stat difference, summed* → "about the same / an edge /
+  miles off", biased by personality.
+- **InterviewManager** (`UI/`): drives an interview via `DialogueUI` (≤5 questions); intersects buckets into
+  `NarrowedPersonalities` (`NarrowedPersonalitiesText()` → e.g. "Cocky / Aggressive"). UI helper
+  `InterviewQuestionButton`. `RecruitmentManager.debugEndlessInterviews` makes every day an interview day for testing.
+  See `INTERVIEW_INMATCH_TEAMTALK_BUILD.md` / `WIRING_RECRUITMENT_HALFTIME_SIM.md`.
 
 ---
 
@@ -362,19 +402,22 @@ Owns `CurrentDay` (starts **2024-08-01**). `AdvanceDay()` now **only** increment
 ### ScheduleManager
 Builds a **rolling 120-day** `ScheduleEntry` window for the player, **regenerated every advance** (from `GameManager.NewDay`)
 so it stays full and picks up new-season fixtures. `GenerateSchedule(today)` places by **priority, shifting forward on a
-clash so nothing is dropped** (`PlaceActivity`): **matches** (fixed) → **pub socials = the day after each match** →
-**training** (weekly, prefers Wednesday) → **interviews** (fortnightly) → **rest**. Interviews use a fixed
-`interviewEpoch` (set once) so the rolling regen doesn't push them back a day each advance; training lands on real
-calendar Wednesdays; both are inherently stable. `ScheduleEntryType` = Match/Training/Interview/RestDay/**PubTrip**.
-`ProcessToday()` raises `OnMatchDay`/`OnTrainingDay`/`OnInterviewDay` (only `OnTrainingDay` has a subscriber →
-`ExecuteTraining`). `GetUpcoming(n)` (today-inclusive), `GetNextTrainingDay()`.
+clash so nothing is dropped** (`PlaceActivity`): **matches** (fixed) → **interviews** (fortnightly, fixed cadence) →
+**pub socials = the day after each match** → **training** (weekly, prefers Wednesday) → **rest**. Interviews are
+placed right after matches (so pub/training can't bump them), anchored to a fixed `interviewEpoch` (set once), on
+their exact date and only shifting past a fixed match — so they get **their own day, never wander day-to-day, and
+never vanish** (the past-date skip is keyed on the placed day). Training lands on real calendar Wednesdays.
+`ScheduleEntryType` = Match/Training/Interview/RestDay/**PubTrip**. `ProcessToday()` raises
+`OnMatchDay`/`OnTrainingDay`/`OnInterviewDay` (`OnTrainingDay` → `ExecuteTraining`; `OnInterviewDay` →
+`RecruitmentManager.NotifyInterviewDay`). `GetUpcoming(n)` (today-inclusive), `GetNextTrainingDay()`.
 
 ### GameManager — orchestrator
 - `Start()`: if a save exists, `Load()`; on **load failure** it does *not* show a half-loaded UI — it sets a static
   "start fresh" flag and **reloads the scene** for a clean slate (save left untouched). No save → `SetupGame()`
   (spawn teams → AddComps → seed recruitment → schedule → wire training day → UI → **initial full Save**).
-- `NewDay(date)`: regenerates the schedule window, then `ProcessToday()` (fires today's activity effects, e.g. training),
-  then `RespondToAdvance()`. **No simulation/saving here** — that's in the advance coroutines.
+- `NewDay(date)`: **`FixturesManager.CheckSeasonRollover()`** (starts the next season if the current one's fixtures are
+  all played — the rollover hook), then regenerates the schedule window, then `ProcessToday()` (fires today's activity
+  effects, e.g. training), then `RespondToAdvance()`. **No simulation/saving here** — that's in the advance coroutines.
 - **Day/match flow** (new): matches are played **on their own day**, not after advancing.
   - `HasPendingPlayerMatch()` / `GetPendingPlayerMatch()` — the player's earliest unplayed fixture dated ≤ today.
   - `AdvanceOrPlay()` (the button entry point) → `PlayMatchRoutine` if a match is pending, else `AdvanceRoutine`.
@@ -405,7 +448,7 @@ with all results in; you then advance separately. Autosave fires every advance a
 | `TrainingManager` | Ongoing drill (catalog-driven Boost system) + execution |
 | `RecruitmentManager` | Free-agent pool + interview lifecycle; interview-day gating + squad cap (release-before-hire) |
 | `InjuryManager` | Player availability: off-pitch injury/illness/death daily rolls, recovery, post-match cards/suspensions/injuries (**must be on a scene object**) |
-| `TeamTalkController` | Half-time minigame → squad morale swing (one per match; flops dent morale) |
+| `TeamTalkController` | Half-time team talk: `DeliverTalk(response, severity)` applies a squad-wide morale swing via the discussion reaction system (one per match; the wrong tone dents morale). Dormant microgame path also present. |
 | `EventsManager` | Random/result events, morale changes, reaction tables |
 | `PersonManager` | Global `Person` registry by ID (`RegisterPerson`/`RegisterExisting`/`Get*`) |
 | `SaveManager` | Multi-file JSON save/load (core + per-season), archival, `SaveCore` |
@@ -420,7 +463,13 @@ with all results in; you then advance separately. Autosave fires every advance a
   Now also has an **`OnHide()`** hook fired when a *visible* page is navigated away (e.g. `TacticsPageUI.OnHide`
   → `SaveCore()` to persist tactics).
 - **UIManager** routes to page singletons (PlayerDetails, TeamDetails, Competition, Home, MatchSim, Tactics,
-  Discussion, Schedule, Training, Recruitment). Tracks `IsHomeActive`.
+  Discussion, Schedule, Training, Recruitment, **Stats** = `StatsPageUI`). Tracks `IsHomeActive`. Also keeps a
+  **navigation history** (a stack of re-show delegates pushed by each `ShowX`); `Back()` returns to the previous page
+  and the drop-on-any-button **`BackButton`** component calls it (live matches/discussions excluded; no-op mid-match).
+- **Stat leaderboards** (`STATS_WIDGETS_BUILD.md`): `StatLeaderboardWidget` (+ row) renders ranked top-N tables —
+  goals, assists, shots/on-target, saves, clean sheets, conceded, own goals, big misses, cards — for players **or**
+  teams, derived on-read from a competition's fixtures by `StatLeaderboards`. Used on the home page (by team, stat
+  dropdown), the My Team page (by player), and a dedicated `StatsPageUI`.
 - **Home dashboard** (`UI/Home/` + `UIPages/HomePageUI.cs`): a coordinator + independent widgets. (Plan:
   `HOME_SCREEN_PLAN.md`; editor build: `HOME_SCREEN_BUILD.md`.)
   - `HomePageUI` (coordinator): only manages the day strip — on show it detects a **+1-day advance** (vs the last
@@ -523,7 +572,11 @@ resolves EventType + persons). Mutable structs that round-trip carry `[JsonConst
 | `TRAINING_UI_LAYOUT.md` | Editor build guide for the training page |
 | `HOME_SCREEN_PLAN.md` | Home dashboard design + decisions |
 | `HOME_SCREEN_BUILD.md` | Step-by-step editor build guide for the home screen |
-| `NEW_SYSTEMS_BUILD.md` | **Editor/UI wiring for the new systems** (tactics depth, in-match changes, injuries/suspensions, interview day, team-talk minigames) + a tuning cheat-sheet |
+| `NEW_SYSTEMS_BUILD.md` | **Editor/UI wiring for the new systems** (tactics depth, in-match changes, injuries/suspensions, interview day, reliances/picker) + a tuning cheat-sheet |
+| `INTERVIEW_INMATCH_TEAMTALK_BUILD.md` | In-depth build/explanation of in-match tactical changes, half-time, and interview day |
+| `WIRING_RECRUITMENT_HALFTIME_SIM.md` | Field-by-field Inspector checklist (serialized fields, OnClick hooks) for recruitment/interview, match sim, half-time |
+| `TEAM_TALK_UI.md` | Build guide for the choose-a-tone half-time team talk (squad arch + reuses the discussion reaction system) |
+| `STATS_WIDGETS_BUILD.md` | Stat leaderboard widgets (top scorers/assists/saves/cards/clean sheets…) for the home/My Team/stats pages |
 
 ---
 
@@ -538,11 +591,15 @@ resolves EventType + persons). Mutable structs that round-trip carry `[JsonConst
   suspensions, injuries → availability via `InjuryManager`). **AI-team suspensions/injuries are not simulated**
   (their fouls are recorded for display but don't gate their availability) — a sensible future extension. Some shot
   types (Penalty/Free_Kick/Corner) are still only partially wired; `Fatigue` still isn't deeply driven by play.
-- **Cup history:** byes aren't persisted, so only the current round's ties are recoverable (no full historical tree).
+- **Cup save/restore now correct** (resolved): bye teams (`autoSecondRoundTeams`) are serialized and `roundList` is
+  rebuilt in `OnAfterDeserialize`, so a cup loaded mid-run keeps progressing; and round dates are floored to "today"
+  so a behind-schedule cup never generates an already-overdue tie (the "play a 28-Aug game in September" bug).
 - **History UI:** `LoadSeasonForViewing` exists but the past-seasons browsing UI isn't built yet.
-- **Season rollover trigger:** `StartNewSeason()` archives/unloads correctly, but **where it is invoked at season
-  end isn't clearly wired** — needs confirming/hooking. (Schedule regen *after* rollover is now handled — the
-  rolling per-advance regeneration picks up new-season fixtures automatically.)
+- **Season rollover now wired** (resolved): `StartNewSeason()` was correct but **never called** — so once season 1's
+  fixtures ran out the game stuck forever with no new games. Now `FixturesManager.CheckSeasonRollover()` (rolls over
+  when `IsCurrentSeasonOver()` — i.e. every current-season fixture played) is invoked from `GameManager.NewDay()`,
+  before the schedule rebuild, so the next season's fixtures are generated and picked up automatically. The check is
+  fixture-based (not just `IsComplete` flags), so it also rescues a save stuck behind a stalled competition.
 - **Interview days are now wired** (resolved): `OnInterviewDay` → `RecruitmentManager.NotifyInterviewDay` (new-game
   + load), and interviews are gated to that day (`CanInterviewToday`). Remaining editor work: build the question
   buttons (`InterviewQuestionButton`) and the release-before-hire panel — see `NEW_SYSTEMS_BUILD.md`.
@@ -555,7 +612,11 @@ resolves EventType + persons). Mutable structs that round-trip carry `[JsonConst
 - **Recently fixed (context):** league fixtures were 14-days-apart → now **weekly (Sat) + midweek cup (Wed) + ~2-week
   Christmas break**; the day/match flow was "advance-then-play" → now **play-on-the-day** ("Play Game"); manager IDs
   were reallocated on load (`RegisterPerson` → `RegisterExisting`); `Shot` got a `[JsonConstructor]`; load failures
-  now fail safe; the schedule is now a **rolling, epoch-anchored** window.
+  now fail safe; the schedule is now a **rolling, epoch-anchored** window. **This pass:** **season rollover wired**
+  (`StartNewSeason` was never called → stuck in season 1; now triggered from `GameManager.NewDay`); interview days are
+  now **fixed-cadence and placed before pub/training** so they no longer wander or vanish day-to-day; the **cup
+  save/restore + past-date** bugs above; stat tracking added to the match (`Match.Shot.keeper`, `TeamStats.shots`,
+  engine-credited assists, `TeamStats.keeper`); a `BackButton` + `UIManager` navigation history.
 
 ---
 
@@ -572,6 +633,13 @@ Intelligence** gate (penalties only bite when the XI's *average* intelligence fa
 for one dim player). The seam for reliances + complexity is `PlayerExtensions.AverageStats(tactic)`. Tactics
 **serialize** (incl. `SettingWeights` + reliance bindings). New UI: `MentalitySelectorUI`, `TacticInfoUI` (squad-IQ
 read-out), `FamiliaritySlider` (non-interactable).
+
+*Reliances evolved (see §4 for the live detail):* they bind by **squad slot** (so they follow subs and survive
+formation changes), carry **eligible position groups** (which both filter the picker/auto-disable AND scope *which
+phases of play* the reliance affects — a defenders reliance sways build-up, not finishing) and a **familiarity
+penalty** for changing the relied-on player. `hasReliance` is **derived** from a non-empty eligible-groups list (no
+separate flag). Instructions can also declare **complementary** synergies — `complementaryInstructions`, granting
+tactic-stat perks when a named partner instruction is also active (the positive mirror of `incompatibleInstructions`).
 
 **16.6 Shared UI: toggle baseline + player picker.** Tactic toggle buttons share an abstract base
 `TacticOptionToggle` (Toggle + colours + `OnToggleChange` + Set/SetInteractable); `TacticsToggle` derives from it.
@@ -596,11 +664,34 @@ injuries for the player's team; the engine generates fouls/cards/injuries (`TryF
 everyone. **Must add `InjuryManager` to the scene.**
 
 **16.4 Interview day (§7).** Schedule-gated (`OnInterviewDay` wired), one session/day, squad cap with
-release-before-hire. New **personality-probing questions** carry a clue (`PossiblePersonalities`) that
-`InterviewManager` intersects into `NarrowedPersonalities`; cocky/shy answer-bias extended. New UI helper
-`InterviewQuestionButton`.
+release-before-hire. `InterviewAnswerGenerator` now keys answers on **~3 response buckets per question** (not 10
+bespoke per-personality lines); the bucketing **differs per question** and *every* answer returns its bucket as the
+clue, so `InterviewManager` intersects them into `NarrowedPersonalities` — combining questions distinguishes the
+hidden personality. Ability questions add **shape variation** (a clear standout stat vs one of many; specialist vs
+versatile) with the threshold shifted by bucket. A **CompareToPlayer** question opens `PlayerPickerPopup` to pick any
+squad member and scores ability by *signed √ of each stat difference, summed* → "about the same / an edge / miles
+off", biased by personality. `RecruitmentManager.debugEndlessInterviews` makes every day an interview day for testing.
+UI helper: `InterviewQuestionButton`. See `INTERVIEW_INMATCH_TEAMTALK_BUILD.md` / `WIRING_RECRUITMENT_HALFTIME_SIM.md`.
 
-**16.5 Team-talk minigames (new §, see build guide).** `TeamTalk/` holds pure-logic microgames
-(`GerrymanderGame`, `BalanceGame` under `TeamTalkMinigame`) and `TeamTalkController`, which converts a game's 0–1
-score into a squad morale swing at half-time — **a flop lowers morale** (the trade-off). Rendering is editor work;
-adding a new microgame = subclass + one line in `CreateRandom`.
+**16.5 Half-time team talk — reuses the discussion system (`TEAM_TALK_UI.md`).** The active talk is a squad-wide
+version of the 1-on-1 discussion: you pick one `Event.Response` (Praise/Rage/Encourage/…), and every squad member
+reacts via the **same** `EventsManager.ReactionTable` (keyed on personality) and `Person.NewMorale`, with the
+**severity taken from the half-time scoreline** (`TeamTalkReactions.SeverityFromScore`: 1-up → Pleasant, 3-down →
+Pressing). `TeamTalkUI` lays every player out as a morale box along a shallow arch and flashes how each took it;
+`TeamTalkController.DeliverTalk(response, severity)` applies it. (The `TeamTalkMinigame` classes remain but dormant.)
+
+**16.7 Stat leaderboards (`STATS_WIDGETS_BUILD.md`).** The match now persists every shot (`TeamStats.shots`, with a
+`keeper` ref), engine-credited assists, and the keeper who played (`TeamStats.keeper`). `StatLeaderboards` derives
+ranked top-N tables (goals, assists, shots/on-target, saves, clean sheets, goals conceded, own goals, big misses,
+cards) for players **or** teams **on read** from a competition's fixtures — no stored counters. One configurable
+`StatLeaderboardWidget` (+ row, link-clickable) serves the home page (by team, with a stat dropdown), the My Team
+page (by player), and a dedicated `StatsPageUI`.
+
+**16.8 Analysis harness — `TacticLab` (Assets/_Scripts/Analysis).** A headless A/B sim that builds synthetic dummy
+teams (random stats averaging to a target you set, natural at their formation slot), runs N paired-RNG games per
+"variation", and logs average results — so you can measure the effect of a reliance/instruction, formation, weak
+keeper, or familiarity level in isolation. Pure tooling; not shipped in the game loop.
+
+**16.9 Back navigation.** `UIManager` keeps a navigation history (a stack of re-show delegates pushed by each
+`ShowX`); a `BackButton` component (drop on any Button, auto-hooks) calls `UIManager.Back()` to return to the
+previous page. Live matches and discussions are excluded; `Back()` is a no-op mid-match.

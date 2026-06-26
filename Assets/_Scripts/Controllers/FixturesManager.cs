@@ -268,6 +268,21 @@ public class FixturesManager : MonoBehaviour
             Debug.Log($"[Season] New '{newLeague.Name}' Id:{newLeague.Id} Series:{newLeague.SeriesId} Season:{newYear}");
     }
 
+    /// <summary>
+    /// True when the current season has nothing left to play (every fixture played). Drives the rollover.
+    /// Keyed on fixtures (not just `IsComplete` flags) so it's robust to a competition that somehow stalled, and
+    /// it can never fire mid-season: leagues generate their whole fixture list up front and a cup generates its
+    /// next round the moment the previous one finishes, so there are always unplayed fixtures until the very end.
+    /// </summary>
+    public bool IsCurrentSeasonOver() => allFixtures.Count > 0 && allFixtures.All(f => f.BeenPlayed);
+
+    /// <summary>Rolls the season over if it's finished — safe to call once per day advance (no-op otherwise).
+    /// Without this the game gets stuck in season 1 forever once the fixtures run out.</summary>
+    public void CheckSeasonRollover()
+    {
+        if (IsCurrentSeasonOver()) StartNewSeason();
+    }
+
     public void RegisterFixtures(List<Fixture> fixtures)
     {
         Debug.Log($"Registering {fixtures.Count} fixtures");

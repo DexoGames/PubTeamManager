@@ -11,7 +11,12 @@ using UnityEngine;
 /// </summary>
 public class Cup : Competition, ISaveable
 {
-    [JsonIgnore] private List<Team> autoSecondRoundTeams = new List<Team>();
+    // Bye teams waiting to enter the next round. Must PERSIST — it can't be rebuilt from the fixtures, so if it
+    // isn't saved a cup loaded mid-round drops its bye teams.
+    [JsonProperty(ItemConverterType = typeof(TeamRefConverter))]
+    private List<Team> autoSecondRoundTeams = new List<Team>();
+
+    // Mirror of Rounds, used by round generation. Not serialized (Rounds is) — rebuilt in OnAfterDeserialize.
     [JsonIgnore] private List<List<Fixture>> roundList = new List<List<Fixture>>();
 
     /// <summary>Parameterless constructor for deserialization.</summary>
@@ -41,6 +46,12 @@ public class Cup : Competition, ISaveable
 
         List<Team> roundTeams = entrants.Skip(numByes).ToList();
         autoSecondRoundTeams = entrants.Take(numByes).ToList();
+
+        // Never schedule a tie in the past: if the cup has fallen behind (a round played late, or rounds resuming
+        // after a load), pull the round up to today so the next tie lands in the near future instead of appearing
+        // as an already-overdue fixture you're forced to play.
+        DateTime today = CalenderManager.Instance != null ? CalenderManager.Instance.CurrentDay.Date : roundDate.Date;
+        if (roundDate.Date < today) roundDate = today;
 
         List<Fixture> roundFixtures = new List<Fixture>();
         // Cup ties are played midweek (Wednesday), between the weekend league rounds.
@@ -143,5 +154,8 @@ public class Cup : Competition, ISaveable
     public void OnAfterDeserialize()
     {
         BuildRoundsFromFixtures();
+        // Rebuild the cup-only round structure that TryGenerateNextRound relies on — it isn't serialized (Rounds
+        // is), so mirror it here. Without this the cup silently stops generating rounds after a load.
+        roundList = Rounds != null ? Rounds.ToList() : new List<List<Fixture>>();
     }
 }

@@ -194,45 +194,17 @@ edited tactic, and "Begin Second Half" continues. The match is never restarted.
 
 ---
 
-## 4. Team-talk minigames (half-time) — `TeamTalkController` + a `TeamTalkUI` you build
+## 4. Half-time team talk → see **`TEAM_TALK_UI.md`**
 
-The **game logic** is done and unit-testable (`TeamTalkMinigame`, `GerrymanderGame`, `BalanceGame`). The
-**reward** is done (`TeamTalkController`). You build the **rendering**.
+The team talk is now a **choose-a-tone** screen that **reuses the 1-on-1 discussion reaction system**, broadcast to
+the whole squad: you pick one `Event.Response` (Praise/Rage/Encourage/…), each player reacts via the shared
+`EventsManager.ReactionTable` + `Person.NewMorale`, and the **severity comes from the half-time scoreline**. Every
+squad member shows as a morale box along a shallow arch with per-player reaction feedback. `TeamTalkController` lives
+on the managers object; full editor wiring (prefabs, arch params, hooking the Team Talk button → `TeamTalkUI.Open`)
+is in **`TEAM_TALK_UI.md`**.
 
-### 4a. Controller
-1. Add **TeamTalkController** to the managers GameObject.
-2. Tune: Max Mood Swing (10), Max Passion Swing (8), Flop Threshold (0.4). Scores below the flop threshold
-   **reduce** morale — the trade-off.
-
-### 4b. A `TeamTalkUI` MonoBehaviour (you write a thin renderer)
-Pattern (pseudocode — wire to your prefabs):
-```csharp
-TeamTalkMinigame game = TeamTalkController.Instance.CreateRandom(); // GerrymanderGame or BalanceGame
-// show game.Title + game.Instructions
-// render the game state and let the player edit it (see below)
-// when the player presses Done:
-string summary = TeamTalkController.Instance.ApplyResult(game); // applies morale swing, returns a line
-// show summary, close the panel
-```
-Open it from the Half-Time Panel's **Team Talk** button. `TeamTalkController.Used` guards one per match
-(reset at kickoff automatically).
-
-**Rendering the two games:**
-
-*GerrymanderGame ("Win the Room"):* a `Size×Size` grid (default 6×6, six zones of six).
-- `game.Friendly[x,y]` = your colour (paint cells two colours).
-- Let the player paint zone numbers onto cells → `game.AssignCell(x,y,zoneIndex)` (use a "current zone"
-  selector or cycle on click).
-- `game.IsValidPartition(out string error)` to validate (equal-size + contiguous); `game.DistrictsWon()`
-  and `game.Score` for the result. Enable Done only when `game.IsComplete`.
-
-*BalanceGame ("Steady the Ship"):* a beam with `game.Weights.Length` bags (default 4), distances ±`MaxDistance` (5).
-- For each bag show its weight; a slider/stepper sets its signed distance → `game.Place(i, distance)`.
-- Show `game.NetTorque()` (aim for 0) live; `game.IsComplete` when all bags placed; `game.Score` for reward.
-
-### 4c. Add more microgames
-Subclass `TeamTalkMinigame` (implement `Score`/`IsComplete`), then add it to
-`TeamTalkController.CreateRandom()`. The brief: easy to finish, hard to perfect quickly.
+> The older microgame path (`TeamTalkMinigame`/`GerrymanderGame`/`BalanceGame`, `TeamTalkController.CreateRandom`/
+> `ApplyResult`) is left in the codebase but **dormant** — not wired into the active UI.
 
 ---
 
@@ -240,24 +212,30 @@ Subclass `TeamTalkMinigame` (implement `Score`/`IsComplete`), then add it to
 
 Most of this works already; finish the question UI and the release-before-hire flow.
 
+> Full Inspector checklist (every serialized field + OnClick) is in **`WIRING_RECRUITMENT_HALFTIME_SIM.md`**;
+> the answer-bucketing design is in **`INTERVIEW_INMATCH_TEAMTALK_BUILD.md`**.
+
 ### 5a. Gating (already wired)
 - Interviews are only available on a scheduled interview day (`RecruitmentManager.CanInterviewToday`),
   one session per day. `RecruitmentPageUI` shows a "No Interviews Today" message otherwise.
-- The schedule's `OnInterviewDay` is now subscribed (new game + load) → tops up the candidate pool.
+- The schedule's `OnInterviewDay` is subscribed (new game + load) → tops up the candidate pool.
+- **Testing:** tick `RecruitmentManager.debugEndlessInterviews` to make every day an interview day with unlimited
+  sessions (off for normal play).
 
 ### 5b. Question buttons — `InterviewQuestionButton`
 1. Build a row/grid of **Buttons** in the interview UI.
 2. On each, **Add Component → InterviewQuestionButton**, pick a **Question Type** (and a **Stat** if it's
    `AskAboutStat`), assign a TMP **label** (auto-fills with the question text), and hook OnClick → `Ask()`.
 3. Suggested set:
-   - Ability: `BiggestStrength`, `BiggestWeakness`, plus a few `AskAboutStat` (Shooting, Pace, Passing, Strength, Height…).
-   - **Personality clues**: `HandleCriticism`, `WorkEthic`, `BigGameMentality`, `Leadership` — each narrows
-     the hidden personality. The current narrowing shows in the questions-remaining text
-     (`InterviewManager.NarrowedPersonalitiesText()`), e.g. *"Personality: Cocky / Aggressive"*.
+   - Ability: `BiggestStrength`, `BiggestWeakness`, a few `AskAboutStat` (Shooting, Pace, Passing, Strength, Height…),
+     and **`CompareToPlayer`** (opens the player picker to compare against any squad member — no Stat needed).
+   - **Personality probes**: `HandleCriticism`, `WorkEthic`, `BigGameMentality`, `Leadership`.
 
-Answers appear in the existing **DialogueUI** (already wired by `InterviewManager.StartInterview`).
-Personality colours the answers: e.g. a Cocky player overplays strengths and dodges his real weakness; a
-Shy player underplays his best stat. Max 5 questions per candidate.
+Every question now keys its answer on a ~3-way **response bucket** (different bucketing per question), and **every**
+answer narrows the hidden personality (intersection), shown in the questions-remaining text
+(`InterviewManager.NarrowedPersonalitiesText()`), e.g. *"Personality: Cocky / Aggressive"*. Ability answers also vary
+by **stat shape** (clear standout vs all-rounder), so they reveal ability *and* a personality clue. Answers appear in
+the existing **DialogueUI** (wired by `InterviewManager.StartInterview`). Max 5 questions per candidate.
 
 ### 5c. Squad cap / release-before-hire
 - Squad cap = `RecruitmentManager.MAX_SQUAD_SIZE` (25). When full, **Hire** is blocked and the page shows a
@@ -279,12 +257,16 @@ Shy player underplays his best stat. Max 5 questions per candidate.
 | Familiarity → mistakes | `MatchEngine.StartingPhase` | `mistakeThreshold` |
 | Intelligence bar (= Complexity) & penalty | `Tactic.IntelligenceThreshold` / `ShouldApplyComplexityPenalty` / `ComplexityPenaltyFraction` (`INTELLIGENCE_PENALTY_PER_POINT` 0.05, cap 0.9) | penalty only if **XI average** < bar; uses `Player.TacticalIntelligence` = effective `GetStats().Intelligence` (boost + morale + off-position), on-pitch XI only, shown in PositionUI. **Proportional** cut ≈50% at 10 below the bar to the mental stats `Tactic.ComplexityAffectedStats` (all mental bar Intelligence) |
 | Reliance (eligible groups, stats, multiplier, familiarity penalty) | the `reliance` on a `TacticInstruction` (a non-empty **Eligible Groups** makes it a reliance — `hasReliance` is derived) | which position groups may hold it **and which phases it affects** (auto-disables if the player leaves them); which stats sway the team & by how much; how hard a player-change dents familiarity |
+| Instruction synergies | `TacticInstruction.complementaryInstructions` | tactic-stat perks granted when a named partner instruction is also active (positive mirror of `incompatibleInstructions`) |
 | Foul/card/injury rates | `MatchEngine.TryFoul/DecideCard/DecideInjury` | |
 | Injury durations | `Player.InjuryDurationDays` | |
 | Injury morale impact (per severity) | `InjuryManager.ApplyInjuryMorale` | victim vs teammate bands |
 | Off-pitch injury/death rate | `InjuryManager` (`dailyMisfortuneChance` + severity split in `RollOffPitchMisfortune`) | |
 | Yellow-card ban threshold | `Player.YELLOW_SUSPENSION_THRESHOLD` (5) | |
-| Team-talk reward / flop | `TeamTalkController` inspector | |
+| Team-talk reactions / severity | `EventsManager.CreateReactionTable` (shared with discussions) + `TeamTalkReactions.SeverityFromScore` | which personalities take each tone how; how the scoreline maps to severity |
+| Interview answer buckets / compare bands | `InterviewAnswerGenerator` (per-`AnswerX` bucket arrays; `GenerateComparisonAnswer` ±18/±45 bands, ±12 bias) | how personalities group per question; the compare-to-player verdict bands |
+| Big-miss threshold (stat) | `StatLeaderboards.BigMissXg` (0.5) | xG at/above which an unscored shot is a "big miss" |
+| Interview cadence | `ScheduleManager.INTERVIEW_INTERVAL` (14) | fortnightly; fixed-cadence, its own day |
 | Squad cap | `RecruitmentManager.MAX_SQUAD_SIZE` (25) | |
 
 ---
