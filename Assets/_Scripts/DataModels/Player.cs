@@ -331,7 +331,11 @@ public class Player : Person
             newStats = GetStatsFor(Team.Formation.Positions[GetTeamIndex()].ID);
         }
 
-        if(!ignoreMorale) newStats = MoraleModifier(newStats, Morale);
+        // Morale penalty is human-only: the player nudges morale toward each man's ideal via team talks /
+        // discussions, but the AI never does — so leaving it on would just let CPU squads drift into bad form
+        // and play poorly for no reason. CPU players always perform as if morale-neutral. (See Team.IsCpuControlled.)
+        bool cpu = Team != null && Team.IsCpuControlled;
+        if (!ignoreMorale && !cpu) newStats = MoraleModifier(newStats, Morale);
 
         return newStats;
     }
@@ -593,6 +597,10 @@ public class Player : Person
         return Team.GetPlayerIndex(this);
     }
 
+    /// <summary>This player's hidden chemistry with another (symmetric, deterministic). For UI/inspection;
+    /// the in-match stat effect is applied via the tactic's per-match cache, not here.</summary>
+    public ChemistryLevel GetChemistryWith(Player other) => Chemistry.GetLevel(this, other);
+
     public Position? GetPosition()
     {
         if(GetTeamIndex() < Team.Formation.Positions.Length)
@@ -845,6 +853,18 @@ public static class PlayerExtensions
                 if (reduction > 0f)
                     foreach (PlayerStat st in Tactic.ComplexityAffectedStats)
                         stats.SetStat(st, Mathf.RoundToInt(stats.GetStat(st) * (1f - reduction)));
+            }
+
+            // Chemistry — partners lined up in linked positions shift each other's "combination" stats up
+            // (In-Sync) or down (Frosty / Bad Blood). Cached per match at kickoff (see Tactic.ComputeChemistry);
+            // applies in-match only (tactic != null). A flat +/- on top of everything else.
+            if (tactic != null)
+            {
+                for (int s = 0; s < Player.SKILL_NO; s++)
+                {
+                    int d = tactic.ChemistryDelta(p, (PlayerStat)s);
+                    if (d != 0) stats.Skills[s] = Mathf.Clamp(stats.Skills[s] + d, 0, 100);
+                }
             }
 
             // Reliance weighting: only the reliant player, only the named stats, and only in the phases this

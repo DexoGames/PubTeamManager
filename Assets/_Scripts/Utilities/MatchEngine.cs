@@ -89,8 +89,11 @@ public class MatchEngine
     private void StartingPhase(Team attacking, Team defending)
     {
         // An unfamiliar side (recently changed setup) is far more prone to early mistakes —
-        // the cost the team pays until it re-drills the new tactic.
-        float mistakeThreshold = 10f + (1f - attacking.Tactic.Familiarity01) * 7f;
+        // the cost the team pays until it re-drills the new tactic. CPU teams are exempt from the EXTRA
+        // unfamiliarity mistakes (they don't deliberately drill familiarity like the human does via training),
+        // so a reshuffled AI side doesn't bleed cheap goals; the base mistake rate still applies to everyone.
+        float familiarity = attacking.IsCpuControlled ? 1f : attacking.Tactic.Familiarity01;
+        float mistakeThreshold = 10f + (1f - familiarity) * 7f;
 
         if (Random.Range(0, 10f + match.HomeTeam.Tactic.Stability + match.AwayTeam.Tactic.Stability) <= mistakeThreshold)
         {

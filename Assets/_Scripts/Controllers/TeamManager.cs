@@ -30,6 +30,10 @@ public class TeamManager : MonoBehaviour
     private readonly Dictionary<int, Team> _byId = new Dictionary<int, Team>();
     public Team MyTeam => spawnedTeams[0];
 
+    /// <summary>The human-controlled team, or null if teams haven't spawned yet — null-safe, unlike
+    /// <see cref="MyTeam"/>. Used by <see cref="Team.IsCpuControlled"/> to gate human-only penalties.</summary>
+    public Team HumanTeam => spawnedTeams != null && spawnedTeams.Count > 0 ? spawnedTeams[0] : null;
+
     private void OnEnable()
     {
         Debug.Log("[TRACE] TeamManager.OnEnable — component is enabled");

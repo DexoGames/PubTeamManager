@@ -125,7 +125,7 @@ public class Match
         result = new Result(home, away);
         this.trackHighlights = trackHighlights;
 
-        // Cache each side's starting-XI intelligence once for the complexity/IQ gate this match.
+        // Cache each side's starting-XI intelligence + chemistry once for this match.
         home.Tactic?.RefreshMatchCache();
         away.Tactic?.RefreshMatchCache();
 

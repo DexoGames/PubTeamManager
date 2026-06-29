@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d5f83aa929aa0c4ca7bb823e8957365, type: 3}
+  m_Name: CutOutRisks
+  m_EditorClassIdentifier:
+  tacticName: Cut Out the Risks
+  description: No clever stuff and no risky passes. Easy to follow and rarely caught
+    out at the back, but you will create a lot less going the other way.
+  statModifications:
+  - stat: 0
+    value: -10
+  - stat: 3
+    value: 6
+  - stat: 7
+    value: -6
+  - stat: 6
+    value: -6
+  dependencies: []
+  tacticDependencies: []
+  reliances: []
+  incompatibleInstructions: []

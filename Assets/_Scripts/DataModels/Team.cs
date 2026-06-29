@@ -51,6 +51,28 @@ public class Team : ScriptableObject
 
     public void SetTeamId(int id) { teamId = id; }
     public int TeamId => teamId;
+
+    // ————————————————————— who's driving this team —————————————————————
+    //
+    // The human only manages ONE club; every other team is run by the AI. Several "technical" penalties exist to
+    // punish the *human* for mismanagement they have tools to avoid (a complex tactic with a dim squad, drifting
+    // morale, an undrilled/just-changed setup). The AI doesn't use those tools, so applying the same penalties to
+    // it just makes AI sides randomly bad — handing the player easy games. So CPU teams are EXEMPT from them
+    // (see the penalty sites: Tactic.ShouldApplyComplexityPenalty, Player.GetStats morale, MatchEngine.StartingPhase).
+
+    /// <summary>True when this team is run by the AI — i.e. a human team exists and this isn't it. False in
+    /// headless tools with no human team (e.g. TacticLab), so analysis still sees the full, unmodified mechanics.</summary>
+    public bool IsCpuControlled
+    {
+        get
+        {
+            var tm = TeamManager.Instance;
+            return tm != null && tm.HumanTeam != null && tm.HumanTeam != this;
+        }
+    }
+
+    /// <summary>True for the human's own club (and, in headless tools, for every team — see <see cref="IsCpuControlled"/>).</summary>
+    public bool IsHumanControlled => !IsCpuControlled;
     public int AvgAttacking => (int)WeightedAverage(((float)Players.Average(x => x.GetStats().Attacking), 0.5f), ((float)Attackers.Average(x => x.GetStats().Attacking), 3));
     public int AvgDefending => (int)WeightedAverage(((float)Players.Average(x => x.GetStats().Defending), 0.5f), ((float)Defenders.Average(x => x.GetStats().Defending), 3), (Goalkeeper.GetStats().Goalkeeping, 2));
     public int AvgMental => (int)Players.Average(x => x.RawStats.Mental);

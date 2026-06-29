@@ -12,7 +12,9 @@ around **morale** and **personality** systems rather than money/transfers.
 
 > This document is the high-level map written so a fresh session can get full context. Code is the
 > source of truth — verify specific method/field names against the files before relying on them, as
-> the project is actively evolving. Companion design/build docs are listed in §14.
+> the project is actively evolving. This file and all companion design/build docs live in the **`Docs/`**
+> folder (only `README.md` sits at the repo root); the companions are listed in §14. New to the project?
+> Read **`Docs/WORKING_PREFERENCES.md`** for how the project should be worked on.
 
 ---
 
@@ -95,6 +97,16 @@ around **morale** and **personality** systems rather than money/transfers.
   `Serialization`, `Interfaces`, `Interview`.
 - **Authored data:** `Assets/Resources/` — loaded at runtime via `Resources.Load`/`LoadAll`.
 
+### Repository layout (top level)
+```
+PubTeamManager/
+  Assets/            the Unity project (scripts under _Scripts/, content under Resources/, scenes, prefabs)
+  Docs/              ALL design / build / plan docs, incl. this PROJECT_OVERVIEW.md and WORKING_PREFERENCES.md
+  ProjectSettings/   Unity project settings
+  Packages/          Unity package manifest
+  README.md          the only markdown kept at the repo root (points into Docs/)
+```
+
 ### Folder layout (scripts)
 ```
 _Scripts/
@@ -124,7 +136,7 @@ _Scripts/
 
 > **Adding a system, the house style:** pure logic in a plain C# class (testable) → a thin `UIObject`/`UIPage`
 > renderer over it → reuse a shared component (`PlayerPickerPopup`, `TacticOptionToggle`, `DialogueUI`) rather than a
-> new one → expose tunables as consts/SerializeFields → if it needs editor wiring, **write an `*_BUILD.md`** (see §14).
+> new one → expose tunables as consts/SerializeFields → if it needs editor wiring, **write a `Docs/*_BUILD.md`** (see §14).
 
 ---
 
@@ -160,6 +172,16 @@ Global registry. `Dictionary<int, Person> _byId` + `List<Person> People`.
   50% to increment the counter, levels up `PositionStrength` at thresholds (`ProgressThreshold`: None→Poor 2,
   Poor→Okay 3, Okay→Good 4, Good→Natural 8) and resets. (Replaced the old continuous `ImprovePositionalStrength`.)
 - `Fatigue` (public getter), `TacticFamiliarity` (0–100). `ModifyStat` still exists (permanent change utility).
+- **Chemistry** (`DataModels/Chemistry.cs`): a hidden, deterministic relationship between any two players —
+  `ChemistryLevel` = BadBlood (very awkward) / Frosty (awkward) / Neutral / InSync (complementary). Derived by
+  hashing the unordered PersonID pair (the `KitColors` trick), so it's symmetric, stable across save/load, and
+  needs **zero serialization**; most pairs are Neutral. It only *bites in-match* when two **starters line up in
+  linked positions** (`Chemistry.ArePositionsLinked` — CB/CB, LB/LM, LB/LW, RW/ST, AM/CM, DM/CM, …): the pair
+  then shifts a deterministic subset of both players' "combination" stats (Passing/Teamwork/Positioning/
+  Creativity/Composure) by ±5 (±10 for BadBlood). The trade-off: chasing a boost (or dodging a clash) constrains
+  who you can field next to whom. Resolved once per match in `Tactic.ComputeChemistry`/`ChemistryDelta` (cached
+  per slot) and folded into effective ability in `PlayerExtensions.AverageStats`. `Player.GetChemistryWith(other)`
+  exposes a pair's level for UI.
 
 ### Manager (`DataModels/Manager.cs`)
 - `ManStats`: manager skills, a chosen `Formation`, a `TacticTemplate` + its `Instructions`. Derived
@@ -289,6 +311,10 @@ creates new instances linked to the same series, then **archives + unloads** the
     IQ maths uses **`Player.TacticalIntelligence`** = effective `GetStats().Intelligence` (boost + **morale** +
     **off-position** penalty), over the **on-pitch XI only**. The tactics **PositionUI** displays the same
     `TacticalIntelligence()`, so the intelligence you see on each player matches what the squad-IQ gate uses.
+  - **CPU teams are EXEMPT from the complexity penalty** (`ShouldApplyComplexityPenalty` short-circuits for
+    `Team.IsCpuControlled`). The penalty exists to punish the *human* for a too-clever tactic they could simplify or
+    select around; the AI won't do that, so applying it would just make AI sides randomly bad and the game too easy.
+    See the **CPU penalty-exemption** note in §5.
   - **In-match changes**: structural edits gated by `CanMakeStructuralChange` (out of match, or at half-time);
     mentality nudges allowed anytime (request 2).
 - **TacticInstruction / TacticTemplate / TacticStats** (SOs + helper): named modifiers (HighLine, LowBlock,
@@ -327,6 +353,20 @@ shot is attempted or possession is lost.
   **player's** team these become real consequences in `Fixture.FinaliseResult` → `InjuryManager.ProcessMatchConsequences`
   (bookings → suspensions, injuries → availability). Lineups are auto-cleaned (`Team.EnsureAvailableLineup`) before
   every match. See §16.
+- **CPU penalty exemptions (`Team.IsCpuControlled`):** several "technical" penalties exist to punish the *human*
+  for mismanagement they have **tools to avoid** — they would only make AI sides randomly bad (and the game too
+  easy) if applied to teams that don't use those tools. So **CPU-controlled teams are exempt** from them:
+    1. **Complexity / squad-IQ penalty** — `Tactic.ShouldApplyComplexityPenalty` is false for CPU (human dodges it
+       by picking smart players / a simpler tactic).
+    2. **Morale penalty** — `Player.GetStats` skips `MoraleModifier` for CPU players (human manages morale via team
+       talks / discussions; the AI never does, so its squads would just drift into bad form).
+    3. **Unfamiliarity mistakes** — `MatchEngine.StartingPhase` treats a CPU side as fully familiar, so the EXTRA
+       early-mistake chance from low Familiarity is dropped (the base mistake rate still applies to all). The human
+       drills familiarity through training; the AI doesn't.
+  `IsCpuControlled` is **false in headless tools with no human team** (e.g. `TacticLab`), so balancing analysis
+  still sees the full, unmodified mechanics. Adding a new exemption is a one-liner: gate the penalty site on
+  `team.IsCpuControlled`. (Further candidates considered but NOT exempted: off-position penalty, reliance
+  weakness-amplification, negative chemistry — see `CHEMISTRY_AND_AI_TACTICS_BUILD.md`.)
 
 ---
 
@@ -564,8 +604,11 @@ resolves EventType + persons). Mutable structs that round-trip carry `[JsonConst
 
 ## 14. Companion docs (plans / build guides)
 
+> All companion docs (and this overview) live in the **`Docs/`** folder; only `README.md` sits at the repo root.
+
 | Doc | Purpose |
 |---|---|
+| `WORKING_PREFERENCES.md` | How to work on this project — code conventions + AI-assistant prompting preferences |
 | `SAVE_SYSTEM_PLAN.md` | Original ID-migration + reference-by-ID plan |
 | `SAVE_SPLIT_PLAN.md` | Save v2: per-season files + archived-match slimming |
 | `TRAINING_SYSTEM_PLAN.md` | The Boost training system design |
@@ -577,6 +620,7 @@ resolves EventType + persons). Mutable structs that round-trip carry `[JsonConst
 | `WIRING_RECRUITMENT_HALFTIME_SIM.md` | Field-by-field Inspector checklist (serialized fields, OnClick hooks) for recruitment/interview, match sim, half-time |
 | `TEAM_TALK_UI.md` | Build guide for the choose-a-tone half-time team talk (squad arch + reuses the discussion reaction system) |
 | `STATS_WIDGETS_BUILD.md` | Stat leaderboard widgets (top scorers/assists/saves/cards/clean sheets…) for the home/My Team/stats pages |
+| `CHEMISTRY_AND_AI_TACTICS_BUILD.md` | Player chemistry (links/levels/effect) + CPU penalty exemptions (`Team.IsCpuControlled`); the 3 extra instruction assets + tuning |
 
 ---
 

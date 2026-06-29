@@ -523,11 +523,12 @@ public class Tactic
     /// <summary>Average intelligence of the starting XI, cached at match start (<see cref="RefreshMatchCache"/>).</summary>
     public float CachedStartingIntelligence { get; private set; } = 50f;
 
-    /// <summary>Recomputes the starting-XI intelligence average — call once at the start of each match.</summary>
+    /// <summary>Recomputes the per-match caches (squad IQ + chemistry) — call once at the start of each match.</summary>
     public void RefreshMatchCache()
     {
         RefreshReliances();
         CachedStartingIntelligence = CurrentStartingIntelligence();
+        ComputeChemistry();
     }
 
     /// <summary>Average TacticalIntelligence of the on-field XI only (subs are irrelevant to execution).</summary>
@@ -545,8 +546,12 @@ public class Tactic
     /// if the XI's AVERAGE intelligence clears the bar, the brains cover for the odd dim player and nobody
     /// is penalised. Only when the average falls short do below-bar players take the harsh hit. Uses the
     /// value cached at match start so it's stable and cheap during the sim.
+    ///
+    /// CPU teams are EXEMPT: the human can dodge this with smart selection or a simpler tactic, but the AI
+    /// won't, so penalising it just gifts the player easy games. See <see cref="Team.IsCpuControlled"/>.
     /// </summary>
-    public bool ShouldApplyComplexityPenalty => CachedStartingIntelligence < IntelligenceThreshold;
+    public bool ShouldApplyComplexityPenalty =>
+        (Team == null || !Team.IsCpuControlled) && CachedStartingIntelligence < IntelligenceThreshold;
 
     /// <summary>Fraction of a mental stat lost per point of intelligence shortfall (10 below → ~50%).</summary>
     private const float INTELLIGENCE_PENALTY_PER_POINT = 0.05f;
@@ -573,6 +578,67 @@ public class Tactic
         PlayerStat.Positioning, PlayerStat.Creativity, PlayerStat.Teamwork,
         PlayerStat.Composure, PlayerStat.Aggression
     };
+
+    // ————————————————————— chemistry (per-match cache) —————————————————————
+    //
+    // Chemistry is a hidden, deterministic relationship between two players (see Chemistry / ChemistryLevel).
+    // It only bites when two starters line up in LINKED positions (CB/CB, LB/LM, AM/CM, RW/ST, …): a non-
+    // neutral pair nudges a few of BOTH players' "combination" stats up (In-Sync) or down (Frosty / Bad Blood).
+    // Positions are fixed for the match, so we resolve every pair once here and cache a per-stat delta per slot;
+    // AverageStats folds it into each player's effective stats. The trade-off: chasing a chemistry boost (or
+    // dodging a clash) constrains who you can field next to whom — it costs you selection freedom elsewhere.
+
+    /// <summary>Per starting-XI slot (squad index 0–10): cached chemistry stat deltas for the current match.
+    /// Null outside a match. Rebuilt each match start in <see cref="ComputeChemistry"/>; never serialized.</summary>
+    [System.NonSerialized] private int[][] _chemistryDeltas;
+
+    /// <summary>Resolve every linked starter pair's chemistry into a per-slot, per-stat delta for this match.</summary>
+    private void ComputeChemistry()
+    {
+        _chemistryDeltas = null;
+        if (Team == null || Team.Players == null || Team.Players.Count < 11 || Formation == null) return;
+
+        var xi = Team.StartingPlayers;
+        int n = Mathf.Min(xi.Count, Formation.Positions.Length);
+
+        var deltas = new int[xi.Count][];
+        for (int i = 0; i < xi.Count; i++) deltas[i] = new int[Player.SKILL_NO];
+
+        for (int i = 0; i < n; i++)
+        {
+            Player.Position posI = Formation.Positions[i].ID;
+            for (int j = i + 1; j < n; j++)
+            {
+                if (!Chemistry.ArePositionsLinked(posI, Formation.Positions[j].ID)) continue;
+
+                ChemistryLevel level = Chemistry.GetLevel(xi[i], xi[j]);
+                if (level == ChemistryLevel.Neutral) continue;
+
+                int step = Chemistry.StatDelta(level);
+                foreach (PlayerStat stat in Chemistry.AffectedStats(xi[i], xi[j]))
+                {
+                    int s = (int)stat;
+                    if (s < 0 || s >= Player.SKILL_NO) continue; // Height has no skill slot
+                    deltas[i][s] += step;
+                    deltas[j][s] += step;
+                }
+            }
+        }
+
+        _chemistryDeltas = deltas;
+    }
+
+    /// <summary>The cached chemistry delta for a starter's stat this match (0 for subs / before kickoff / Height).
+    /// Folded into effective ability by <see cref="PlayerExtensions.AverageStats"/>.</summary>
+    public int ChemistryDelta(Player player, PlayerStat stat)
+    {
+        if (_chemistryDeltas == null || player == null || stat == PlayerStat.Height) return 0;
+        int idx = player.GetTeamIndex();
+        if (idx < 0 || idx >= _chemistryDeltas.Length) return 0;
+        int s = (int)stat;
+        if (s < 0 || s >= Player.SKILL_NO) return 0;
+        return _chemistryDeltas[idx][s];
+    }
 
     // ————————————————————— in-match control —————————————————————
 
