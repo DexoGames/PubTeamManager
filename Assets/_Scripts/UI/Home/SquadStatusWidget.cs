@@ -21,10 +21,7 @@ public class SquadStatusWidget : UIObject
 
     public void Refresh()
     {
-        if (statusText == null) return;
-
-        Team team = TeamManager.Instance != null ? TeamManager.Instance.MyTeam : null;
-        if (team == null || team.Players == null) { statusText.text = ""; return; }
+        Team team = TeamManager.Instance.MyTeam;
 
         var fatigued = team.Players.Where(p => p.Fatigue >= fatigueThreshold).ToList();
         var lowMorale = team.Players.Where(p => p.Morale.DistanceToIdeal() >= lowMoraleDistance).ToList();

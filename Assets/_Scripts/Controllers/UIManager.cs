@@ -205,9 +205,7 @@ public class UIManager : MonoBehaviour
     /// <summary>Return to the previously shown page. No-op during a live match (use the match controls) or with no history.</summary>
     public void Back()
     {
-        Tactic tactic = TeamManager.Instance != null && TeamManager.Instance.MyTeam != null
-            ? TeamManager.Instance.MyTeam.Tactic : null;
-        if (tactic != null && tactic.InMatch) return;
+        if (TeamManager.Instance.MyTeam.Tactic.InMatch) return;
 
         if (_backStack.Count == 0) return;
 

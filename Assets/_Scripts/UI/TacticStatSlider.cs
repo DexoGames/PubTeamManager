@@ -44,17 +44,11 @@ public class TacticStatSlider : MonoBehaviour
     /// <summary>Pushes the current tactic's value onto the slider. Runs on show and on every tactic change.</summary>
     protected virtual void SetValue()
     {
-        Tactic t = CurrentTactic;
-        if (t == null || slider == null) return;
-        slider.value = t.GetStat(stat);
+        slider.value = CurrentTactic.GetStat(stat);
     }
 
-    /// <summary>The slider's fill Image (null-safe).</summary>
-    protected Image Fill => slider != null && slider.fillRect != null ? slider.fillRect.GetComponent<Image>() : null;
+    /// <summary>The slider's fill Image (null if there's no fill rect).</summary>
+    protected Image Fill => slider.fillRect != null ? slider.fillRect.GetComponent<Image>() : null;
 
-    /// <summary>The player's live tactic, or null if the game isn't ready.</summary>
-    protected static Tactic CurrentTactic =>
-        TeamManager.Instance != null && TeamManager.Instance.MyTeam != null
-            ? TeamManager.Instance.MyTeam.Tactic
-            : null;
+    protected static Tactic CurrentTactic => TeamManager.Instance.MyTeam.Tactic;
 }

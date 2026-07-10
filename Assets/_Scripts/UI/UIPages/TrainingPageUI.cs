@@ -77,18 +77,15 @@ public class TrainingPageUI : UIPage
         UpdatePositionalPanel();
         UpdateCurrentlySet();
 
-        if (setTrainingButton != null)
-        {
-            setTrainingButton.onClick.RemoveListener(SetSelectedTraining);
-            setTrainingButton.onClick.AddListener(SetSelectedTraining);
-        }
+        setTrainingButton.onClick.RemoveListener(SetSelectedTraining);
+        setTrainingButton.onClick.AddListener(SetSelectedTraining);
     }
 
     /// <summary>Pre-selects the drill that's currently set, so the page reflects ongoing training.</summary>
     private void RestoreFromCurrentSession()
     {
         selectedPlayerIds.Clear();
-        var session = TrainingManager.Instance?.CurrentSession;
+        var session = TrainingManager.Instance.CurrentSession;
         if (session == null) { selectedDrill = null; return; }
 
         selectedDrill = session.Drill;
@@ -103,15 +100,11 @@ public class TrainingPageUI : UIPage
 
     private void RefreshOptions()
     {
-        if (optionContainer == null || optionButtonPrefab == null) return;
-
         Game.ClearContainer(optionContainer);
         drillButtonImages.Clear();
         drillBaseColors.Clear();
 
-        if (TrainingManager.Instance == null) return;
-
-        if (headerText != null) headerText.text = "Choose Training Session";
+        headerText.text = "Choose Training Session";
 
         foreach (var drill in TrainingManager.Instance.GetDrills())
         {
@@ -164,10 +157,10 @@ public class TrainingPageUI : UIPage
     {
         if (!selectedDrill.HasValue)
         {
-            if (drillNameText != null) drillNameText.text = "Select a drill";
-            if (typeText != null) typeText.text = "";
-            if (affectedStatsText != null) affectedStatsText.text = "";
-            if (effectText != null) effectText.text = "Pick a training drill to see what it does.";
+            drillNameText.text = "Select a drill";
+            typeText.text = "";
+            affectedStatsText.text = "";
+            effectText.text = "Pick a training drill to see what it does.";
             UpdateNextSession();
             return;
         }
@@ -175,23 +168,17 @@ public class TrainingPageUI : UIPage
         Drill drill = DrillCatalog.Get(selectedDrill.Value);
         if (drill == null) return;
 
-        if (drillNameText != null) drillNameText.text = drill.Name;
-        if (typeText != null) typeText.text = drill.Type.ToString();
-        if (typeBadge != null) typeBadge.color = TypeColor(drill.Type);
+        drillNameText.text = drill.Name;
+        typeText.text = drill.Type.ToString();
+        typeBadge.color = TypeColor(drill.Type);
 
-        if (affectedStatsText != null)
-        {
-            affectedStatsText.text = drill.AffectedStats.Length > 0
-                ? "Affects: " + string.Join(", ", drill.AffectedStats) + SquadBoostSuffix(drill.AffectedStats)
-                : "";
-        }
+        affectedStatsText.text = drill.AffectedStats.Length > 0
+            ? "Affects: " + string.Join(", ", drill.AffectedStats) + SquadBoostSuffix(drill.AffectedStats)
+            : "";
 
-        if (effectText != null)
-        {
-            // Build a transient session just to reuse its description logic.
-            var preview = BuildSelectedSession();
-            effectText.text = drill.Description + "\n\n" + (preview != null ? preview.GetEffectivenessDescription() : "");
-        }
+        // Build a transient session just to reuse its description logic.
+        var preview = BuildSelectedSession();
+        effectText.text = drill.Description + "\n\n" + (preview != null ? preview.GetEffectivenessDescription() : "");
 
         UpdateNextSession();
     }
@@ -199,8 +186,8 @@ public class TrainingPageUI : UIPage
     /// <summary>Appends the squad-average current Boost for the given stats, e.g. " (squad Boost +3.2)".</summary>
     private string SquadBoostSuffix(PlayerStat[] stats)
     {
-        Team team = TeamManager.Instance?.MyTeam;
-        if (team == null || team.Players == null || team.Players.Count == 0 || stats.Length == 0) return "";
+        Team team = TeamManager.Instance.MyTeam;
+        if (team.Players.Count == 0 || stats.Length == 0) return "";
 
         float total = 0f;
         foreach (var p in team.Players)
@@ -213,9 +200,7 @@ public class TrainingPageUI : UIPage
 
     private void UpdateNextSession()
     {
-        if (nextSessionText == null) return;
-
-        DateTime? next = ScheduleManager.Instance?.GetNextTrainingDay();
+        DateTime? next = ScheduleManager.Instance.GetNextTrainingDay();
         nextSessionText.text = next.HasValue
             ? $"Next session: {next.Value:ddd dd MMM}"
             : "Next session: not scheduled";
@@ -223,9 +208,7 @@ public class TrainingPageUI : UIPage
 
     private void UpdateCurrentlySet()
     {
-        if (currentlySetText == null) return;
-
-        var session = TrainingManager.Instance?.CurrentSession;
+        var session = TrainingManager.Instance.CurrentSession;
         if (session == null) { currentlySetText.text = "Currently training: none"; return; }
 
         string extra = session.Type == TrainingType.Positional && session.TargetPosition.HasValue
@@ -240,7 +223,7 @@ public class TrainingPageUI : UIPage
     {
         bool isPositional = selectedDrill.HasValue && DrillCatalog.Get(selectedDrill.Value)?.Type == TrainingType.Positional;
 
-        if (positionalPanel != null) positionalPanel.SetActive(isPositional);
+        positionalPanel.SetActive(isPositional);
         if (!isPositional) return;
 
         SetupSlots();
@@ -249,8 +232,6 @@ public class TrainingPageUI : UIPage
 
     private void BuildPositionDropdown()
     {
-        if (positionDropdown == null) return;
-
         dropdownPositions = (Player.Position[])System.Enum.GetValues(typeof(Player.Position));
 
         positionDropdown.ClearOptions();
@@ -297,8 +278,7 @@ public class TrainingPageUI : UIPage
     /// <summary>The squad, minus any player already sitting in a slot (so you can't pick the same one twice).</summary>
     private IEnumerable<Player> CandidatesForPicking()
     {
-        Team team = TeamManager.Instance?.MyTeam;
-        if (team == null) return Enumerable.Empty<Player>();
+        Team team = TeamManager.Instance.MyTeam;
 
         var taken = new HashSet<int>();
         if (playerSlots != null)
@@ -334,8 +314,7 @@ public class TrainingPageUI : UIPage
 
     private void UpdateSelectedCount()
     {
-        if (selectedCountText != null)
-            selectedCountText.text = $"{selectedPlayerIds.Count}/{TrainingSession.MAX_POSITIONAL_PLAYERS} selected";
+        selectedCountText.text = $"{selectedPlayerIds.Count}/{TrainingSession.MAX_POSITIONAL_PLAYERS} selected";
     }
 
     // ————————————————————— set training —————————————————————
@@ -365,8 +344,8 @@ public class TrainingPageUI : UIPage
             return;
         }
 
-        TrainingManager.Instance?.SetTraining(BuildSelectedSession());
-        SaveManager.Instance?.SaveCore();
+        TrainingManager.Instance.SetTraining(BuildSelectedSession());
+        SaveManager.Instance.SaveCore();
         UpdateCurrentlySet();
         Debug.Log($"[Training UI] Set ongoing training: {selectedDrill.Value}");
     }

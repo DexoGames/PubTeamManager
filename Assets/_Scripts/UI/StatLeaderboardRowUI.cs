@@ -12,8 +12,8 @@ public class StatLeaderboardRowUI : MonoBehaviour
     /// <param name="linkedName">Rich-text link from <see cref="LinkBuilder"/> (player or team).</param>
     public void Set(int rank, string linkedName, int value)
     {
-        if (rankText != null) rankText.text = rank.ToString();
-        if (nameText != null) nameText.text = linkedName;
-        if (valueText != null) valueText.text = value.ToString();
+        rankText.text = rank.ToString();
+        nameText.text = linkedName;
+        valueText.text = value.ToString();
     }
 }

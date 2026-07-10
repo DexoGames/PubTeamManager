@@ -34,8 +34,6 @@ public class ComplexitySlider : TacticStatSlider
         base.SetValue();
 
         Tactic t = CurrentTactic;
-        if (t == null) return;
-
         bool tooHigh = t.CurrentStartingIntelligence() < t.IntelligenceThreshold;
 
         Image fill = Fill;

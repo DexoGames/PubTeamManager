@@ -18,15 +18,12 @@ public class InterviewQuestionButton : MonoBehaviour
 
     private void OnEnable()
     {
-        if (label == null) return;
         PlayerStat? target = questionType == InterviewQuestionType.AskAboutStat ? stat : (PlayerStat?)null;
         label.text = new InterviewQuestion(questionType, target).QuestionText;
     }
 
     public void Ask()
     {
-        if (InterviewManager.Instance == null) return;
-
         // Comparison opens the player picker first; it consumes the question + refreshes the page once a player
         // is chosen (or costs nothing if cancelled), so we return early here.
         if (questionType == InterviewQuestionType.CompareToPlayer)

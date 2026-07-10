@@ -45,13 +45,13 @@ public class TacticsPageUI : UIPage
         benchManager.ClearContainer();
         benchManager.Setup(formationUI, team);
 
-        if (resumeMatchButton != null) resumeMatchButton.SetActive(returnToMatchMode);
+        resumeMatchButton.SetActive(returnToMatchMode);
     }
 
     /// <summary>Persist tactic changes when the player navigates away from the tactics page.</summary>
     protected override void OnHide()
     {
-        SaveManager.Instance?.SaveCore();
+        SaveManager.Instance.SaveCore();
     }
 
     /// <summary>Called by MatchSimPageUI before opening this page at half-time, to show the Resume button.</summary>
@@ -64,7 +64,7 @@ public class TacticsPageUI : UIPage
     public void ResumeMatch()
     {
         returnToMatchMode = false;
-        if (resumeMatchButton != null) resumeMatchButton.SetActive(false);
+        resumeMatchButton.SetActive(false);
         UIManager.Instance.ResumeMatchFromTactics();
     }
 

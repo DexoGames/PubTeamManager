@@ -32,8 +32,7 @@ public class CompetitionContextWidget : UIObject
 
     public void Refresh()
     {
-        Team myTeam = TeamManager.Instance != null ? TeamManager.Instance.MyTeam : null;
-        if (myTeam == null) return;
+        Team myTeam = TeamManager.Instance.MyTeam;
 
         Fixture upcoming = myTeam.GetUpcomingFixture();
         Competition comp = upcoming != null ? upcoming.Competition : null;
@@ -57,8 +56,8 @@ public class CompetitionContextWidget : UIObject
 
     private void SetView(bool showLeague, bool showBracket)
     {
-        if (leagueView != null) leagueView.SetActive(showLeague);
-        if (bracketView != null) bracketView.SetActive(showBracket);
+        leagueView.SetActive(showLeague);
+        bracketView.SetActive(showBracket);
     }
 
     // ————————————————————— league —————————————————————
@@ -66,8 +65,7 @@ public class CompetitionContextWidget : UIObject
     private void ShowLeague(League league, Team myTeam)
     {
         SetView(showLeague: true, showBracket: false);
-        if (leagueHeader != null) leagueHeader.text = league.Name;
-        if (leagueRowContainer == null || leagueRowPrefab == null) return;
+        leagueHeader.text = league.Name;
 
         Game.ClearContainer(leagueRowContainer);
 
@@ -94,20 +92,19 @@ public class CompetitionContextWidget : UIObject
     private void ShowBracket(Cup cup, int roundIndex, Team myTeam)
     {
         SetView(showLeague: false, showBracket: true);
-        if (bracketRowContainer == null || tieRowPrefab == null) return;
 
         Game.ClearContainer(bracketRowContainer);
 
         if (cup.Rounds == null || cup.Rounds.Length == 0)
         {
-            if (bracketHeader != null) bracketHeader.text = cup.Name;
+            bracketHeader.text = cup.Name;
             return;
         }
 
         roundIndex = Mathf.Clamp(roundIndex, 0, cup.Rounds.Length - 1);
         var ties = cup.Rounds[roundIndex];
 
-        if (bracketHeader != null) bracketHeader.text = $"{cup.Name} — {CupRoundName(ties.Count)}";
+        bracketHeader.text = $"{cup.Name} — {CupRoundName(ties.Count)}";
 
         foreach (var tie in ties)
         {

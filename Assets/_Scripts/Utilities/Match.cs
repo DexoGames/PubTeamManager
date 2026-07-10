@@ -129,14 +129,67 @@ public class Match
         home.Tactic?.RefreshMatchCache();
         away.Tactic?.RefreshMatchCache();
 
+        // Start with clean per-match morale state (no leftover slumps/blunders from a previous game).
+        ClearPlayerMatchMorale();
+
         Engine = new MatchEngine(this);
     }
 
     public Result SimulateMatch()
     {
         SimulateHalf(Half.First);
+        HalfTimeRecovery(); // AI managers "sort them out" at the break (both sides are CPU here)
         SimulateHalf(Half.Second);
+        ClearPlayerMatchMorale(); // don't let in-match slump/blunder flags leak into post-match (UI) stat reads
         return result;
+    }
+
+    // ————————————————————— per-match morale state —————————————————————
+
+    /// <summary>One minute's morale rolls (slump entry + blunder) for every on-pitch player, both sides.
+    /// Called at the top of each simulated minute by <see cref="SimulateMinute"/>.</summary>
+    public void StepPlayerMorale()
+    {
+        bool secondHalf = currentMin.Base > 45;
+        StepTeamMorale(home, secondHalf);
+        StepTeamMorale(away, secondHalf);
+    }
+
+    private static void StepTeamMorale(Team team, bool secondHalf)
+    {
+        if (team == null || team.Players == null || team.Players.Count < 11) return;
+        foreach (var p in team.StartingPlayers)
+            MoraleEffects.StepMatchMinute(p, secondHalf);
+    }
+
+    /// <summary>Resets the transient slump/blunder flags on both squads (call at match start and end).</summary>
+    public void ClearPlayerMatchMorale()
+    {
+        ClearTeamMorale(home);
+        ClearTeamMorale(away);
+    }
+
+    private static void ClearTeamMorale(Team team)
+    {
+        if (team == null || team.Players == null) return;
+        foreach (var p in team.Players) { p.InSlump = false; p.MoraleBlunder = false; }
+    }
+
+    /// <summary>
+    /// Half-time recovery for AI-managed sides: a CPU team's manager always "sorts out" the dressing room, so
+    /// every CPU player's slump is cleared at the break. The HUMAN team is left alone — the player fixes (or
+    /// fails to fix) their own slumps through the half-time team talk. Call once between the two halves.
+    /// </summary>
+    public void HalfTimeRecovery()
+    {
+        ClearSlumpsIfCpu(home);
+        ClearSlumpsIfCpu(away);
+    }
+
+    private static void ClearSlumpsIfCpu(Team team)
+    {
+        if (team == null || !team.IsCpuControlled || team.Players == null) return;
+        foreach (var p in team.Players) p.InSlump = false;
     }
 
     private void SimulateHalf(Half half)
@@ -151,6 +204,7 @@ public class Match
 
     public void SimulateMinute()
     {
+        StepPlayerMorale(); // roll slump/blunder for this minute before the possession is resolved
         Engine.SimulateMinute();
     }
 

@@ -10179,6 +10179,34 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 2040974566}
     m_Modifications:
+    - target: {fileID: 6468073319249726005, guid: 64a36d318f18556499303c659d9a3ef4, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6468073319249726005, guid: 64a36d318f18556499303c659d9a3ef4, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Mode
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6468073319249726005, guid: 64a36d318f18556499303c659d9a3ef4, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
+      value: 
+      objectReference: {fileID: 616269661}
+    - target: {fileID: 6468073319249726005, guid: 64a36d318f18556499303c659d9a3ef4, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_CallState
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 6468073319249726005, guid: 64a36d318f18556499303c659d9a3ef4, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: OpenHalfTimeTactics
+      objectReference: {fileID: 0}
+    - target: {fileID: 6468073319249726005, guid: 64a36d318f18556499303c659d9a3ef4, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
+      value: MatchSimPageUI, Assembly-CSharp
+      objectReference: {fileID: 0}
+    - target: {fileID: 6468073319249726005, guid: 64a36d318f18556499303c659d9a3ef4, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Arguments.m_ObjectArgumentAssemblyTypeName
+      value: UnityEngine.Object, UnityEngine
+      objectReference: {fileID: 0}
     - target: {fileID: 7263419795942461202, guid: 64a36d318f18556499303c659d9a3ef4, type: 3}
       propertyPath: m_text
       value: Tactics
@@ -15430,13 +15458,25 @@ MonoBehaviour:
   m_FillRect: {fileID: 1242165441}
   m_HandleRect: {fileID: 495606837}
   m_Direction: 0
-  m_MinValue: 0
-  m_MaxValue: 1
-  m_WholeNumbers: 0
-  m_Value: 0
+  m_MinValue: 1
+  m_MaxValue: 6
+  m_WholeNumbers: 1
+  m_Value: 1
   m_OnValueChanged:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 616269661}
+        m_TargetAssemblyTypeName: MatchSimPageUI, Assembly-CSharp
+        m_MethodName: SetMentalityInMatch
+        m_Mode: 4
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!1 &1212616594
 GameObject:
   m_ObjectHideFlags: 0
@@ -25841,7 +25881,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7263419795942461202, guid: 64a36d318f18556499303c659d9a3ef4, type: 3}
       propertyPath: m_fontSize
-      value: 18
+      value: 30
       objectReference: {fileID: 0}
     - target: {fileID: 7263419795942461202, guid: 64a36d318f18556499303c659d9a3ef4, type: 3}
       propertyPath: 'm_ActiveFontFeatures.Array.data[0]'

@@ -18,7 +18,7 @@ public class PlayerPickerRow : MonoBehaviour
     {
         if (button == null) button = GetComponent<Button>();
 
-        if (nameText != null) nameText.text = player.FullName;
+        nameText.text = player.FullName;
         if (subText != null) subText.text = subtitle ?? "";
 
         if (ratingImage != null)
@@ -30,7 +30,5 @@ public class PlayerPickerRow : MonoBehaviour
 
         button.onClick.RemoveAllListeners();
         button.onClick.AddListener(() => onClick());
-        Debug.Log("" + player.FullName);
-        Debug.Log(onClick);
     }
 }

@@ -90,4 +90,9 @@ public struct PlayerReaction
     public Event.Reaction reaction;
     public int mood;
     public int passion;
+
+    /// <summary>Was this player in a slump when the talk was given (drives the personality-flavoured reaction text)?</summary>
+    public bool wasInSlump;
+    /// <summary>Did this talk snap them out of the slump?</summary>
+    public bool recoveredFromSlump;
 }

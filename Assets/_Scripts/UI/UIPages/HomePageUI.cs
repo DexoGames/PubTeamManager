@@ -27,17 +27,14 @@ public class HomePageUI : UIPage
 
     protected override void OnShow()
     {
-        if (dayTimeline != null && CalenderManager.Instance != null)
-        {
-            DateTime today = CalenderManager.Instance.CurrentDay.Date;
-            bool advancedOneDay = hasShownBefore && today == lastShownDay.AddDays(1).Date;
+        DateTime today = CalenderManager.Instance.CurrentDay.Date;
+        bool advancedOneDay = hasShownBefore && today == lastShownDay.AddDays(1).Date;
 
-            if (advancedOneDay) dayTimeline.AdvanceAnimated();
-            else dayTimeline.SnapToToday();
+        if (advancedOneDay) dayTimeline.AdvanceAnimated();
+        else dayTimeline.SnapToToday();
 
-            lastShownDay = today;
-            hasShownBefore = true;
-        }
+        lastShownDay = today;
+        hasShownBefore = true;
 
         // CompetitionContextWidget, CurrentRoundWidget, SquadStatusWidget and the events inbox
         // are UIObjects — UIPage.SetupUI() refreshes them right after this returns.

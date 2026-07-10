@@ -20,12 +20,9 @@ public class DayBox : MonoBehaviour
 
     public void SetData(string label, Sprite iconSprite, bool isLead)
     {
-        if (dayLabel != null) dayLabel.text = label;
-        if (icon != null)
-        {
-            icon.sprite = iconSprite;
-            icon.enabled = iconSprite != null;
-        }
+        dayLabel.text = label;
+        icon.sprite = iconSprite;
+        icon.enabled = iconSprite != null;
         if (leadExtras != null) leadExtras.SetActive(isLead);
     }
 

@@ -99,19 +99,15 @@ public class MatchSimPageUI : UIPage
         TeamTalkController.Instance?.ResetForMatch();
     }
 
-    // ————————————————————— In-match tactical changes (request 2) —————————————————————
+    // ————————————————————— In-match tactical changes —————————————————————
 
-    /// <summary>Hook to a "More Attacking" button — available at any point in the match.</summary>
     public void MoreAttacking() => ShiftMentality(+1);
-
-    /// <summary>Hook to a "More Defensive" button — available at any point in the match.</summary>
     public void MoreDefensive() => ShiftMentality(-1);
 
     void ShiftMentality(int delta)
     {
         Team myTeam = TeamManager.Instance.MyTeam;
-        Tactic t = myTeam != null ? myTeam.Tactic : null;
-        if (t == null) return;
+        Tactic t = myTeam.Tactic;
 
         Mentality before = t.EffectiveMentality;
         Mentality after = t.ShiftMentalityInMatch(delta);
@@ -124,9 +120,7 @@ public class MatchSimPageUI : UIPage
 
     void UpdateMentalityUI()
     {
-        if (_mentalityText == null) return;
-        Tactic t = TeamManager.Instance.MyTeam != null ? TeamManager.Instance.MyTeam.Tactic : null;
-        _mentalityText.text = t != null ? MentalityLabel(t.EffectiveMentality) : "";
+        _mentalityText.text = MentalityLabel(TeamManager.Instance.MyTeam.Tactic.EffectiveMentality);
     }
 
     public static string MentalityLabel(Mentality m)
@@ -144,16 +138,17 @@ public class MatchSimPageUI : UIPage
         }
     }
 
-    /// <summary>In-match mentality slider hook (0–6): set the live mentality to a specific level.</summary>
+    /// <summary>Set the live mentality to a specific level (0–6).</summary>
     public void SetMentalityInMatch(int targetIndex)
     {
-        Tactic t = TeamManager.Instance.MyTeam != null ? TeamManager.Instance.MyTeam.Tactic : null;
-        if (t == null) return;
-        ShiftMentality(targetIndex - t.EffectiveMentalityIndex);
+        ShiftMentality(targetIndex - TeamManager.Instance.MyTeam.Tactic.EffectiveMentalityIndex);
     }
 
     /// <summary>Slider hook: a UI Slider passes a float, so bind its OnValueChanged here (rounds to a level).</summary>
     public void SetMentalityInMatch(float targetIndex) => SetMentalityInMatch(Mathf.RoundToInt(targetIndex));
+
+    /// <summary>Slider hook: reads the slider's own value (rounds to a level) — bind directly to OnValueChanged.</summary>
+    public void SetMentalitySliderInMatch(Slider self) => SetMentalityInMatch(Mathf.RoundToInt(self.value));
 
     /// <summary>
     /// Current goal difference from the PLAYER's team perspective (+ = winning), e.g. for the half-time team-talk
@@ -162,11 +157,11 @@ public class MatchSimPageUI : UIPage
     public int CurrentGoalDifferenceForMyTeam()
     {
         if (match == null || _fixture == null) return 0;
-        Team me = TeamManager.Instance != null ? TeamManager.Instance.MyTeam : null;
+        Team me = TeamManager.Instance.MyTeam;
         int home = match.result.score.home;
         int away = match.result.score.away;
         if (_fixture.AwayTeam == me) return away - home;
-        return home - away; // home team (or fallback)
+        return home - away;
     }
 
     // ————————————————————— Half-time: full tactics access —————————————————————
@@ -271,6 +266,9 @@ public class MatchSimPageUI : UIPage
         if (half == Half.First)
         {
             SetState(State.HalfTime);
+            // The CPU opponent's manager sorts their dressing room out — clear their slumps. The player fixes
+            // their own via the half-time team talk.
+            match.HalfTimeRecovery();
             // Half-time: structural tactic changes (formation/instructions/dependencies) are now allowed.
             TeamManager.Instance.MyTeam.Tactic.IsHalfTime = true;
         }
@@ -284,8 +282,11 @@ public class MatchSimPageUI : UIPage
 
             _fixture.FinaliseResult();
 
+            // Clear transient slump/blunder flags so they don't leak into post-match (UI) stat reads.
+            match.ClearPlayerMatchMorale();
+
             // The player's match result changed a fixture — persist core + current season.
-            SaveManager.Instance?.AutoSave();
+            SaveManager.Instance.AutoSave();
         }
     }
 
@@ -297,11 +298,9 @@ public class MatchSimPageUI : UIPage
         UpdateHalfTimePanel();
     }
 
-    /// <summary>The half-time panel (team-talk minigame + structural tactic changes) only shows at half-time.</summary>
     void UpdateHalfTimePanel()
     {
-        if (_halfTimePanel != null)
-            _halfTimePanel.SetActive(_state == State.HalfTime);
+        _halfTimePanel.SetActive(_state == State.HalfTime);
     }
 
     void SetAdvanceButton()

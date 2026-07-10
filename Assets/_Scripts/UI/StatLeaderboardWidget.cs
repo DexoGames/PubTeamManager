@@ -55,7 +55,6 @@ public class StatLeaderboardWidget : UIObject
 
     private void Render()
     {
-        if (container == null || rowPrefab == null) return;
         Game.ClearContainer(container);
 
         StatCategory cat = CurrentCategory();
@@ -103,15 +102,11 @@ public class StatLeaderboardWidget : UIObject
                 return shown != null ? shown.GetAllCompetitions().SelectMany(c => c.Fixtures) : Enumerable.Empty<Fixture>();
 
             case FixtureScope.AllCurrentSeason:
-                return FixturesManager.Instance != null
-                    ? FixturesManager.Instance.GetCurrentSeasonCompetitions().SelectMany(c => c.Fixtures)
-                    : Enumerable.Empty<Fixture>();
+                return FixturesManager.Instance.GetCurrentSeasonCompetitions().SelectMany(c => c.Fixtures);
 
             case FixtureScope.MyMainLeague:
             default:
-                League league = TeamManager.Instance != null && TeamManager.Instance.MyTeam != null
-                    ? TeamManager.Instance.MyTeam.GetMainLeague()
-                    : null;
+                League league = TeamManager.Instance.MyTeam.GetMainLeague();
                 return league != null ? league.Fixtures : Enumerable.Empty<Fixture>();
         }
     }
@@ -120,6 +115,6 @@ public class StatLeaderboardWidget : UIObject
     {
         if (TeamDetailsUI.Instance != null && TeamDetailsUI.Instance.CurrentTeam != null)
             return TeamDetailsUI.Instance.CurrentTeam;
-        return TeamManager.Instance != null ? TeamManager.Instance.MyTeam : null;
+        return TeamManager.Instance.MyTeam;
     }
 }

@@ -36,6 +36,15 @@ public class Player : Person
     public int Fatigue { get; private set; }
     public float TacticFamiliarity { get; set; } = 0f;
 
+    // ————————————————————— Transient per-match morale state (not saved) —————————————————————
+    /// <summary>True once this player has dropped into a morale SLUMP this match (mood treated as 0 until the end
+    /// of the game, unless a team talk snaps them out). Reset each match; never serialized. See <see cref="MoraleEffects"/>.</summary>
+    [JsonIgnore] public bool InSlump;
+
+    /// <summary>True only for the single minute the player is BLUNDERING (a complacency/over-eagerness collapse).
+    /// Re-rolled every minute by the match engine; never serialized.</summary>
+    [JsonIgnore] public bool MoraleBlunder;
+
     // ————————————————————— Availability (injuries / suspensions / death) —————————————————————
 
     /// <summary>Current injury, if any (None when fit). Death is permanent and handled via <see cref="IsDeceased"/>.</summary>
@@ -331,11 +340,13 @@ public class Player : Person
             newStats = GetStatsFor(Team.Formation.Positions[GetTeamIndex()].ID);
         }
 
-        // Morale penalty is human-only: the player nudges morale toward each man's ideal via team talks /
-        // discussions, but the AI never does — so leaving it on would just let CPU squads drift into bad form
-        // and play poorly for no reason. CPU players always perform as if morale-neutral. (See Team.IsCpuControlled.)
-        bool cpu = Team != null && Team.IsCpuControlled;
-        if (!ignoreMorale && !cpu) newStats = MoraleModifier(newStats, Morale);
+        // Morale: a constant drop-off when below ideal (with a slump pinning mood to its worst), plus a one-minute
+        // collapse when blundering. Applies to ALL teams — the AI is subject to morale too. See MoraleEffects.
+        if (!ignoreMorale)
+        {
+            newStats = MoraleEffects.ApplyConstant(newStats, Morale, InSlump);
+            if (MoraleBlunder) newStats = MoraleEffects.ApplyBlunder(newStats);
+        }
 
         return newStats;
     }
@@ -453,46 +464,9 @@ public class Player : Person
         }
     }
 
-    public static Stats MoraleModifier(Stats stats, Morale morale)
-    {
-        int moodDiff = morale.Mood - morale.IdealMood;
-        int passionDiff = morale.Passion - morale.IdealPassion;
-
-        int moodFactor = Mathf.Abs((int) (moodDiff / 5f));
-        int passionFactor = Mathf.Abs((int)(passionDiff / 5f));
-
-        if (moodDiff > 0)
-        {
-            stats.Aggression -= moodFactor;
-            stats.Intelligence -= moodFactor;
-            stats.Strength -= moodFactor;
-        }
-        else if (moodDiff < 0)
-        {
-            stats.Creativity -= moodFactor;
-            stats.Teamwork -= moodFactor;
-            stats.Durability -= passionFactor;
-        }
-        if (passionDiff > 0)
-        {
-            stats.Aggression += passionFactor;
-            stats.Composure -= passionFactor;
-            stats.Stamina -= passionFactor;
-        }
-        else if(passionDiff < 0)
-        {
-            stats.Composure += passionFactor;
-            stats.Positioning -= passionFactor;
-            stats.Pace -= passionFactor;
-        }
-
-        for(int i = 0; i < stats.Skills.Length; i++)
-        {
-            stats.Skills[i] = Mathf.Clamp(stats.Skills[i] - (int)(morale.DistanceToIdeal()/10f), 0, 100);
-        }
-
-        return stats;
-    }
+    /// <summary>Backward-compatible entry point for the CONSTANT morale drop-off (no slump). The full model —
+    /// slump + per-minute blunder — lives in <see cref="MoraleEffects"/> and is applied in <see cref="GetStats"/>.</summary>
+    public static Stats MoraleModifier(Stats stats, Morale morale) => MoraleEffects.ApplyConstant(stats, morale, false);
 
     public enum Position
     {

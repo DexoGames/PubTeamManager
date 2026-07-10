@@ -68,7 +68,7 @@ public class DiscussionPageUI : UIPage
         EventsManager.Instance.Events.Remove(thisEvent);
 
         // Persist the morale change + event removal.
-        SaveManager.Instance?.SaveCore();
+        SaveManager.Instance.SaveCore();
     }
 
     public static string ReactionToDialogue(Event.Reaction reaction)

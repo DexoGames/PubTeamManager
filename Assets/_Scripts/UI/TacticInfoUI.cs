@@ -29,10 +29,8 @@ public class TacticInfoUI : MonoBehaviour
 
     public void Refresh()
     {
-        if (text == null) return;
-        Team team = TeamManager.Instance != null ? TeamManager.Instance.MyTeam : null;
-        Tactic t = team != null ? team.Tactic : null;
-        if (t == null) return;
+        Team team = TeamManager.Instance.MyTeam;
+        Tactic t = team.Tactic;
 
         int needed = t.IntelligenceThreshold;
         int avg = Mathf.RoundToInt(t.CurrentStartingIntelligence());

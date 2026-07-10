@@ -16,11 +16,9 @@ public class CupTieRowUI : MonoBehaviour
 
     public void Set(Fixture tie, Team myTeam)
     {
-        if (homeText != null) homeText.text = tie.HomeTeam != null ? LinkBuilder.BuildLink(tie.HomeTeam) : "—";
-        if (awayText != null) awayText.text = tie.AwayTeam != null ? LinkBuilder.BuildLink(tie.AwayTeam) : "—";
-
-        if (scoreText != null)
-            scoreText.text = tie.BeenPlayed ? $"{tie.Result.score.home} - {tie.Result.score.away}" : "vs";
+        homeText.text = tie.HomeTeam != null ? LinkBuilder.BuildLink(tie.HomeTeam) : "—";
+        awayText.text = tie.AwayTeam != null ? LinkBuilder.BuildLink(tie.AwayTeam) : "—";
+        scoreText.text = tie.BeenPlayed ? $"{tie.Result.score.home} - {tie.Result.score.away}" : "vs";
 
         bool involvesMe = myTeam != null && (tie.HomeTeam == myTeam || tie.AwayTeam == myTeam);
         if (background != null && involvesMe)

@@ -59,9 +59,7 @@ public class TeamTalkController : MonoBehaviour
     {
         var reactions = new List<PlayerReaction>();
 
-        Team me = TeamManager.Instance != null ? TeamManager.Instance.MyTeam : null;
-        if (me == null || me.Players == null || EventsManager.Instance == null) return reactions;
-
+        Team me = TeamManager.Instance.MyTeam;
         var table = EventsManager.Instance.ReactionTable;
         if (table == null) return reactions;
 
@@ -72,7 +70,15 @@ public class TeamTalkController : MonoBehaviour
             reaction = Event.ReactionSeverityChange(response, reaction, severity);
             (int mood, int passion) = p.NewMorale(0, reaction, severity); // applies + clamps morale, returns the delta
 
-            reactions.Add(new PlayerReaction { player = p, reaction = reaction, mood = mood, passion = passion });
+            // A well-received talk can snap a slumping player out of it (the human's lever against slumps).
+            bool wasInSlump = p.InSlump;
+            if (wasInSlump && Random.value < MoraleEffects.SlumpRecoveryChance(reaction)) p.InSlump = false;
+
+            reactions.Add(new PlayerReaction
+            {
+                player = p, reaction = reaction, mood = mood, passion = passion,
+                wasInSlump = wasInSlump, recoveredFromSlump = wasInSlump && !p.InSlump
+            });
         }
 
         Used = true;
@@ -98,14 +104,10 @@ public class TeamTalkController : MonoBehaviour
         int mood = Mathf.RoundToInt(maxMoodSwing * t);
         int passion = Mathf.RoundToInt(maxPassionSwing * t);
 
-        Team me = TeamManager.Instance != null ? TeamManager.Instance.MyTeam : null;
-        if (me != null)
+        foreach (var p in TeamManager.Instance.MyTeam.Players)
         {
-            foreach (var p in me.Players)
-            {
-                p.Morale.Mood = Mathf.Clamp(p.Morale.Mood + mood, 0, 100);
-                p.Morale.Passion = Mathf.Clamp(p.Morale.Passion + passion, 0, 100);
-            }
+            p.Morale.Mood = Mathf.Clamp(p.Morale.Mood + mood, 0, 100);
+            p.Morale.Passion = Mathf.Clamp(p.Morale.Passion + passion, 0, 100);
         }
 
         return Summarise(score, mood);

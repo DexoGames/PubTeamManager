@@ -70,13 +70,6 @@ public class DayTimelineWidget : MonoBehaviour
     public void AdvanceAnimated(Action onComplete = null)
     {
         EnsureBoxes();
-        if (ScheduleManager.Instance == null)
-        {
-            SnapToToday();
-            onComplete?.Invoke();
-            return;
-        }
-
         KillAll();
         var data = GetUpcoming(); // already reflects the advanced day
 
@@ -135,12 +128,7 @@ public class DayTimelineWidget : MonoBehaviour
         return box;
     }
 
-    private List<ScheduleEntry> GetUpcoming()
-    {
-        return ScheduleManager.Instance != null
-            ? ScheduleManager.Instance.GetUpcoming(visibleDays)
-            : new List<ScheduleEntry>();
-    }
+    private List<ScheduleEntry> GetUpcoming() => ScheduleManager.Instance.GetUpcoming(visibleDays);
 
     private void Populate(DayBox box, List<ScheduleEntry> data, int index, bool isLead)
     {

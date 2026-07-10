@@ -353,20 +353,18 @@ shot is attempted or possession is lost.
   **player's** team these become real consequences in `Fixture.FinaliseResult` → `InjuryManager.ProcessMatchConsequences`
   (bookings → suspensions, injuries → availability). Lineups are auto-cleaned (`Team.EnsureAvailableLineup`) before
   every match. See §16.
-- **CPU penalty exemptions (`Team.IsCpuControlled`):** several "technical" penalties exist to punish the *human*
-  for mismanagement they have **tools to avoid** — they would only make AI sides randomly bad (and the game too
-  easy) if applied to teams that don't use those tools. So **CPU-controlled teams are exempt** from them:
+- **CPU penalty exemptions (`Team.IsCpuControlled`):** a couple of "technical" penalties exist to punish the
+  *human* for mismanagement they have **tools to avoid** — they would only make AI sides randomly bad (and the
+  game too easy) if applied to teams that don't use those tools. So **CPU-controlled teams are exempt** from them:
     1. **Complexity / squad-IQ penalty** — `Tactic.ShouldApplyComplexityPenalty` is false for CPU (human dodges it
        by picking smart players / a simpler tactic).
-    2. **Morale penalty** — `Player.GetStats` skips `MoraleModifier` for CPU players (human manages morale via team
-       talks / discussions; the AI never does, so its squads would just drift into bad form).
-    3. **Unfamiliarity mistakes** — `MatchEngine.StartingPhase` treats a CPU side as fully familiar, so the EXTRA
+    2. **Unfamiliarity mistakes** — `MatchEngine.StartingPhase` treats a CPU side as fully familiar, so the EXTRA
        early-mistake chance from low Familiarity is dropped (the base mistake rate still applies to all). The human
        drills familiarity through training; the AI doesn't.
-  `IsCpuControlled` is **false in headless tools with no human team** (e.g. `TacticLab`), so balancing analysis
-  still sees the full, unmodified mechanics. Adding a new exemption is a one-liner: gate the penalty site on
-  `team.IsCpuControlled`. (Further candidates considered but NOT exempted: off-position penalty, reliance
-  weakness-amplification, negative chemistry — see `CHEMISTRY_AND_AI_TACTICS_BUILD.md`.)
+  **Morale is NOT exempt** — CPU teams *are* subject to the full morale model (§6), slumps and blunders included
+  (they just can't run team talks to fix slumps). `IsCpuControlled` is **false in headless tools with no human
+  team** (e.g. `TacticLab`), so balancing analysis still sees the full, unmodified mechanics. Adding a new
+  exemption is a one-liner: gate the penalty site on `team.IsCpuControlled`.
 
 ---
 
@@ -384,6 +382,28 @@ nudge morale toward each player's ideal.
   from `Fixture.FinaliseResult`; builds the **`ReactionTable`** `(Response × PersonalityType) → Reaction`.
 - **Discussions**: `DiscussionPageUI.Response(...)` applies the reaction + morale change, removes the event,
   and triggers a `SaveCore()` (see §12). `IDialogueContext`/`DiscussionContext`/`DialogueUI` drive the scene.
+- **Morale → in-match stats (`MoraleEffects`, applied in `Player.GetStats`):** each player has a `Mood` and
+  `Passion` (0–100) with a personality-specific ideal (`IdealMorale`). The effect is *directional* — below ideal
+  hurts, above ideal risks a blow-up — and applies to **every** team (the AI is subject to it too):
+  - **Passion below ideal** → a flat *under-motivated* drop-off (the stronger one, `ceil(shortfall/3)`: 10→4,
+    30→10, 60→20) across the **physical/intensity** group `MoraleEffects.PassionStats`: Pace, Stamina, Strength,
+    Jumping, Agility, Tackling, Heading, Aggression.
+  - **Mood below ideal** → a weaker *unhappy* drop-off (`ceil(shortfall/5)`) across the **technical/mental/
+    confidence** group `MoraleEffects.MoodStats`: Passing, Shooting, Dribbling, Crossing, Positioning, Creativity,
+    Composure, Teamwork, Intelligence. (Height & Durability are never touched.)
+  - **SLUMP** (`Player.InSlump`, the better term for the "rut"): an unhappy player can drop into a slump during a
+    match — once in, their **mood is treated as 0** (the unhappy drop-off bites at full force) for the rest of the
+    game. Rolled per minute by `MoraleEffects.StepMatchMinute` (chance ∝ how far below ideal; **half as likely in
+    the 2nd half**). Recovery: **CPU teams clear ALL slumps at half-time** (`Match.HalfTimeRecovery` — the AI
+    manager sorts them out); the **human** clears them only via the half-time **team talk**
+    (`TeamTalkController.DeliverTalk` → `MoraleEffects.SlumpRecoveryChance`, keyed on how well each took it).
+  - **Above ideal (too happy / too pumped)** → *no* constant effect; instead a per-minute **BLUNDER** roll
+    (`Player.MoraleBlunder`): a one-minute total collapse (all stats ×0.4) from complacency/over-eagerness. ~1%
+    baseline for anyone, scaling to ~20% the further above ideal. Rolled every minute for every on-pitch player.
+  - The per-minute rolls are driven by `Match.SimulateMinute` → `Match.StepPlayerMorale`; the transient
+    `InSlump`/`MoraleBlunder` flags are `[JsonIgnore]` and cleared at match start/end. Tunables live atop
+    `MoraleEffects`. **Full maths + worked examples: `MORALE_MODEL.md`.** The half-time individual-talk +
+    per-player reaction-box UX is specced in `TEAM_TALK_REWORK_PLAN.md`.
 
 ---
 
@@ -621,6 +641,8 @@ resolves EventType + persons). Mutable structs that round-trip carry `[JsonConst
 | `TEAM_TALK_UI.md` | Build guide for the choose-a-tone half-time team talk (squad arch + reuses the discussion reaction system) |
 | `STATS_WIDGETS_BUILD.md` | Stat leaderboard widgets (top scorers/assists/saves/cards/clean sheets…) for the home/My Team/stats pages |
 | `CHEMISTRY_AND_AI_TACTICS_BUILD.md` | Player chemistry (links/levels/effect) + CPU penalty exemptions (`Team.IsCpuControlled`); the 3 extra instruction assets + tuning |
+| `TEAM_TALK_REWORK_PLAN.md` | Plan: half-time individual talk + per-player reaction boxes (personality- & slump-aware), slump recovery |
+| `MORALE_MODEL.md` | The morale→stats maths: formulas, affected-stat groups, slump/blunder probabilities, worked examples, tuning |
 
 ---
 

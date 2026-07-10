@@ -20,7 +20,6 @@ public class TacticGridLayout : MonoBehaviour
     public List<TacticEntry> tactics = new List<TacticEntry>();
     public GameObject togglePrefab;
 
-    // This list will now be correctly managed. It's private for safety.
     private readonly List<TacticsToggle> toggles = new List<TacticsToggle>();
 
     public Vector2 cellSize = new Vector2(100, 100);
@@ -38,18 +37,7 @@ public class TacticGridLayout : MonoBehaviour
 
     void Start()
     {
-        // Get the team and perform initial setup.
-        // This assumes TeamManager and TacticsPageUI are ready.
-        // Consider using a more robust system if initialization order is a problem.
-        if (TeamManager.Instance != null)
-        {
-            team = TeamManager.Instance.MyTeam;
-        }
-        else
-        {
-            Debug.LogError("TeamManager instance not found!", this);
-            return;
-        }
+        team = TeamManager.Instance.MyTeam;
 
         TacticsPageUI tacticsPage = FindObjectOfType<TacticsPageUI>();
         if (tacticsPage != null)
@@ -60,14 +48,12 @@ public class TacticGridLayout : MonoBehaviour
             tacticsPage.OnTacticChange.AddListener(SyncToggleStates);
         }
 
-        // Initial generation of the grid.
         GenerateGrid();
     }
 
     /// <summary>Pushes the current tactic's instruction set onto the toggles (no events fired).</summary>
     void SyncToggleStates()
     {
-        if (team == null || team.Tactic == null) return;
         foreach (TacticsToggle t in toggles)
         {
             if (t == null) continue;
@@ -80,31 +66,18 @@ public class TacticGridLayout : MonoBehaviour
         UpdateAllTogglesInteractability();
     }
 
-    /// <summary>
-    /// Destroys the existing grid and regenerates it from scratch.
-    /// This is now safe to call at any time.
-    /// </summary>
+    /// <summary>Destroys the existing grid and regenerates it from scratch.</summary>
     public void GenerateGrid()
     {
-        // 1. Destroy all existing UI children.
         foreach (Transform child in transform)
         {
             Destroy(child.gameObject);
         }
-
-        // 2. CRITICAL FIX: Clear the stale list of toggle references.
         toggles.Clear();
 
         // Re-validate reliances before building (auto-bind, auto-disable invalid, apply change penalties).
-        if (team != null && team.Tactic != null) team.Tactic.RefreshReliances();
+        team.Tactic.RefreshReliances();
 
-        if (togglePrefab == null)
-        {
-            Debug.LogError("Toggle Prefab is not assigned in the inspector!", this);
-            return;
-        }
-
-        // --- Grid layout logic (largely unchanged) ---
         float containerWidth = rectTransform.rect.width;
         float currentX = padding.left;
         float currentY = padding.top;
@@ -118,32 +91,26 @@ public class TacticGridLayout : MonoBehaviour
         {
             GameObject obj = Instantiate(togglePrefab, transform);
             TacticsToggle newToggle = obj.GetComponent<TacticsToggle>();
-
-            // 3. Populate the list with the NEW, valid reference.
             toggles.Add(newToggle);
 
-            // Configure the toggle's visuals and data
             newToggle.Create(tactic.instruction);
             RectTransform rect = obj.GetComponent<RectTransform>();
             ConfigureToggleTransform(rect, tactic, ref currentX, ref currentY, containerWidth);
 
-            // 4. Add the listener to the new toggle instance.
             newToggle.OnToggleChange.AddListener(() => ToggleClick(newToggle));
 
-            // 5. Set its initial state SILENTLY — don't trigger ToggleClick (or the reliance picker) on build.
+            // Set the initial state SILENTLY — don't trigger ToggleClick (or the reliance picker) on build.
             bool active = team.Tactic.Instructions.Contains(newToggle.instruction);
             newToggle.SetSilent(active);
             if (active && newToggle.instruction != null && newToggle.instruction.hasReliance)
                 newToggle.SetReliantPlayer(team.Tactic.GetReliancePlayer(newToggle.instruction));
         }
 
-        // 6. After creating all toggles, update their interactable status.
         UpdateAllTogglesInteractability();
     }
 
     void ToggleClick(TacticsToggle clickedToggle)
     {
-        if (clickedToggle == null) return; // Safety check
         TacticInstruction instr = clickedToggle.instruction;
 
         if (clickedToggle.toggle.isOn)
@@ -189,18 +156,16 @@ public class TacticGridLayout : MonoBehaviour
         OnTacticChange.Invoke();
     }
 
-    // This helper method updates the UI state for all toggles based on the current tactic.
     void UpdateAllTogglesInteractability()
     {
         foreach (TacticsToggle toggle in toggles)
         {
-            // A toggle should be interactable if it is currently selected OR if it is valid to be selected.
+            // Interactable if it's currently selected OR valid to be selected.
             bool isInteractable = toggle.toggle.isOn || IsInstructionValid(toggle.instruction);
             toggle.SetInteractable(isInteractable);
         }
     }
 
-    // Helper to check if an instruction can be added to the current tactic.
     bool IsInstructionValid(TacticInstruction instruction)
     {
         foreach (TacticInstruction activeInstruction in team.Tactic.Instructions)
@@ -213,7 +178,6 @@ public class TacticGridLayout : MonoBehaviour
         return true;
     }
 
-    // --- Helper methods for positioning ---
     private void ConfigureToggleTransform(RectTransform rect, TacticEntry tactic, ref float currentX, ref float currentY, float containerWidth)
     {
         int size = Mathf.Max(tactic.size, 1);
@@ -230,9 +194,9 @@ public class TacticGridLayout : MonoBehaviour
         }
 
         float xPos = IsRightAligned() ? currentX - width : currentX;
-        Vector2 anchoredPos = new Vector2(xPos, -currentY); // Simplified for top-down layout
+        Vector2 anchoredPos = new Vector2(xPos, -currentY);
 
-        rect.anchorMin = rect.anchorMax = new Vector2(0, 1); // Top-left anchor
+        rect.anchorMin = rect.anchorMax = new Vector2(0, 1); // top-left anchor
         rect.pivot = new Vector2(0, 1);
         rect.anchoredPosition = anchoredPos;
         rect.sizeDelta = new Vector2(width, cellSize.y);

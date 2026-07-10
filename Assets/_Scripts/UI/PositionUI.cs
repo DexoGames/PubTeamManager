@@ -109,10 +109,7 @@ public class PositionUI : MonoBehaviour
     {
         string surnameLink = LinkBuilder.BuildLink(player, player.Surname);
 
-        if (player.IsAvailable)
-        {
-            UpdateTextStat(StatType.Surname, surnameLink);
-        }
+        UpdateTextStat(StatType.Surname, surnameLink);
     }
 
     protected virtual void UpdateBestRating(Player player)

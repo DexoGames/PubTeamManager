@@ -47,8 +47,6 @@ public class FamiliaritySlider : MonoBehaviour
 
     private void SetValue()
     {
-        if (TeamManager.Instance == null || slider == null) return;
-        var t = TeamManager.Instance.MyTeam != null ? TeamManager.Instance.MyTeam.Tactic : null;
-        if (t != null) slider.value = t.Familiarity;
+        slider.value = TeamManager.Instance.MyTeam.Tactic.Familiarity;
     }
 }

@@ -59,7 +59,7 @@ public abstract class TacticOptionToggle : MonoBehaviour
 
     protected virtual void UpdateColor(bool isOn)
     {
-        if (toggle != null && toggle.targetGraphic != null)
+        if (toggle.targetGraphic != null)
             toggle.targetGraphic.color = isOn ? selectedColor : unselectedColor;
     }
 
@@ -72,6 +72,6 @@ public abstract class TacticOptionToggle : MonoBehaviour
     protected virtual void OnDestroy()
     {
         OnToggleChange.RemoveAllListeners();
-        if (toggle != null) toggle.onValueChanged.RemoveAllListeners();
+        toggle.onValueChanged.RemoveAllListeners();
     }
 }

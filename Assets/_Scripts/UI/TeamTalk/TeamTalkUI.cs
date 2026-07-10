@@ -53,15 +53,15 @@ public class TeamTalkUI : MonoBehaviour
     {
         gameObject.SetActive(true);
 
-        goalDifference = MatchSimPageUI.Instance != null ? MatchSimPageUI.Instance.CurrentGoalDifferenceForMyTeam() : 0;
+        goalDifference = MatchSimPageUI.Instance.CurrentGoalDifferenceForMyTeam();
         severity = TeamTalkReactions.SeverityFromScore(goalDifference);
 
         BuildSquadArch();
         BuildResponseButtons();
 
-        if (situationText != null) situationText.text = "Half-time — " + TeamTalkReactions.SituationText(goalDifference, severity);
-        if (flavourText != null) flavourText.text = "";
-        if (overallText != null) overallText.text = "";
+        situationText.text = "Half-time — " + TeamTalkReactions.SituationText(goalDifference, severity);
+        flavourText.text = "";
+        overallText.text = "";
         RefreshState();
     }
 
@@ -70,14 +70,10 @@ public class TeamTalkUI : MonoBehaviour
 
     private void BuildSquadArch()
     {
-        if (boxContainer == null || boxPrefab == null) return;
-
         Game.ClearContainer(boxContainer);
         boxes.Clear();
 
-        Team me = TeamManager.Instance != null ? TeamManager.Instance.MyTeam : null;
-        if (me == null || me.Players == null) return;
-
+        Team me = TeamManager.Instance.MyTeam;
         int n = me.Players.Count;
         for (int i = 0; i < n; i++)
         {
@@ -101,7 +97,7 @@ public class TeamTalkUI : MonoBehaviour
 
     private void BuildResponseButtons()
     {
-        if (responseButtonsBuilt || responseButtonPrefab == null || responseButtonContainer == null) return;
+        if (responseButtonsBuilt) return;
         responseButtonsBuilt = true;
 
         foreach (var response in responses)
@@ -117,27 +113,27 @@ public class TeamTalkUI : MonoBehaviour
 
     private void Deliver(Event.Response response)
     {
-        if (TeamTalkController.Instance == null || TeamTalkController.Instance.Used) return;
+        if (TeamTalkController.Instance.Used) return;
 
-        if (flavourText != null) flavourText.text = TeamTalkReactions.Flavour(response);
+        flavourText.text = TeamTalkReactions.Flavour(response);
 
         List<PlayerReaction> reactions = TeamTalkController.Instance.DeliverTalk(response, severity);
         foreach (var r in reactions)
             if (boxes.TryGetValue(r.player, out var box)) box.ShowReaction(r);
 
-        if (overallText != null) overallText.text = TeamTalkReactions.Summarise(reactions);
+        overallText.text = TeamTalkReactions.Summarise(reactions);
         RefreshState();
     }
 
     private void RefreshState()
     {
-        bool used = TeamTalkController.Instance != null && TeamTalkController.Instance.Used;
+        bool used = TeamTalkController.Instance.Used;
 
         foreach (var b in responseButtons)
-            if (b != null) b.interactable = !used;
+            b.interactable = !used;
 
-        if (titleText != null) titleText.text = used ? "Team Talk — delivered" : "Half-Time Team Talk";
-        if (used && overallText != null && string.IsNullOrEmpty(overallText.text))
+        titleText.text = used ? "Team Talk — delivered" : "Half-Time Team Talk";
+        if (used && string.IsNullOrEmpty(overallText.text))
             overallText.text = "You've already had your say this match.";
     }
 }

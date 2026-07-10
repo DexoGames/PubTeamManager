@@ -86,8 +86,8 @@ public class PlayerSlotUI : MonoBehaviour
 
     private void Refresh()
     {
-        Player p = playerId >= 0 && PersonManager.Instance != null ? PersonManager.Instance.GetPlayer(playerId) : null;
-        if (label != null) label.text = p != null ? p.FullName : emptyText;
+        Player p = playerId >= 0 ? PersonManager.Instance.GetPlayer(playerId) : null;
+        label.text = p != null ? p.FullName : emptyText;
         if (removeButton != null) removeButton.gameObject.SetActive(p != null);
     }
 }

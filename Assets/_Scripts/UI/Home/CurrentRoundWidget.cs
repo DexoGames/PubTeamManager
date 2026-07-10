@@ -21,16 +21,14 @@ public class CurrentRoundWidget : UIObject
 
     public void Refresh()
     {
-        if (fixtureContainer == null) return;
         Game.ClearContainer(fixtureContainer);
 
-        Team myTeam = TeamManager.Instance != null ? TeamManager.Instance.MyTeam : null;
-        if (myTeam == null) return;
+        Team myTeam = TeamManager.Instance.MyTeam;
 
         Fixture upcomingFixture = myTeam.GetUpcomingFixture();
         if (upcomingFixture == null)
         {
-            if (competitionName != null) competitionName.text = "No upcoming fixtures";
+            competitionName.text = "No upcoming fixtures";
             return;
         }
 
@@ -47,8 +45,7 @@ public class CurrentRoundWidget : UIObject
             }
         }
 
-        if (competitionName != null)
-            competitionName.text = $"{competition.Name}, Round {roundFocus + 1}";
+        competitionName.text = $"{competition.Name}, Round {roundFocus + 1}";
 
         if (competition.Rounds != null && roundFocus >= 0 && roundFocus < competition.Rounds.Length)
         {

@@ -76,28 +76,24 @@ public class PlayerPickerPopup : MonoBehaviour
         this.onPicked = onPicked;
         this.onCancelled = onCancelled;
 
-        if (titleText != null) titleText.text = title;
+        titleText.text = title;
 
-        if (listContainer != null)
+        foreach (Transform child in listContainer) Destroy(child.gameObject);
+
+        if (candidates != null)
         {
-            foreach (Transform child in listContainer) Destroy(child.gameObject);
-
-            if (candidates != null && rowPrefab != null)
+            foreach (Player p in candidates)
             {
-                foreach (Player p in candidates)
-                {
-                    Player captured = p;
-                    PlayerPickerRow row = Instantiate(rowPrefab, listContainer);
-                    string sub = p.GetPosition().HasValue? p.GetPosition().ToString() : "SUB";
-                    row.Setup(captured, sub, () => Pick(captured));
-                }
+                Player captured = p;
+                PlayerPickerRow row = Instantiate(rowPrefab, listContainer);
+                string sub = p.GetPosition().HasValue? p.GetPosition().ToString() : "SUB";
+                row.Setup(captured, sub, () => Pick(captured));
             }
         }
     }
 
     private void Pick(Player p)
     {
-        Debug.Log("" + p.FullName);
         Action<Player> cb = onPicked;
         Close();
         cb?.Invoke(p);

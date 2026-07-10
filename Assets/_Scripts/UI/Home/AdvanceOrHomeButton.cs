@@ -24,11 +24,8 @@ public class AdvanceOrHomeButton : MonoBehaviour
 
     private void Start()
     {
-        if (button != null)
-        {
-            button.onClick.RemoveListener(OnClick);
-            button.onClick.AddListener(OnClick);
-        }
+        button.onClick.RemoveListener(OnClick);
+        button.onClick.AddListener(OnClick);
         UpdateState();
     }
 
@@ -36,25 +33,23 @@ public class AdvanceOrHomeButton : MonoBehaviour
 
     private void UpdateState()
     {
-        bool busy = GameManager.Instance != null && GameManager.Instance.IsBusy;
-        if (button != null) button.interactable = !busy;
+        button.interactable = !GameManager.Instance.IsBusy;
 
-        if (label == null) return;
         if (!IsHome) label.text = homeText;
         else if (HasMatch) label.text = playText;
         else label.text = advanceText;
     }
 
-    private bool IsHome => UIManager.Instance != null && UIManager.Instance.IsHomeActive;
-    private bool HasMatch => GameManager.Instance != null && GameManager.Instance.HasPendingPlayerMatch();
+    private bool IsHome => UIManager.Instance.IsHomeActive;
+    private bool HasMatch => GameManager.Instance.HasPendingPlayerMatch();
 
     private void OnClick()
     {
         if (!IsHome)
         {
-            UIManager.Instance?.ShowHomePage();
+            UIManager.Instance.ShowHomePage();
             return;
         }
-        GameManager.Instance?.AdvanceOrPlay();
+        GameManager.Instance.AdvanceOrPlay();
     }
 }

@@ -36,21 +36,15 @@ public class SchedulePageUI : UIPage
     {
         Game.ClearContainer(entryContainer);
 
-        if (ScheduleManager.Instance == null) return;
-
         var entries = ScheduleManager.Instance.GetUpcoming(daysPreview);
         DateTime today = CalenderManager.Instance.CurrentDay;
 
-        if (headerText != null)
-            headerText.text = $"Schedule — {CalenderManager.ShortDateWordsNoYear(today)}";
+        headerText.text = $"Schedule — {CalenderManager.ShortDateWordsNoYear(today)}";
 
         foreach (var entry in entries)
         {
-            if (entryPrefab == null) break;
-
             GameObject entryObj = Instantiate(entryPrefab, entryContainer);
 
-            // Try to populate text fields on the prefab
             var texts = entryObj.GetComponentsInChildren<TextMeshProUGUI>();
             if (texts.Length >= 2)
             {

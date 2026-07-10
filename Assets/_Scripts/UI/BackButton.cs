@@ -30,13 +30,12 @@ public class BackButton : MonoBehaviour
     /// <summary>Go back one page. Also exposed so you can hook it manually if you'd rather not auto-wire.</summary>
     public void GoBack()
     {
-        UIManager.Instance?.Back();
+        UIManager.Instance.Back();
         RefreshInteractable();
     }
 
     private void RefreshInteractable()
     {
-        if (button != null)
-            button.interactable = UIManager.Instance != null && UIManager.Instance.CanGoBack;
+        button.interactable = UIManager.Instance.CanGoBack;
     }
 }
