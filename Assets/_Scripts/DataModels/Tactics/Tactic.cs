@@ -52,10 +52,19 @@ public class Tactic
     public Mentality BaseMentality = Mentality.Balanced;
 
     /// <summary>
-    /// Temporary in-match nudge from the "more attacking / more defensive" buttons. Added to the base
-    /// mentality for the live match only; reset to 0 when the match ends (see <see cref="EndMatch"/>).
+    /// Temporary in-match nudge from the "more attacking / more defensive" buttons, currently LIVE and
+    /// feeding <see cref="RecalculateStats"/>. Added to the base mentality for the live match only; reset
+    /// to 0 when the match ends (see <see cref="EndMatch"/>).
     /// </summary>
     public int InMatchMentalityShift;
+
+    /// <summary>
+    /// The touchline shout the manager has just called for, which becomes the LIVE
+    /// <see cref="InMatchMentalityShift"/> once <see cref="ApplyPendingMentality"/> runs at the next minute
+    /// boundary — a shout mid-minute shouldn't retroactively change how that minute already played out.
+    /// Applied immediately instead when there's no minute in progress to wait out (pre-match / half-time).
+    /// </summary>
+    public int PendingMentalityShift;
 
     /// <summary>
     /// Per-setting habituation weights (0 = "the team is used to this being OFF", 1 = "used to it being
@@ -132,6 +141,13 @@ public class Tactic
         Mathf.Clamp((int)BaseMentality + InMatchMentalityShift, 0, GetEnumLength<Mentality>() - 1);
 
     public Mentality EffectiveMentality => (Mentality)EffectiveMentalityIndex;
+
+    /// <summary>Mentality index the manager has queued via the touchline shout — not yet live if it
+    /// differs from <see cref="EffectiveMentalityIndex"/> (see <see cref="PendingMentalityShift"/>).</summary>
+    public int PendingMentalityIndex =>
+        Mathf.Clamp((int)BaseMentality + PendingMentalityShift, 0, GetEnumLength<Mentality>() - 1);
+
+    public Mentality PendingMentality => (Mentality)PendingMentalityIndex;
 
     /// <summary>-3 (ultra defensive) … 0 (balanced) … +3 (ultra attacking).</summary>
     private int MentalityStep => EffectiveMentalityIndex - (int)Mentality.Balanced;
@@ -647,6 +663,7 @@ public class Tactic
         InMatch = true;
         IsHalfTime = false;
         InMatchMentalityShift = 0;
+        PendingMentalityShift = 0;
         RecalculateStats();
     }
 
@@ -655,20 +672,41 @@ public class Tactic
         InMatch = false;
         IsHalfTime = false;
         InMatchMentalityShift = 0;
+        PendingMentalityShift = 0;
         RecalculateStats();
     }
 
     /// <summary>
     /// "More attacking / more defensive" nudge available at any time during a match (request 2). Clamped
-    /// so the effective mentality stays in range. Returns the resulting effective mentality.
+    /// so the queued mentality stays in range. During open play this only queues the shout — it goes live
+    /// at the next minute boundary via <see cref="ApplyPendingMentality"/> — since there's no minute
+    /// ticking at half-time (or outside a match), it takes hold immediately there instead. Returns the
+    /// resulting PENDING mentality (what the manager has just called for).
     /// </summary>
     public Mentality ShiftMentalityInMatch(int delta)
     {
         int maxShift = GetEnumLength<Mentality>() - 1 - (int)BaseMentality;
         int minShift = -(int)BaseMentality;
-        InMatchMentalityShift = Mathf.Clamp(InMatchMentalityShift + delta, minShift, maxShift);
+        PendingMentalityShift = Mathf.Clamp(PendingMentalityShift + delta, minShift, maxShift);
+
+        if (!InMatch || IsHalfTime)
+            ApplyPendingMentality();
+
+        return PendingMentality;
+    }
+
+    /// <summary>
+    /// Promotes the queued touchline shout to the live mentality that <see cref="RecalculateStats"/> reads.
+    /// Call once the current minute has finished simulating (start of the next minute), so a shout made
+    /// mid-minute doesn't retroactively change how that minute already played out. Returns true if it
+    /// actually went live (so the caller knows to announce it), false if nothing was queued.
+    /// </summary>
+    public bool ApplyPendingMentality()
+    {
+        if (InMatchMentalityShift == PendingMentalityShift) return false;
+        InMatchMentalityShift = PendingMentalityShift;
         RecalculateStats();
-        return EffectiveMentality;
+        return true;
     }
 
     // ————————————————————— stat assembly —————————————————————
@@ -798,8 +836,6 @@ public class Tactic
         ModifyStat(TacticStat.Stability, -Mathf.Abs(step) * 3);
         // Going gung-ho tends to invite fouls under pressure at the back.
         if (step > 0) ModifyStat(TacticStat.DefensiveWidth, step * 3);
-        // Mentality extremes are conceptually harder to pull off.
-        Complexity += Mathf.Abs(step) * 2;
     }
 
     private void ApplyTacticDependencies(List<TacticInstruction.TacticDependency> tacticDependencies)

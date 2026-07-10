@@ -15458,20 +15458,20 @@ MonoBehaviour:
   m_FillRect: {fileID: 1242165441}
   m_HandleRect: {fileID: 495606837}
   m_Direction: 0
-  m_MinValue: 1
+  m_MinValue: 0
   m_MaxValue: 6
   m_WholeNumbers: 1
-  m_Value: 1
+  m_Value: 3
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 616269661}
         m_TargetAssemblyTypeName: MatchSimPageUI, Assembly-CSharp
-        m_MethodName: SetMentalityInMatch
-        m_Mode: 4
+        m_MethodName: SetMentalitySliderInMatch
+        m_Mode: 2
         m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_ObjectArgument: {fileID: 1208700201}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.UI.Slider, UnityEngine.UI
           m_IntArgument: 0
           m_FloatArgument: 0
           m_StringArgument: 

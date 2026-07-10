@@ -7,6 +7,9 @@ using UnityEngine.UI;
 public class MatchSimPageUI : UIPage
 {
     public const float FAST_FORWARD_TIME = 0.02f;
+    /// <summary>Alpha for the mentality label while a touchline shout is queued but not yet live (see
+    /// <see cref="Tactic.PendingMentalityShift"/>) — a subtle "not in effect yet" cue.</summary>
+    const float PENDING_MENTALITY_ALPHA = 0.5f;
 
     [SerializeField] FixtureUI _fixtureUI;
     [SerializeField] TextMeshProUGUI _timerText;
@@ -109,18 +112,43 @@ public class MatchSimPageUI : UIPage
         Team myTeam = TeamManager.Instance.MyTeam;
         Tactic t = myTeam.Tactic;
 
-        Mentality before = t.EffectiveMentality;
-        Mentality after = t.ShiftMentalityInMatch(delta);
+        Mentality liveBefore = t.EffectiveMentality;
+        t.ShiftMentalityInMatch(delta);
         UpdateMentalityUI();
 
-        if (after != before)
-            PrintEvent(myTeam, $"Touchline shout — switching to a {MentalityLabel(after)} approach.",
-                       match != null ? match.currentMin.Base : 0);
+        // Outside open play (pre-match / half-time) the shout goes live immediately — announce it now. During
+        // open play it's only queued; the announcement fires from ApplyPendingMentality once it actually bites.
+        if (t.EffectiveMentality != liveBefore)
+            AnnounceMentalityChange(myTeam, t.EffectiveMentality);
     }
 
+    void AnnounceMentalityChange(Team team, Mentality newMentality) =>
+        PrintEvent(team, $"Touchline shout — switching to a {MentalityLabel(newMentality)} approach.",
+                   match != null ? match.currentMin.Base : 0);
+
+    /// <summary>Promotes any queued touchline shout to live and, only if it actually changed something,
+    /// announces it as a match event — the announcement is timed to when the shout actually bites.</summary>
+    void ApplyPendingMentalityAndAnnounce()
+    {
+        Team myTeam = TeamManager.Instance.MyTeam;
+        Tactic t = myTeam.Tactic;
+
+        if (t.ApplyPendingMentality())
+            AnnounceMentalityChange(myTeam, t.EffectiveMentality);
+
+        UpdateMentalityUI();
+    }
+
+    /// <summary>Refreshes the mentality label, showing the queued shout (fading it translucent while it's
+    /// still waiting on the current minute to end — see <see cref="Tactic.PendingMentalityShift"/>).</summary>
     void UpdateMentalityUI()
     {
-        _mentalityText.text = MentalityLabel(TeamManager.Instance.MyTeam.Tactic.EffectiveMentality);
+        Tactic t = TeamManager.Instance.MyTeam.Tactic;
+        _mentalityText.text = MentalityLabel(t.PendingMentality);
+
+        Color c = _mentalityText.color;
+        c.a = t.PendingMentality == t.EffectiveMentality ? 1f : PENDING_MENTALITY_ALPHA;
+        _mentalityText.color = c;
     }
 
     public static string MentalityLabel(Mentality m)
@@ -141,7 +169,7 @@ public class MatchSimPageUI : UIPage
     /// <summary>Set the live mentality to a specific level (0–6).</summary>
     public void SetMentalityInMatch(int targetIndex)
     {
-        ShiftMentality(targetIndex - TeamManager.Instance.MyTeam.Tactic.EffectiveMentalityIndex);
+        ShiftMentality(targetIndex - TeamManager.Instance.MyTeam.Tactic.PendingMentalityIndex);
     }
 
     /// <summary>Slider hook: a UI Slider passes a float, so bind its OnValueChanged here (rounds to a level).</summary>
@@ -227,6 +255,9 @@ public class MatchSimPageUI : UIPage
             _fixture.Result = match.result;
             UpdateTimer(match.currentMin.Base);
 
+            // The minute has now fully played out — any queued touchline shout goes live from here.
+            ApplyPendingMentalityAndAnnounce();
+
             yield return new WaitUntil(() => highlights.Count == 0);
             UpdateMatchUI();
             yield return new WaitForSeconds(1.2f);
@@ -245,6 +276,9 @@ public class MatchSimPageUI : UIPage
 
             match.SimulateMinute();
             _fixture.Result = match.result;
+
+            // The minute has now fully played out — any queued touchline shout goes live from here.
+            ApplyPendingMentalityAndAnnounce();
 
             while (highlights.Count > 0)
             {
@@ -271,6 +305,8 @@ public class MatchSimPageUI : UIPage
             match.HalfTimeRecovery();
             // Half-time: structural tactic changes (formation/instructions/dependencies) are now allowed.
             TeamManager.Instance.MyTeam.Tactic.IsHalfTime = true;
+            // Flush any shout still queued from the closing minute — no more minutes ticking until kickoff.
+            ApplyPendingMentalityAndAnnounce();
         }
         else
         {
