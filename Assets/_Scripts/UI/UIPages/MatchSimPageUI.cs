@@ -116,9 +116,11 @@ public class MatchSimPageUI : UIPage
         t.ShiftMentalityInMatch(delta);
         UpdateMentalityUI();
 
-        // Outside open play (pre-match / half-time) the shout goes live immediately — announce it now. During
-        // open play it's only queued; the announcement fires from ApplyPendingMentality once it actually bites.
-        if (t.EffectiveMentality != liveBefore)
+        // During open play the change is only queued — the announcement fires from
+        // ApplyPendingMentalityAndAnnounce once it actually goes live at the next minute. At half-time (or
+        // pre-match) it goes live immediately, but there's no "touchline shout" while the game isn't being
+        // played, so half-time changes are silent — just reflected in the label, no match-event highlight.
+        if (t.EffectiveMentality != liveBefore && !t.IsHalfTime)
             AnnounceMentalityChange(myTeam, t.EffectiveMentality);
     }
 
@@ -127,14 +129,15 @@ public class MatchSimPageUI : UIPage
                    match != null ? match.currentMin.Base : 0);
 
     /// <summary>Promotes any queued touchline shout to live and, only if it actually changed something,
-    /// announces it as a match event — the announcement is timed to when the shout actually bites.</summary>
-    void ApplyPendingMentalityAndAnnounce()
+    /// announces it as a match event tagged with <paramref name="minute"/> — the minute that just finished
+    /// playing (not <c>match.currentMin</c>, which has already advanced past it by this point).</summary>
+    void ApplyPendingMentalityAndAnnounce(int minute)
     {
         Team myTeam = TeamManager.Instance.MyTeam;
         Tactic t = myTeam.Tactic;
 
         if (t.ApplyPendingMentality())
-            AnnounceMentalityChange(myTeam, t.EffectiveMentality);
+            PrintEvent(myTeam, $"Touchline shout — switching to a {MentalityLabel(t.EffectiveMentality)} approach.", minute);
 
         UpdateMentalityUI();
     }
@@ -251,12 +254,15 @@ public class MatchSimPageUI : UIPage
         {
             yield return new WaitUntil(() => !_isPaused);
 
+            // MatchEngine.SimulateMinute() advances match.currentMin past this minute internally, so grab
+            // the minute that's actually about to be played BEFORE simulating (for the mentality announcement).
+            int minuteJustPlayed = match.currentMin.Base;
             match.SimulateMinute();
             _fixture.Result = match.result;
             UpdateTimer(match.currentMin.Base);
 
             // The minute has now fully played out — any queued touchline shout goes live from here.
-            ApplyPendingMentalityAndAnnounce();
+            ApplyPendingMentalityAndAnnounce(minuteJustPlayed);
 
             yield return new WaitUntil(() => highlights.Count == 0);
             UpdateMatchUI();
@@ -274,11 +280,12 @@ public class MatchSimPageUI : UIPage
         {
             yield return new WaitUntil(() => !_isPaused);
 
+            int minuteJustPlayed = match.currentMin.Base;
             match.SimulateMinute();
             _fixture.Result = match.result;
 
             // The minute has now fully played out — any queued touchline shout goes live from here.
-            ApplyPendingMentalityAndAnnounce();
+            ApplyPendingMentalityAndAnnounce(minuteJustPlayed);
 
             while (highlights.Count > 0)
             {
@@ -306,7 +313,7 @@ public class MatchSimPageUI : UIPage
             // Half-time: structural tactic changes (formation/instructions/dependencies) are now allowed.
             TeamManager.Instance.MyTeam.Tactic.IsHalfTime = true;
             // Flush any shout still queued from the closing minute — no more minutes ticking until kickoff.
-            ApplyPendingMentalityAndAnnounce();
+            ApplyPendingMentalityAndAnnounce(match.currentMin.Base);
         }
         else
         {
@@ -386,8 +393,11 @@ public class MatchSimPageUI : UIPage
 
             case State.FirstHalf:
                 if (_currentSimulation != null) StopCoroutine(_currentSimulation);
+                // Stay in FirstHalf (don't flip to HalfTime yet) — the fast-forward coroutine itself calls
+                // EndHalf() once it actually reaches half time, which is what should reveal the half-time
+                // panel (tactics/team-talk buttons). Flipping state here made them appear immediately,
+                // before the sim had actually caught up.
                 _currentSimulation = StartCoroutine(FastForwardToHalf(Half.First));
-                SetState(State.HalfTime);
                 SetPause(false);
                 break;
 
@@ -400,8 +410,9 @@ public class MatchSimPageUI : UIPage
 
             case State.SecondHalf:
                 if (_currentSimulation != null) StopCoroutine(_currentSimulation);
+                // As above: EndHalf() (called by the coroutine once full time is actually reached) is what
+                // should flip the state, not this click.
                 _currentSimulation = StartCoroutine(FastForwardToHalf(Half.Second));
-                SetState(State.FullTime);
                 break;
 
             case State.FullTime:
