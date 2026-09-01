@@ -160,10 +160,8 @@ public class InterviewManager : MonoBehaviour
     public static List<InterviewQuestion> GetStatQuestions()
     {
         var questions = new List<InterviewQuestion>();
-        for (int i = 0; i < Player.SKILL_NO; i++)
-        {
-            questions.Add(new InterviewQuestion(InterviewQuestionType.AskAboutStat, (PlayerStat)i));
-        }
+        foreach (PlayerStat stat in Player.SkillDisplayOrder)
+            questions.Add(new InterviewQuestion(InterviewQuestionType.AskAboutStat, stat));
         return questions;
     }
 

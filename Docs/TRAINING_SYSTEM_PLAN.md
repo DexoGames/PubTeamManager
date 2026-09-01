@@ -46,7 +46,8 @@
 | No positional player picker UI | — | New sub-panel (controller + editor prefab) |
 
 ### Key facts confirmed in code (constraints the design must respect)
-- `Player.SKILL_NO = 18`; `RawStats.Skills` is an `int[18]`. `PlayerStat` enum: `Shooting=0 … Durability=17`, `Height=18` (Height stored separately).
+- `Player.SKILL_NO = 20`; `RawStats.Skills` is an `int[20]`. Existing IDs 0–17 are stable, Technique=18,
+  Marking=19 and separately stored Height=20. Human-facing order comes from `Player.SkillDisplayOrder`.
 - Stats pipeline: `GetStats()` → `GetStatsFor(position)` (if the player has a valid formation slot) → otherwise `GetRawStats()`; then `MoraleModifier`.
 - `GetStatsFor()` clones raw stats and **scales non-physical skills** by position strength: `skill / (1 + (4 - strength)/3)`. Physical skills (Pace…Durability) are **not** scaled.
 - `PositionStrength`: `None=0, Poor=1, Okay=2, Good=3, Natural=4`.
@@ -151,7 +152,8 @@ public enum DrillId
     Fitness, Strength,                                                 // Physical
     TacticDrills,        // Tactical
     TeamSocial,          // Social
-    Positional           // Positional
+    Positional,          // Positional
+    Technique, Marking   // appended here (rather than grouped above) for persisted-ID compatibility
 }
 
 public class Drill
@@ -170,11 +172,13 @@ public class Drill
 | Shooting | Shooting Practice | Technical | Shooting |
 | Passing | Passing Drills | Technical | Passing |
 | Defending | Defensive Training | Technical | Tackling |
+| Technique | Technique Sessions | Technical | Technique |
 | Dribbling | Dribbling Drills | Technical | Dribbling |
 | Crossing | Crossing Practice | Technical | Crossing |
 | Heading | Heading Drills | Technical | Heading |
 | Positioning | Positioning Drills | Mental | Positioning |
 | TacticalAwareness | Tactical Awareness | Mental | Intelligence |
+| Marking | Marking Practice | Mental | Marking |
 | CreativePlay | Creative Play | Mental | Creativity |
 | TeamBonding | Team Bonding Drills | Mental | Teamwork |
 | Composure | Composure Training | Mental | Composure |
@@ -276,8 +280,9 @@ public TrainingSession CurrentTraining;
 - `RestoreGameState()`: `TrainingManager.Instance.SetTraining(state.CurrentTraining)` (null-safe). Player IDs inside resolve lazily via `SelectedPlayers` (players already registered by `TeamConverter` during load).
 
 ### 9.3 Player fields
-- `Boost` (int[18]) and `PositionProgress` (dict) serialize automatically inside `TeamConverter`'s inline player serialization.
-- **Old-save safety:** add `EnsureBoost()` / `EnsurePositions()` guards (allocate if null/short) called at the top of the stats pipeline and the positional roll, so pre-Boost saves don't NRE.
+- `Boost` (int[20]) and `PositionProgress` (dict) serialize automatically inside `TeamConverter`'s inline player serialization.
+- **Old-save safety:** `EnsureStatData()`/`EnsureBoost()`/`EnsurePositions()` expand legacy arrays and guard old saves;
+  the two new skills start with zero Boost.
 
 ---
 

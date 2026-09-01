@@ -348,12 +348,16 @@ public class TacticLab : MonoBehaviour
         foreach (var st in keyPlayerStats) p.RawStats.SetStat(st, keyPlayerStatLevel);
     }
 
-    /// <summary>Sets the keeper's goalkeeping-relevant stats (Goalkeeping = avg of these) to a level.</summary>
+    /// <summary>Sets every stat used by the derived Goalkeeping rating to a level.</summary>
     void SetKeeperStats(Team team, int level)
     {
         Player gk = team.Goalkeeper;
         if (gk == null) return;
-        foreach (var st in new[] { PlayerStat.Jumping, PlayerStat.Aggression, PlayerStat.Composure, PlayerStat.Positioning, PlayerStat.Height })
+        foreach (var st in new[]
+        {
+            PlayerStat.Positioning, PlayerStat.Agility, PlayerStat.Composure, PlayerStat.Jumping,
+            PlayerStat.Intelligence, PlayerStat.Height, PlayerStat.Technique
+        })
             gk.RawStats.SetStat(st, level);
     }
 }

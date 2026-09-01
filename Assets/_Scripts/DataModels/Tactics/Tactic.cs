@@ -591,8 +591,8 @@ public class Tactic
     /// group EXCEPT Intelligence (which is the gate, so cutting it would be recursive).</summary>
     public static readonly PlayerStat[] ComplexityAffectedStats =
     {
-        PlayerStat.Positioning, PlayerStat.Creativity, PlayerStat.Teamwork,
-        PlayerStat.Composure, PlayerStat.Aggression
+        PlayerStat.Positioning, PlayerStat.Creativity, PlayerStat.Marking,
+        PlayerStat.Teamwork, PlayerStat.Composure, PlayerStat.Aggression
     };
 
     // ————————————————————— chemistry (per-match cache) —————————————————————

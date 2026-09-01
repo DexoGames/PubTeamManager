@@ -1,5 +1,10 @@
 # Wiring guide — Recruitment/Interview, Half-time, Match Sim
 
+> ⚠️ **§2 (Match Sim) and §3 (Half-time) are superseded by
+> [`MATCH_SIM_AND_TEAM_TALK_BUILD.md`](MATCH_SIM_AND_TEAM_TALK_BUILD.md)** — it adds the `_teamTalkPanel` field,
+> the overlay parenting/visibility rules, and the pending-mentality label states. **§1 (Recruitment/Interview) is
+> still current.**
+
 Exact editor wiring (serialized fields, OnClick hooks, hierarchy). All logic/scheduling is already in code — this is
 only Inspector work. Conventions used throughout:
 

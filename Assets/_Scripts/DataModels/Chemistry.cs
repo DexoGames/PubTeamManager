@@ -46,8 +46,8 @@ public static class Chemistry
     /// </summary>
     public static readonly PlayerStat[] LinkStats =
     {
-        PlayerStat.Passing, PlayerStat.Teamwork, PlayerStat.Positioning,
-        PlayerStat.Creativity, PlayerStat.Composure
+        PlayerStat.Passing, PlayerStat.Technique, PlayerStat.Teamwork, PlayerStat.Positioning,
+        PlayerStat.Creativity, PlayerStat.Marking, PlayerStat.Composure
     };
 
     // ————————————————————— level —————————————————————

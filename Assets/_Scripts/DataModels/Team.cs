@@ -77,7 +77,11 @@ public class Team : ScriptableObject
     public int AvgDefending => (int)WeightedAverage(((float)Players.Average(x => x.GetStats().Defending), 0.5f), ((float)Defenders.Average(x => x.GetStats().Defending), 3), (Goalkeeper.GetStats().Goalkeeping, 2));
     public int AvgMental => (int)Players.Average(x => x.RawStats.Mental);
     public int AvgPhysical => (int)Players.Average(x => x.RawStats.Physical);
-    public int AvgControl => (int)Players.Average(x => Average(x.GetStats().Intelligence, x.GetStats().Teamwork, x.GetStats().Passing));
+    public int AvgControl => (int)Players.Average(x =>
+    {
+        Player.Stats stats = x.GetStats();
+        return Average(stats.Intelligence, stats.Teamwork, stats.Passing, stats.Technique);
+    });
     public Formation Formation => Tactic.Formation;
 
     public void GenerateTeam()

@@ -27,8 +27,6 @@ public static class TeamTalkReactions
         goalDifference >= -3 ? EventType.Severity.Pressing :
                                EventType.Severity.Dire;
 
-    public static string Label(Event.Response r) => r.ToString();
-
     public static string Flavour(Event.Response r) => r switch
     {
         Event.Response.Praise    => "\"Brilliant out there — keep doing exactly that.\"",

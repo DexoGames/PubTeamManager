@@ -69,9 +69,9 @@ public static class MoraleEffects
     /// <summary>Stats that fall when MOOD is below ideal (technical / mental / confidence).</summary>
     public static readonly PlayerStat[] MoodStats =
     {
-        PlayerStat.Passing, PlayerStat.Shooting, PlayerStat.Dribbling, PlayerStat.Crossing,
-        PlayerStat.Positioning, PlayerStat.Creativity, PlayerStat.Composure,
-        PlayerStat.Teamwork, PlayerStat.Intelligence
+        PlayerStat.Passing, PlayerStat.Shooting, PlayerStat.Technique, PlayerStat.Dribbling, PlayerStat.Crossing,
+        PlayerStat.Positioning, PlayerStat.Creativity, PlayerStat.Intelligence, PlayerStat.Marking,
+        PlayerStat.Composure, PlayerStat.Teamwork
     };
 
     // ————————————————————— constant effect —————————————————————

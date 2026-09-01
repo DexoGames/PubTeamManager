@@ -1,47 +1,94 @@
-using System.Collections;
+using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
 
+/// <summary>
+/// Spawns a row of <see cref="Event.Response"/> buttons and reports which tone the manager picked. Shared by every
+/// screen that asks for a response — the 1-on-1 discussion page and the half-time team talk both drive this same
+/// component, so there's one response row to style, tune and maintain.
+///
+/// Drop it on the container object, assign the button prefab + container, and either hook
+/// <see cref="OnResponseChosen"/> in the Inspector or subscribe to it in code. Everything else is optional:
+/// leave <see cref="responses"/> empty to offer every response, leave <see cref="dialogue"/> empty when the
+/// owning screen prints its own line.
+/// </summary>
 public class ResponseManager : MonoBehaviour
 {
-    [SerializeField] DiscussionPageUI discussionPage;
+    [Serializable] public class ResponseEvent : UnityEvent<Event.Response> { }
+
     [SerializeField] ResponseButtonUI responseButtonPrefab;
     [SerializeField] Transform container;
+
+    [Header("Optional")]
+    [Tooltip("Optional: line showing what you 'said'. Leave empty when the owning screen prints its own flavour.")]
     [SerializeField] TextMeshProUGUI dialogue;
+    [Tooltip("Optional: which responses to offer, in display order. Leave EMPTY to offer all of them in enum order.")]
+    [SerializeField] Event.Response[] responses;
+    [Tooltip("Lock the whole row once one is picked — one response per discussion / team talk.")]
+    [SerializeField] bool lockAfterPick = true;
 
-    List<ResponseButtonUI> responseButtons = new List<ResponseButtonUI>();
+    [Tooltip("Raised when a response is picked.")]
+    public ResponseEvent OnResponseChosen = new();
 
+    readonly List<ResponseButtonUI> responseButtons = new();
+
+    /// <summary>True once a response has been picked since the last <see cref="SpawnButtons"/>.</summary>
+    public bool HasPicked { get; private set; }
+
+    /// <summary>(Re)builds the row — call whenever the owning screen opens.</summary>
     public void SpawnButtons()
     {
-        dialogue.text = "";
+        if (dialogue != null) dialogue.text = "";
+        HasPicked = false;
 
-        foreach(ResponseButtonUI r in responseButtons)
-        {
-            Destroy(r.gameObject);
-        }
+        foreach (ResponseButtonUI r in responseButtons) Destroy(r.gameObject);
         responseButtons.Clear();
 
-        for(int i = 0; i < Game.GetEnumLength<Event.Response>(); i++)
+        foreach (Event.Response response in ResponsesToShow())
         {
-            ResponseButtonUI response = Instantiate(responseButtonPrefab, container);
-            response.Setup((Event.Response)i, this);
-            responseButtons.Add(response);
+            ResponseButtonUI button = Instantiate(responseButtonPrefab, container);
+            button.Setup(response, this);
+            responseButtons.Add(button);
         }
     }
 
+    /// <summary>The authored subset, or the whole enum when none is set.</summary>
+    IEnumerable<Event.Response> ResponsesToShow()
+    {
+        if (responses != null && responses.Length > 0) return responses;
+
+        var all = new Event.Response[Game.GetEnumLength<Event.Response>()];
+        for (int i = 0; i < all.Length; i++) all[i] = (Event.Response)i;
+        return all;
+    }
+
+    /// <summary>Called by a <see cref="ResponseButtonUI"/> when it's clicked.</summary>
     public void ButtonPressed(Event.Response response)
     {
-        foreach(ResponseButtonUI r in responseButtons)
-        {
-            r.MakeUninteractable(response);
-        }
-        discussionPage.Response(response);
+        if (HasPicked && lockAfterPick) return;
+        HasPicked = true;
+
+        if (lockAfterPick)
+            foreach (ResponseButtonUI r in responseButtons) r.Lock(response);
+
+        MakeDialogue(response);
+        OnResponseChosen.Invoke(response);
+    }
+
+    /// <summary>
+    /// Enables/disables the whole row without marking a pick — for a screen that's read-only right now
+    /// (e.g. reopening a team talk you've already delivered).
+    /// </summary>
+    public void SetInteractable(bool value)
+    {
+        foreach (ResponseButtonUI r in responseButtons) r.SetInteractable(value);
     }
 
     public void MakeDialogue(Event.Response response)
     {
-        dialogue.text = ResponseToDialogue(response);
+        if (dialogue != null) dialogue.text = ResponseToDialogue(response);
     }
 
     public static string ResponseToDialogue(Event.Response response)

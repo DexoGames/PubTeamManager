@@ -83,6 +83,7 @@ public class TeamConverter : JsonConverter<Team>
             foreach (var player in team.Players)
             {
                 player.Team = team;
+                player.EnsureStatData();
                 PersonManager.Instance.RegisterExisting(player);
             }
         }

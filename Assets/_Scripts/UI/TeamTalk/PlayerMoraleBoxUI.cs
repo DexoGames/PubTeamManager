@@ -1,19 +1,19 @@
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// A little squad-member tile for the team-talk screen: shows the player's name and morale, and flashes how they
-/// took the talk (a coloured tint + a ±delta). All references are optional, so the prefab can be as minimal as a
-/// name + one bar.
+/// A little squad-member tile for the team-talk screen: shows the player's name and morale, a speech BUBBLE carrying
+/// their in-character dressing-room line (from <see cref="TeamTalkChatter"/>), and flashes how they took the talk (a
+/// coloured tint + a ±delta). In the individual-talk phase the whole box becomes a Button you click to single a
+/// player out. All references are optional, so the prefab can be as minimal as a name + one bar.
 /// </summary>
 public class PlayerMoraleBoxUI : MonoBehaviour
 {
     [SerializeField] private TextMeshProUGUI nameText;
-    [Tooltip("Filled image (Image type = Filled) showing Mood 0–100.")]
-    [SerializeField] private Image moodFill;
-    [Tooltip("Optional second bar for Passion 0–100.")]
-    [SerializeField] private Image passionFill;
+    [SerializeField] private Image morale;
+
     [Tooltip("Optional numeric mood read-out.")]
     [SerializeField] private TextMeshProUGUI moraleText;
     [Tooltip("Optional ±delta flash after a talk (e.g. \"+8\").")]
@@ -21,8 +21,21 @@ public class PlayerMoraleBoxUI : MonoBehaviour
     [Tooltip("Optional background image tinted by the reaction verdict.")]
     [SerializeField] private Image background;
 
+    [Header("Chatter")]
+    [Tooltip("Optional: the player's spoken line. Hidden when they say nothing (silence is itself a signal).")]
+    [SerializeField] private TextMeshProUGUI bubbleText;
+    [Tooltip("Optional: bubble backing image, shown/hidden with the line and tinted by the reaction.")]
+    [SerializeField] private Image bubbleBackground;
+
+    [Header("Individual talk")]
+    [Tooltip("Optional: makes the box clickable to single this player out during the individual-talk phase.")]
+    [SerializeField] private Button selectButton;
+
     private Player player;
     private Color baseBackground = Color.white;
+    private Action<Player> onSelected;
+
+    public Player Player => player;
 
     public void Setup(Player p)
     {
@@ -31,23 +44,43 @@ public class PlayerMoraleBoxUI : MonoBehaviour
         if (nameText != null) nameText.text = p != null ? p.Surname : "";
         if (reactionText != null) reactionText.text = "";
         if (background != null) background.color = baseBackground;
+
+        ShowBubble("");
+
+        if (selectButton != null)
+        {
+            selectButton.onClick.RemoveAllListeners();
+            selectButton.onClick.AddListener(() => onSelected?.Invoke(player));
+            selectButton.interactable = false;
+        }
+
         RefreshMorale();
     }
 
     /// <summary>Re-reads the player's current morale into the bars/number.</summary>
     public void RefreshMorale()
     {
-        if (player == null) return;
-        if (moodFill != null)
-        {
-            moodFill.fillAmount = player.Morale.Mood / 100f;
-            moodFill.color = MoraleColour(player.Morale.Mood);
-        }
-        if (passionFill != null) passionFill.fillAmount = player.Morale.Passion / 100f;
-        if (moraleText != null) moraleText.text = player.Morale.Mood.ToString();
+        morale.sprite = player.GetMoraleSprite();
+        morale.color = player.GetMoraleColor();
     }
 
-    /// <summary>Shows how this player took the talk, then updates the morale display to the new values.</summary>
+    /// <summary>Shows a spoken line (or hides the bubble when empty). Optionally tints the bubble by reaction.</summary>
+    public void ShowBubble(string line, Color? tint = null)
+    {
+        bool has = !string.IsNullOrEmpty(line);
+        if (bubbleText != null)
+        {
+            bubbleText.text = line;
+            bubbleText.gameObject.SetActive(has);
+        }
+        if (bubbleBackground != null)
+        {
+            bubbleBackground.gameObject.SetActive(has);
+            if (has && tint.HasValue) bubbleBackground.color = tint.Value;
+        }
+    }
+
+    /// <summary>Shows how this player took the talk (tint + ±delta), then updates the morale display to the new values.</summary>
     public void ShowReaction(PlayerReaction r)
     {
         int total = r.mood + r.passion;
@@ -59,6 +92,13 @@ public class PlayerMoraleBoxUI : MonoBehaviour
         }
         if (background != null) background.color = colour;
         RefreshMorale();
+    }
+
+    /// <summary>Enables/disables clicking this box to single the player out, and sets the click handler.</summary>
+    public void SetSelectable(bool selectable, Action<Player> callback = null)
+    {
+        onSelected = callback;
+        if (selectButton != null) selectButton.interactable = selectable;
     }
 
     private static Color MoraleColour(int mood) =>

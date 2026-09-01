@@ -22,7 +22,7 @@ MonoBehaviour:
   - stat: 5
     group: 3
     strength: 2
-  - stat: 18
+  - stat: 20
     group: 3
     strength: 2
   - stat: 14

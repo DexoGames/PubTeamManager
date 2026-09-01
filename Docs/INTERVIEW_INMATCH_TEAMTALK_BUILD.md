@@ -1,5 +1,10 @@
 # Deep dive: In-match changes, Half-time team talks, Interview day
 
+> ⚠️ **§2 ("Half-time team talks") describes the ABANDONED minigame talk** (`TeamTalkMinigame`,
+> `CreateRandom`/`ApplyResult`) — that code is dormant and nothing calls it. For the live choose-a-tone talk and
+> all match-screen wiring, use [`MATCH_SIM_AND_TEAM_TALK_BUILD.md`](MATCH_SIM_AND_TEAM_TALK_BUILD.md).
+> §1 (in-match changes) and §3 (interview day) are still current.
+
 An in-depth, code-grounded build guide for three of the systems summarised in `NEW_SYSTEMS_BUILD.md` (§3, §4/5,
 §5 there). For each: **what's already coded vs what you build**, the exact classes/methods/serialized fields, the
 data flow, and the gotchas. Class/method names below are the real ones in `Assets/_Scripts`.

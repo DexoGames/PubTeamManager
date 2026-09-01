@@ -23,6 +23,7 @@ public class DiscussionPageUI : UIPage
         else
         {
             Instance = this;
+            responseManager.OnResponseChosen.AddListener(Response);
         }
     }
 
@@ -61,7 +62,6 @@ public class DiscussionPageUI : UIPage
 
         (int, int) moraleChange = person.NewMorale(thisEvent.type.moodChange, reaction, thisEvent.type.severity);
         dialogue.UpdateDialogue(ReactionToDialogue(reaction));
-        responseManager.MakeDialogue(response);
 
         dialogue.UpdateExtraInfo(InfoAboutResponse(moraleChange));
 

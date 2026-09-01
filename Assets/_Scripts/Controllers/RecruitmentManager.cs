@@ -242,6 +242,7 @@ public class RecruitmentManager : MonoBehaviour
 
         foreach (var player in freeAgents)
         {
+            player.EnsureStatData();
             FreeAgentPool.Add(player);
             PersonManager.Instance.RegisterExisting(player);
         }

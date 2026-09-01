@@ -118,9 +118,10 @@ _Scripts/
                   CompetitionEvents, ClubStats, ScheduleEntry, TrainingSession, Drill, Formation
     Tactics/      Tactic (+ Mentality/TacticState), TacticInstruction (+ Reliance), TacticStats(legacy), TacticTemplate
     MatchSim/     Highlight + subclasses (Goal/Shot/Miss/Mistake/Possession/PossessionFail/Foul)
-  TeamTalk/       TeamTalkReactions (tones + score→severity, the ACTIVE talk), TeamTalkController,
+  TeamTalk/       TeamTalkReactions (tones + score→severity, the ACTIVE talk), TeamTalkChatter (pure
+                  per-personality dressing-room line generator — the read-the-room bubbles), TeamTalkController,
                   TeamTalkMinigame (+ GerrymanderGame/BalanceGame — dormant microgame path)
-  Utilities/      Game, Match, MatchEngine, Phase, StatLeaderboards (stat aggregation),
+  Utilities/      Game, Match, MatchEngine, Phase, SquadStatProfile (phase aggregation), StatLeaderboards,
                   FixtureGenerator, LinkBuilder, LinkHandler, KitColors
   Serialization/  GameState (=> CoreSaveState/SeasonSaveState/SeasonIndexEntry), ISaveable,
                   TeamConverter, *RefConverter (Team/Person/Competition/Fixture), ScriptableObjectRefConverter
@@ -159,9 +160,18 @@ Global registry. `Dictionary<int, Person> _byId` + `List<Person> People`.
 - `GetPerson(id)` / `GetPlayer(id)` / `GetManager(id)` (subclass-tolerant) / `Unregister` / `Clear`.
 
 ### Player (`DataModels/Player.cs`)
-- `RawStats` (`Stats` struct): 18 skills (`int[]` indexed by `PlayerStat`), `Height`, and a
-  `Dictionary<Position, PositionStrength>`. Derived composites (`[JsonIgnore]`): Attacking, Midfield,
-  Defending, Mental, Physical, Goalkeeping.
+- `RawStats` (`Stats` struct): **20 skills** (`int[]` indexed by stable `PlayerStat` IDs) — 7 technical
+  (Shooting/Passing/Tackling/Technique/Dribbling/Crossing/Heading), 7 mental
+  (Positioning/Creativity/Intelligence/Marking/Aggression/Composure/Teamwork), and 6 physical
+  (Strength/Agility/Pace/Stamina/Jumping/Durability) — plus separately stored `Height` and a
+  `Dictionary<Position, PositionStrength>`. `SkillDisplayOrder` supplies the category order without renumbering
+  serialized enum values. Derived composites (`[JsonIgnore]`): Attacking, Midfield, Defending, Mental, Physical,
+  Goalkeeping.
+- **Generation:** a light overall/domain aptitude plus dominant per-stat variation, followed by a simultaneous
+  related-stat smoothing pass (strongest links include Technique↔Dribbling, Positioning↔Marking and
+  Stamina↔Durability). This shapes creation only; stats are independent afterwards.
+- **Old-save safety:** `EnsureStatData()` expands legacy 18-skill arrays without moving old values, deterministically
+  infers Technique/Marking, expands Boost, and repairs position data. Team/free-agent restore invokes it explicitly.
 - **Positions:** 12-value `Position` enum; `PositionStrength` None→Poor→Okay→Good→Natural.
 - **Stat pipeline:** `GetRawStats()` → `GetBoostedRawStats()` (adds the temporary training Boost) →
   `GetStatsFor(position)` (off-position penalty) → `MoraleModifier` → `GetStats()` (effective in-match stats).
@@ -177,10 +187,10 @@ Global registry. `Dictionary<int, Person> _byId` + `List<Person> People`.
   hashing the unordered PersonID pair (the `KitColors` trick), so it's symmetric, stable across save/load, and
   needs **zero serialization**; most pairs are Neutral. It only *bites in-match* when two **starters line up in
   linked positions** (`Chemistry.ArePositionsLinked` — CB/CB, LB/LM, LB/LW, RW/ST, AM/CM, DM/CM, …): the pair
-  then shifts a deterministic subset of both players' "combination" stats (Passing/Teamwork/Positioning/
-  Creativity/Composure) by ±5 (±10 for BadBlood). The trade-off: chasing a boost (or dodging a clash) constrains
+  then shifts a deterministic subset of both players' "combination" stats (Passing/Technique/Teamwork/
+  Positioning/Creativity/Marking/Composure) by ±5 (±10 for BadBlood). The trade-off: chasing a boost constrains
   who you can field next to whom. Resolved once per match in `Tactic.ComputeChemistry`/`ChemistryDelta` (cached
-  per slot) and folded into effective ability in `PlayerExtensions.AverageStats`. `Player.GetChemistryWith(other)`
+  per slot) and folded into effective ability in `SquadStatProfile`/`PlayerExtensions.AverageStats`. `Player.GetChemistryWith(other)`
   exposes a pair's level for UI.
 
 ### Manager (`DataModels/Manager.cs`)
@@ -279,7 +289,7 @@ creates new instances linked to the same series, then **archives + unloads** the
     `TacticInstruction.hasReliance` is a derived getter (`eligibleGroups.Length > 0`).
     When active it leans on **one player by SQUAD SLOT** (`RelianceSlots[instructionName]` = index in
     `Team.Players`, not a PersonID) — so it **follows the slot**: a subbed-on player inherits the reliance, and a
-    formation change keeps it on the same player. In `AverageStats(tactic)` that slot's player gets `multiplier`×
+    formation change keeps it on the same player. In `SquadStatProfile` that slot's player gets `multiplier`×
     weight on his named `stats` (`IsReliantPlayer`/`RelianceBonus`). **`eligibleGroups`** (reusing `PlayerGroup`)
     does triple duty: it filters the picker; it **auto-disables** the instruction if the player later moves out of
     all those groups; and it **scopes which phases of play the effect applies to**. The match engine evaluates one
@@ -305,9 +315,9 @@ creates new instances linked to the same series, then **archives + unloads** the
     (`IntelligenceThreshold => Complexity`). If the **starting XI's average intelligence** (cached at match start via
     `RefreshMatchCache`) clears the bar, the side copes and **no one is penalised** — brainy players cover for one dim
     one. Only when the average falls short (`ShouldApplyComplexityPenalty`) do below-bar players take a
-    **proportional** cut to their mental stats `ComplexityAffectedStats` (positioning/creativity/teamwork/composure/
-    aggression — the whole mental group bar Intelligence) — `ComplexityPenaltyFraction` ≈ 50% at 10 below the bar
-    (`shortfall × 0.05`, capped 90%), applied in `AverageStats(tactic)`. All the
+    **proportional** cut to their mental stats `ComplexityAffectedStats` (positioning/creativity/marking/teamwork/
+    composure/aggression — the whole mental group bar Intelligence) — `ComplexityPenaltyFraction` ≈ 50% at 10 below
+    the bar (`shortfall × 0.05`, capped 90%), applied in `SquadStatProfile`. All the
     IQ maths uses **`Player.TacticalIntelligence`** = effective `GetStats().Intelligence` (boost + **morale** +
     **off-position** penalty), over the **on-pitch XI only**. The tactics **PositionUI** displays the same
     `TacticalIntelligence()`, so the intelligence you see on each player matches what the squad-IQ gate uses.
@@ -342,9 +352,15 @@ shot is attempted or possession is lost.
   shooter/shot-type and applies a non-linear keeper effect for the goal probability.
 - **Highlights** (`DataModels/MatchSim/`): Goal/Shot/Miss/Mistake/Possession/PossessionFail **+ FoulHighlight**,
   broadcast live to the match-sim UI when `trackHighlights` is on (the player's match).
-- **Tactic context in resolution:** every phase now averages each side's group stats *through that team's tactic*
-  (`AverageStats(tactic)`) so reliances (a reliant player's named stats get extra per-stat weight) and the
-  complexity/intelligence penalty fold in automatically. Low Familiarity raises the early-mistake chance in `StartingPhase`.
+- **Tactic context + distribution-aware resolution:** `SquadStatProfile` applies off-position/Boost/morale plus
+  tactic complexity, chemistry and reliance once, then each phase/stat chooses Mean, Cohesive (mean+median),
+  Star-/Weak-link-influenced, or Best-/Weakest-pair-influenced aggregation. Thus a fastest attacker or slowest
+  recovery defender matters without replacing the unit; organised traits resist one extreme outlier. All seven
+  phases have distinct attacking/defending groups and stat mixes, including Technique and Marking. See
+  `PLAYER_STATS_MATCH_SIM_REWORK_BUILD.md` for the exact table.
+- **Resolution corrections:** ability/tactic values remain floats until resolution; Stability randomness is
+  symmetric between home/away; failure overflow measures the correct distance below the negative threshold.
+  Low Familiarity still raises the early-mistake chance in `StartingPhase`.
 - **Tempo → build-up:** in `StartingPhase` the choice between patient build (Build) and going direct (straight to
   Advance) is `WeightedAverage(Control, 100−Intensity, 100−Tempo)` — high formation `Tempo` skips build-up and goes
   direct more often; low Tempo builds from the back. (Tempo is formation-derived; it isn't a `TacticStat` slider.)
@@ -380,6 +396,9 @@ nudge morale toward each player's ideal.
   (Terrible…Amazing); `ReactionSeverityChange`.
 - **EventsManager**: on `NewDay` adds random events (weighted) + expires old ones; `AddWinEvent`/`AddLoseEvent`
   from `Fixture.FinaliseResult`; builds the **`ReactionTable`** `(Response × PersonalityType) → Reaction`.
+- **Planned contextual evolution (not built):** `MATCH_SIM_AND_CONTEXTUAL_EVENTS_PLAN.md` defines state-linked
+  opportunities, saved event threads/memory/cooldowns, promises/follow-ups, personality-specific voice channels,
+  squad propagation and a first vertical slice for tactic-complexity confusion.
 - **Discussions**: `DiscussionPageUI.Response(...)` applies the reaction + morale change, removes the event,
   and triggers a `SaveCore()` (see §12). `IDialogueContext`/`DiscussionContext`/`DialogueUI` drive the scene.
 - **Morale → in-match stats (`MoraleEffects`, applied in `Player.GetStats`):** each player has a `Mood` and
@@ -389,8 +408,8 @@ nudge morale toward each player's ideal.
     30→10, 60→20) across the **physical/intensity** group `MoraleEffects.PassionStats`: Pace, Stamina, Strength,
     Jumping, Agility, Tackling, Heading, Aggression.
   - **Mood below ideal** → a weaker *unhappy* drop-off (`ceil(shortfall/5)`) across the **technical/mental/
-    confidence** group `MoraleEffects.MoodStats`: Passing, Shooting, Dribbling, Crossing, Positioning, Creativity,
-    Composure, Teamwork, Intelligence. (Height & Durability are never touched.)
+    confidence** group `MoraleEffects.MoodStats`: Passing, Shooting, Technique, Dribbling, Crossing, Positioning,
+    Creativity, Intelligence, Marking, Composure, Teamwork. (Height & Durability are never touched.)
   - **SLUMP** (`Player.InSlump`, the better term for the "rut"): an unhappy player can drop into a slump during a
     match — once in, their **mood is treated as 0** (the unhappy drop-off bites at full force) for the rest of the
     game. Rolled per minute by `MoraleEffects.StepMatchMinute` (chance ∝ how far below ideal; **half as likely in
@@ -402,8 +421,9 @@ nudge morale toward each player's ideal.
     baseline for anyone, scaling to ~20% the further above ideal. Rolled every minute for every on-pitch player.
   - The per-minute rolls are driven by `Match.SimulateMinute` → `Match.StepPlayerMorale`; the transient
     `InSlump`/`MoraleBlunder` flags are `[JsonIgnore]` and cleared at match start/end. Tunables live atop
-    `MoraleEffects`. **Full maths + worked examples: `MORALE_MODEL.md`.** The half-time individual-talk +
-    per-player reaction-box UX is specced in `TEAM_TALK_REWORK_PLAN.md`.
+    `MoraleEffects`. **Full maths + worked examples: `MORALE_MODEL.md`.** The half-time **read-the-room** rework
+    (per-player chatter bubbles + capped individual talks) is **built** — see §16.5 and
+    `HALFTIME_TEAM_TALK_REWORK_BUILD.md`.
 
 ---
 
@@ -434,7 +454,8 @@ No transfer market — players are hired via **interview days** (now schedule-ga
 Training applies a **temporary, decaying per-stat "Boost"** layer (FM-style match sharpness) plus permanent
 positional development. The player sets one ongoing drill that repeats every training day until changed.
 
-- **Drill / DrillId / DrillCatalog** (`DataModels/Drill.cs`): static catalog of **16 drills**. Each `Drill` has
+- **Drill / DrillId / DrillCatalog** (`DataModels/Drill.cs`): static catalog of **18 drills** (including Technique
+  Sessions and Marking Practice). Each `Drill` has
   `Id` (`DrillId` enum — append-only, persisted), `Name`, `TrainingType` (Technical/Mental/Physical/Tactical/
   Social/Positional), `AffectedStats[]`, `Description`. `IsBoostDrill` = Technical/Mental/Physical.
 - **TrainingSession** (`DataModels/TrainingSession.cs`): the player's chosen instruction — **serializable, ID-based**
@@ -636,13 +657,17 @@ resolves EventType + persons). Mutable structs that round-trip carry `[JsonConst
 | `HOME_SCREEN_PLAN.md` | Home dashboard design + decisions |
 | `HOME_SCREEN_BUILD.md` | Step-by-step editor build guide for the home screen |
 | `NEW_SYSTEMS_BUILD.md` | **Editor/UI wiring for the new systems** (tactics depth, in-match changes, injuries/suspensions, interview day, reliances/picker) + a tuning cheat-sheet |
-| `INTERVIEW_INMATCH_TEAMTALK_BUILD.md` | In-depth build/explanation of in-match tactical changes, half-time, and interview day |
-| `WIRING_RECRUITMENT_HALFTIME_SIM.md` | Field-by-field Inspector checklist (serialized fields, OnClick hooks) for recruitment/interview, match sim, half-time |
-| `TEAM_TALK_UI.md` | Build guide for the choose-a-tone half-time team talk (squad arch + reuses the discussion reaction system) |
+| **`MATCH_SIM_AND_TEAM_TALK_BUILD.md`** | **Authoritative** from-scratch build guide for the match screen + half-time team-talk overlay (prefabs, hierarchy, Inspector order, the overlay visibility model). Supersedes the match-sim/team-talk wiring in the three docs below |
+| `INTERVIEW_INMATCH_TEAMTALK_BUILD.md` | In-depth build/explanation of in-match tactical changes, half-time, and interview day. §2 (minigame talk) is **obsolete** |
+| `WIRING_RECRUITMENT_HALFTIME_SIM.md` | Field-by-field Inspector checklist for recruitment/interview. §2–3 (match sim, half-time) superseded |
+| `TEAM_TALK_UI.md` | Team-talk reaction model (severity, shared discussion table). Wiring superseded |
 | `STATS_WIDGETS_BUILD.md` | Stat leaderboard widgets (top scorers/assists/saves/cards/clean sheets…) for the home/My Team/stats pages |
 | `CHEMISTRY_AND_AI_TACTICS_BUILD.md` | Player chemistry (links/levels/effect) + CPU penalty exemptions (`Team.IsCpuControlled`); the 3 extra instruction assets + tuning |
-| `TEAM_TALK_REWORK_PLAN.md` | Plan: half-time individual talk + per-player reaction boxes (personality- & slump-aware), slump recovery |
+| `TEAM_TALK_REWORK_PLAN.md` | **Design rationale (now built)**: dressing-room chatter (pre/post-talk reaction lines, all 10 personalities × result/expectation/morale/rut, deliberately ambiguous) + capped individual talks |
+| **`HALFTIME_TEAM_TALK_REWORK_BUILD.md`** | **Editor wiring for the team-talk rework**: per-player speech bubbles, the individual-talk popup (2nd `ResponseManager`), the new `TeamTalkUI`/`PlayerMoraleBoxUI`/`TeamTalkController` fields. Builds on `MATCH_SIM_AND_TEAM_TALK_BUILD.md` Part B |
 | `MORALE_MODEL.md` | The morale→stats maths: formulas, affected-stat groups, slump/blunder probabilities, worked examples, tuning |
+| **`PLAYER_STATS_MATCH_SIM_REWORK_BUILD.md`** | Implemented 20-skill schema, old-save migration, correlated generation, aggregation maths, exact phase stat weights and verification |
+| **`MATCH_SIM_AND_CONTEXTUAL_EVENTS_PLAN.md`** | **Future design only:** deeper match actions/spatial state/calibration plus contextual event threads, personality voice, memory, promises and squad propagation |
 
 ---
 
@@ -696,7 +721,8 @@ risk.** Code is complete and compiles; remaining work is editor/scene wiring doc
 **muscle-memory Familiarity** model (per-setting habituation weights that only build through playing/training, so
 tinkering doesn't drain them and ~3 months of one tactic reaches ~100%), and a **squad-average Complexity →
 Intelligence** gate (penalties only bite when the XI's *average* intelligence falls short, so a smart side covers
-for one dim player). The seam for reliances + complexity is `PlayerExtensions.AverageStats(tactic)`. Tactics
+for one dim player). The shared seam for reliances + complexity is `SquadStatProfile` (with
+`PlayerExtensions.AverageStats` as its arithmetic-mean compatibility view). Tactics
 **serialize** (incl. `SettingWeights` + reliance bindings). New UI: `MentalitySelectorUI`, `TacticInfoUI` (squad-IQ
 read-out), `FamiliaritySlider` (non-interactable).
 
@@ -739,12 +765,22 @@ squad member and scores ability by *signed √ of each stat difference, summed* 
 off", biased by personality. `RecruitmentManager.debugEndlessInterviews` makes every day an interview day for testing.
 UI helper: `InterviewQuestionButton`. See `INTERVIEW_INMATCH_TEAMTALK_BUILD.md` / `WIRING_RECRUITMENT_HALFTIME_SIM.md`.
 
-**16.5 Half-time team talk — reuses the discussion system (`TEAM_TALK_UI.md`).** The active talk is a squad-wide
+**16.5 Half-time team talk — reuses the discussion system, now a "read-the-room" puzzle
+(`HALFTIME_TEAM_TALK_REWORK_BUILD.md`, design in `TEAM_TALK_REWORK_PLAN.md`).** The base talk is a squad-wide
 version of the 1-on-1 discussion: you pick one `Event.Response` (Praise/Rage/Encourage/…), and every squad member
 reacts via the **same** `EventsManager.ReactionTable` (keyed on personality) and `Person.NewMorale`, with the
 **severity taken from the half-time scoreline** (`TeamTalkReactions.SeverityFromScore`: 1-up → Pleasant, 3-down →
 Pressing). `TeamTalkUI` lays every player out as a morale box along a shallow arch and flashes how each took it;
-`TeamTalkController.DeliverTalk(response, severity)` applies it. (The `TeamTalkMinigame` classes remain but dormant.)
+`TeamTalkController.DeliverTalk(response, severity)` applies it.
+*The rework* layers a diagnosis loop on top: each box carries a **speech bubble** from **`TeamTalkChatter`** (a pure,
+side-effect-free per-personality line generator) — a *deliberately ambiguous* view of hidden state (personality ×
+scoreline × **expectation** (`MatchSimPageUI.ExpectedGoalDifferenceForMyTeam`, from starting-XI strength) × morale ×
+hidden **slump**). A few speak pre-talk, most speak post-talk; **silence is first-class** (loud archetypes going
+quiet is the tell, near-silent ones carry no info), and pools are shared across states so no line is a certain
+diagnosis. After the squad tone you may single out up to **`TeamTalkController.MaxIndividualTalks`** players for a
+private word (`TalkToPlayer`, click a box → 2nd `ResponseManager`) — a **stronger** slump-lifter
+(`individualRecoveryMultiplier`), but scarce, so misreading the chatter wastes one (the trade-off). Both stages run
+the shared `React` path. (The `TeamTalkMinigame` classes remain but dormant.)
 
 **16.7 Stat leaderboards (`STATS_WIDGETS_BUILD.md`).** The match now persists every shot (`TeamStats.shots`, with a
 `keeper` ref), engine-credited assists, and the keeper who played (`TeamStats.keeper`). `StatLeaderboards` derives

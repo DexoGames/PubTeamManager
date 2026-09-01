@@ -7,10 +7,11 @@ using UnityEngine;
 
 public enum PlayerStat
 {
-    Shooting, Passing, Tackling, Dribbling, Crossing, Heading,
-    Positioning, Intelligence, Creativity, Teamwork, Composure, Aggression,
-    Pace, Strength, Jumping, Agility, Stamina, Durability,
-    Height
+    // Existing numeric values are save/asset data. Do not renumber them.
+    Shooting = 0, Passing = 1, Tackling = 2, Technique = 18, Dribbling = 3, Crossing = 4, Heading = 5,
+    Positioning = 6, Creativity = 8, Intelligence = 7, Marking = 19, Aggression = 11, Composure = 10, Teamwork = 9,
+    Strength = 13, Agility = 15, Pace = 12, Stamina = 16, Jumping = 14, Durability = 17,
+    Height = 20
 }
 public enum PlayerGroup
 {
@@ -20,11 +21,42 @@ public enum PlayerGroup
 [System.Serializable]
 public class Player : Person
 {
-    public const int SKILL_NO = 18;
+    public const int SKILL_NO = 20;
+    private const int LEGACY_SKILL_NO = 18;
+
+    public static readonly PlayerStat[] TechnicalStats =
+    {
+        PlayerStat.Shooting, PlayerStat.Passing, PlayerStat.Tackling, PlayerStat.Technique,
+        PlayerStat.Dribbling, PlayerStat.Crossing, PlayerStat.Heading
+    };
+
+    public static readonly PlayerStat[] MentalStats =
+    {
+        PlayerStat.Positioning, PlayerStat.Creativity, PlayerStat.Intelligence, PlayerStat.Marking,
+        PlayerStat.Aggression, PlayerStat.Composure, PlayerStat.Teamwork
+    };
+
+    public static readonly PlayerStat[] PhysicalStats =
+    {
+        PlayerStat.Strength, PlayerStat.Agility, PlayerStat.Pace,
+        PlayerStat.Stamina, PlayerStat.Jumping, PlayerStat.Durability
+    };
+
+    /// <summary>Canonical presentation order. Height is intentionally separate from the skills.</summary>
+    public static readonly PlayerStat[] SkillDisplayOrder =
+    {
+        PlayerStat.Shooting, PlayerStat.Passing, PlayerStat.Tackling, PlayerStat.Technique,
+        PlayerStat.Dribbling, PlayerStat.Crossing, PlayerStat.Heading,
+        PlayerStat.Positioning, PlayerStat.Creativity, PlayerStat.Intelligence, PlayerStat.Marking,
+        PlayerStat.Aggression, PlayerStat.Composure, PlayerStat.Teamwork,
+        PlayerStat.Strength, PlayerStat.Agility, PlayerStat.Pace,
+        PlayerStat.Stamina, PlayerStat.Jumping, PlayerStat.Durability
+    };
 
     public Stats RawStats;
     public Stats GetRawStats()
     {
+        EnsureStatData();
         return new Stats
         {
             Skills = (int[])RawStats.Skills.Clone(),
@@ -183,12 +215,7 @@ public class Player : Person
         Team = team;
 
         RawStats.Height = Random.Range(0, 100);
-        RawStats.Skills = new int[SKILL_NO];
-
-        for(int i = 0; i < SKILL_NO; i++)
-        {
-            RawStats.Skills[i] = Random.Range(10, 90);
-        }
+        RawStats.Skills = GenerateCorrelatedSkills();
 
         RawStats = PersonalityModifier(RawStats, Personality);
 
@@ -233,6 +260,97 @@ public class Player : Person
 
     /// <summary>Parameterless constructor for JSON deserialization.</summary>
     public Player() { }
+
+    private readonly struct StatRelation
+    {
+        public readonly PlayerStat A;
+        public readonly PlayerStat B;
+        public readonly float Weight;
+
+        public StatRelation(PlayerStat a, PlayerStat b, float weight)
+        {
+            A = a;
+            B = b;
+            Weight = weight;
+        }
+    }
+
+    // Relationship weights are also the maximum fraction each neighbour can pull a generated stat toward it.
+    // The calculation is simultaneous, so the order of these links cannot cascade through a player profile.
+    private static readonly StatRelation[] GenerationRelations =
+    {
+        new StatRelation(PlayerStat.Technique, PlayerStat.Dribbling, 0.34f),
+        new StatRelation(PlayerStat.Technique, PlayerStat.Passing, 0.20f),
+        new StatRelation(PlayerStat.Technique, PlayerStat.Shooting, 0.12f),
+        new StatRelation(PlayerStat.Passing, PlayerStat.Crossing, 0.16f),
+        new StatRelation(PlayerStat.Shooting, PlayerStat.Composure, 0.13f),
+        new StatRelation(PlayerStat.Heading, PlayerStat.Jumping, 0.28f),
+        new StatRelation(PlayerStat.Heading, PlayerStat.Strength, 0.13f),
+
+        new StatRelation(PlayerStat.Positioning, PlayerStat.Marking, 0.34f),
+        new StatRelation(PlayerStat.Marking, PlayerStat.Tackling, 0.26f),
+        new StatRelation(PlayerStat.Positioning, PlayerStat.Intelligence, 0.23f),
+        new StatRelation(PlayerStat.Creativity, PlayerStat.Technique, 0.22f),
+        new StatRelation(PlayerStat.Creativity, PlayerStat.Passing, 0.14f),
+        new StatRelation(PlayerStat.Intelligence, PlayerStat.Teamwork, 0.17f),
+        new StatRelation(PlayerStat.Composure, PlayerStat.Technique, 0.11f),
+        new StatRelation(PlayerStat.Aggression, PlayerStat.Strength, 0.09f),
+
+        new StatRelation(PlayerStat.Pace, PlayerStat.Agility, 0.27f),
+        new StatRelation(PlayerStat.Pace, PlayerStat.Stamina, 0.14f),
+        new StatRelation(PlayerStat.Stamina, PlayerStat.Durability, 0.32f),
+        new StatRelation(PlayerStat.Strength, PlayerStat.Jumping, 0.18f),
+        new StatRelation(PlayerStat.Strength, PlayerStat.Durability, 0.13f)
+    };
+
+    /// <summary>
+    /// Generates varied individuals around a light overall/domain aptitude, then softly pulls closely related
+    /// stats together. The independent roll remains the largest input, so specialists and weaknesses still occur.
+    /// This only runs at creation; the resulting stats are fully independent afterwards.
+    /// </summary>
+    private static int[] GenerateCorrelatedSkills()
+    {
+        float overall = (Random.Range(10f, 90f) + Random.Range(10f, 90f)) * 0.5f;
+        float technical = Mathf.Lerp(overall, Random.Range(10f, 90f), 0.55f);
+        float mental = Mathf.Lerp(overall, Random.Range(10f, 90f), 0.55f);
+        float physical = Mathf.Lerp(overall, Random.Range(10f, 90f), 0.55f);
+
+        var seed = new float[SKILL_NO];
+        foreach (PlayerStat stat in SkillDisplayOrder)
+        {
+            float domain = TechnicalStats.Contains(stat) ? technical
+                : MentalStats.Contains(stat) ? mental
+                : physical;
+            seed[(int)stat] = Mathf.Lerp(domain, Random.Range(10f, 90f), 0.65f);
+        }
+
+        var neighbourTotals = new float[SKILL_NO];
+        var relationTotals = new float[SKILL_NO];
+        foreach (StatRelation relation in GenerationRelations)
+        {
+            int a = (int)relation.A;
+            int b = (int)relation.B;
+            neighbourTotals[a] += seed[b] * relation.Weight;
+            relationTotals[a] += relation.Weight;
+            neighbourTotals[b] += seed[a] * relation.Weight;
+            relationTotals[b] += relation.Weight;
+        }
+
+        var skills = new int[SKILL_NO];
+        for (int i = 0; i < SKILL_NO; i++)
+        {
+            float value = seed[i];
+            if (relationTotals[i] > 0f)
+            {
+                float neighbourAverage = neighbourTotals[i] / relationTotals[i];
+                float pull = Mathf.Min(0.42f, relationTotals[i]);
+                value = Mathf.Lerp(value, neighbourAverage, pull);
+            }
+            skills[i] = Mathf.Clamp(Mathf.RoundToInt(value), 10, 90);
+        }
+
+        return skills;
+    }
 
 
     private static Position[] GetSimilarPositions(Position position)
@@ -292,30 +410,42 @@ public class Player : Person
         public int Shooting { get => Skills[0]; set => Skills[0] = Clamp(value); }
         public int Passing { get => Skills[1]; set => Skills[1] = Clamp(value); }
         public int Tackling { get => Skills[2]; set => Skills[2] = Clamp(value); }
+        public int Technique { get => Skills[18]; set => Skills[18] = Clamp(value); }
         public int Dribbling { get => Skills[3]; set => Skills[3] = Clamp(value); }
         public int Crossing { get => Skills[4]; set => Skills[4] = Clamp(value); }
         public int Heading { get => Skills[5]; set => Skills[5] = Clamp(value); }
 
         public int Positioning { get => Skills[6]; set => Skills[6] = Clamp(value); }
-        public int Intelligence { get => Skills[7]; set => Skills[7] = Clamp(value); }
         public int Creativity { get => Skills[8]; set => Skills[8] = Clamp(value ); }
-        public int Teamwork { get => Skills[9]; set => Skills[9] = Clamp(value); }
-        public int Composure { get => Skills[10]; set => Skills[10] = Clamp(value); }
+        public int Intelligence { get => Skills[7]; set => Skills[7] = Clamp(value); }
+        public int Marking { get => Skills[19]; set => Skills[19] = Clamp(value); }
         public int Aggression { get => Skills[11]; set => Skills[11] = Clamp(value); }
+        public int Composure { get => Skills[10]; set => Skills[10] = Clamp(value); }
+        public int Teamwork { get => Skills[9]; set => Skills[9] = Clamp(value); }
 
-        public int Pace { get => Skills[12]; set => Skills[12] = Clamp(value); }
         public int Strength { get => Skills[13]; set => Skills[13] = Clamp(value); }
-        public int Jumping { get => Skills[14]; set => Skills[14] = Clamp(value); }
         public int Agility { get => Skills[15]; set => Skills[15] = Clamp(value)  ; }
+        public int Pace { get => Skills[12]; set => Skills[12] = Clamp(value); }
         public int Stamina { get => Skills[16]; set => Skills[16] = Clamp(value); }
+        public int Jumping { get => Skills[14]; set => Skills[14] = Clamp(value); }
         public int Durability { get => Skills[17]; set => Skills[17] = Clamp(value); }
 
-        [JsonIgnore] public int Attacking => (int)Game.WeightedAverage((Shooting, 1f), (Composure, 0.5f), (Dribbling, 0.2f), (Creativity, 0.2f), (Pace, 0.2f));
-        [JsonIgnore] public int Midfield => (int)Game.WeightedAverage((Passing, 1f), (Positioning, 0.5f), (Crossing, 0.2f), (Creativity, 0.2f), (Intelligence, 0.2f));
-        [JsonIgnore] public int Defending => (int)Game.WeightedAverage((Positioning, 1f), (Tackling, 0.5f), (Strength, 0.2f), (Pace, 0.2f));
-        [JsonIgnore] public int Mental => (int)Game.Average(Intelligence, Teamwork, Composure);
-        [JsonIgnore] public int Physical => (int)Game.WeightedAverage((Pace, 0.7f), (Strength, 0.5f), (Height, 0.3f));
-        [JsonIgnore] public int Goalkeeping => (int)Game.Average(Jumping, Aggression, Composure, Positioning, Height);
+        [JsonIgnore] public int Attacking => (int)Game.WeightedAverage(
+            (Shooting, 1f), (Technique, 0.5f), (Composure, 0.45f), (Dribbling, 0.35f),
+            (Positioning, 0.25f), (Creativity, 0.2f), (Pace, 0.15f), (Heading, 0.1f));
+        [JsonIgnore] public int Midfield => (int)Game.WeightedAverage(
+            (Passing, 1f), (Technique, 0.55f), (Intelligence, 0.45f), (Creativity, 0.45f),
+            (Teamwork, 0.3f), (Positioning, 0.25f), (Dribbling, 0.15f), (Crossing, 0.15f));
+        [JsonIgnore] public int Defending => (int)Game.WeightedAverage(
+            (Marking, 1f), (Positioning, 0.75f), (Tackling, 0.65f), (Intelligence, 0.35f),
+            (Strength, 0.2f), (Pace, 0.15f), (Heading, 0.1f));
+        [JsonIgnore] public int Mental => (int)Game.Average(
+            Positioning, Creativity, Intelligence, Marking, Aggression, Composure, Teamwork);
+        [JsonIgnore] public int Physical => (int)Game.Average(
+            Strength, Agility, Pace, Stamina, Jumping, Durability);
+        [JsonIgnore] public int Goalkeeping => (int)Game.WeightedAverage(
+            (Positioning, 1f), (Agility, 1f), (Composure, 0.8f), (Jumping, 0.7f),
+            (Intelligence, 0.5f), (Height, 0.4f), (Technique, 0.35f));
 
         public int GetStat(PlayerStat stat)
         {
@@ -672,6 +802,7 @@ public class Player : Person
     /// </summary>
     public void ModifyStat(PlayerStat stat, float amount)
     {
+        EnsureStatData();
         int current = RawStats.GetStat(stat);
         RawStats.SetStat(stat, Mathf.RoundToInt(current + amount));
     }
@@ -680,6 +811,57 @@ public class Player : Person
 
     /// <summary>50% chance per session that a positional progress counter increments.</summary>
     public const float POSITIONAL_ROLL_CHANCE = 0.5f;
+
+    /// <summary>
+    /// Expands legacy 18-skill saves into the current schema without changing any existing stat's numeric ID.
+    /// New skills are inferred deterministically from their closest old skills; new players never use this path.
+    /// </summary>
+    public void EnsureStatData()
+    {
+        int[] oldSkills = RawStats.Skills;
+        if (oldSkills == null || oldSkills.Length != SKILL_NO)
+        {
+            var rebuilt = Enumerable.Repeat(40, SKILL_NO).ToArray();
+            if (oldSkills != null)
+            {
+                for (int i = 0; i < Mathf.Min(oldSkills.Length, SKILL_NO); i++)
+                    rebuilt[i] = Mathf.Clamp(oldSkills[i], 0, 100);
+
+                if (oldSkills.Length <= LEGACY_SKILL_NO)
+                {
+                    rebuilt[(int)PlayerStat.Technique] = Mathf.RoundToInt(Game.WeightedAverage(
+                        (LegacySkill(oldSkills, PlayerStat.Dribbling), 0.4f),
+                        (LegacySkill(oldSkills, PlayerStat.Passing), 0.35f),
+                        (LegacySkill(oldSkills, PlayerStat.Shooting), 0.15f),
+                        (LegacySkill(oldSkills, PlayerStat.Agility), 0.1f)));
+                }
+
+                if (oldSkills.Length <= (int)PlayerStat.Marking)
+                {
+                    rebuilt[(int)PlayerStat.Marking] = Mathf.RoundToInt(Game.WeightedAverage(
+                        (LegacySkill(oldSkills, PlayerStat.Positioning), 0.4f),
+                        (LegacySkill(oldSkills, PlayerStat.Tackling), 0.35f),
+                        (LegacySkill(oldSkills, PlayerStat.Intelligence), 0.15f),
+                        (LegacySkill(oldSkills, PlayerStat.Teamwork), 0.1f)));
+                }
+            }
+
+            RawStats.Skills = rebuilt;
+        }
+
+        if (RawStats.Positions == null)
+            RawStats.Positions = new Dictionary<Position, PositionStrength>();
+        foreach (Position position in System.Enum.GetValues(typeof(Position)))
+            if (!RawStats.Positions.ContainsKey(position)) RawStats.Positions[position] = PositionStrength.None;
+
+        EnsureBoost();
+    }
+
+    private static int LegacySkill(int[] skills, PlayerStat stat)
+    {
+        int index = (int)stat;
+        return skills != null && index >= 0 && index < skills.Length ? skills[index] : 40;
+    }
 
     /// <summary>Guards the Boost array against null/old-save length mismatch.</summary>
     public void EnsureBoost()
@@ -780,90 +962,20 @@ public class Player : Person
 
 public static class PlayerExtensions
 {
-    public static Player.Stats AverageStats(this Player[] players, Tactic tactic = null, PlayerGroup? phaseGroup = null){
-        return AverageStats(players.ToList(), tactic, phaseGroup);
-    }
+    public static Player.Stats AverageStats(this Player[] players, Tactic tactic = null, PlayerGroup? phaseGroup = null)
+        => new SquadStatProfile(players, tactic, phaseGroup).ToAverageStats();
 
     /// <summary>
-    /// Average effective stats across a group of players. When a <paramref name="tactic"/> is supplied
-    /// (i.e. during a match) two tactical effects fold in here — the single seam that turns "raw players"
-    /// into "players executing this tactic":
-    ///   • Complexity / intelligence — when the squad average is too low, below-bar players take a
-    ///     proportional cut to their mental stats (~50% at 10 below the bar).
-    ///   • Reliance — a reliance instruction's chosen player counts for extra weight on the SPECIFIC stats
-    ///     that reliance names, so his strengths AND weaknesses in those stats sway the team more. The reliance
-    ///     only fires when <paramref name="phaseGroup"/> (the position band this average represents) is within the
-    ///     reliance's eligible groups — so it influences only the phases it's "about" (e.g. a defenders reliance
-    ///     sways the build-up phase, not the finish).
-    /// Called with no tactic (the default) it is a plain unweighted average, as before, for UI/display.
+    /// Compatibility arithmetic mean for UI and team summaries. Match phases use <see cref="StatProfile(List{Player},Tactic,PlayerGroup?)"/>
+    /// so each stat can choose a distribution shape. Both routes share the same complexity, chemistry and reliance
+    /// processing in <see cref="SquadStatProfile"/>.
     /// </summary>
     public static Player.Stats AverageStats(this List<Player> players, Tactic tactic = null, PlayerGroup? phaseGroup = null)
-    {
-        Player.Stats avgStats = new Player.Stats
-        {
-            Skills = new int[Player.SKILL_NO],
-            Positions = new Dictionary<Player.Position, Player.PositionStrength>(),
-            Height = 0
-        };
+        => new SquadStatProfile(players, tactic, phaseGroup).ToAverageStats();
 
-        int count = players.Count;
-        if (count == 0) return avgStats;
+    public static SquadStatProfile StatProfile(this Player[] players, Tactic tactic = null, PlayerGroup? phaseGroup = null)
+        => new SquadStatProfile(players, tactic, phaseGroup);
 
-        // Per-stat totals + per-stat weights — a reliance can amplify only specific stats of one player.
-        var totalSkills = new double[Player.SKILL_NO];
-        var statWeight = new double[Player.SKILL_NO];
-        double totalHeight = 0, heightWeight = 0;
-
-        for (int i = 0; i < count; i++)
-        {
-            Player p = players[i];
-            var stats = p.GetStats();
-
-            // Complexity penalty — ONLY when the squad's average intelligence has fallen short of the
-            // tactic's demand. Below-bar players take a proportional cut to their mental stats.
-            if (tactic != null && tactic.ShouldApplyComplexityPenalty)
-            {
-                float reduction = tactic.ComplexityPenaltyFraction(stats.Intelligence);
-                if (reduction > 0f)
-                    foreach (PlayerStat st in Tactic.ComplexityAffectedStats)
-                        stats.SetStat(st, Mathf.RoundToInt(stats.GetStat(st) * (1f - reduction)));
-            }
-
-            // Chemistry — partners lined up in linked positions shift each other's "combination" stats up
-            // (In-Sync) or down (Frosty / Bad Blood). Cached per match at kickoff (see Tactic.ComputeChemistry);
-            // applies in-match only (tactic != null). A flat +/- on top of everything else.
-            if (tactic != null)
-            {
-                for (int s = 0; s < Player.SKILL_NO; s++)
-                {
-                    int d = tactic.ChemistryDelta(p, (PlayerStat)s);
-                    if (d != 0) stats.Skills[s] = Mathf.Clamp(stats.Skills[s] + d, 0, 100);
-                }
-            }
-
-            // Reliance weighting: only the reliant player, only the named stats, and only in the phases this
-            // reliance is "about" (phaseGroup within its eligible groups), count extra.
-            bool reliant = tactic != null && tactic.IsReliantPlayer(p, phaseGroup);
-
-            for (int j = 0; j < Player.SKILL_NO; j++)
-            {
-                float w = reliant ? 1f + tactic.RelianceBonus(p, (PlayerStat)j, phaseGroup) : 1f;
-                totalSkills[j] += stats.Skills[j] * w;
-                statWeight[j] += w;
-            }
-
-            float hw = reliant ? 1f + tactic.RelianceBonus(p, PlayerStat.Height, phaseGroup) : 1f;
-            totalHeight += stats.Height * hw;
-            heightWeight += hw;
-        }
-
-        var avgSkills = new int[Player.SKILL_NO];
-        for (int j = 0; j < Player.SKILL_NO; j++)
-            avgSkills[j] = statWeight[j] > 0 ? (int)(totalSkills[j] / statWeight[j]) : 0;
-
-        avgStats.Skills = avgSkills;
-        avgStats.Height = heightWeight > 0 ? (int)(totalHeight / heightWeight) : 0;
-
-        return avgStats;
-    }
+    public static SquadStatProfile StatProfile(this List<Player> players, Tactic tactic = null, PlayerGroup? phaseGroup = null)
+        => new SquadStatProfile(players, tactic, phaseGroup);
 }

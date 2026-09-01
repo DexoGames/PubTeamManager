@@ -18,13 +18,18 @@ public class MatchSimPageUI : UIPage
     [Header("In-match tactics")]
     [Tooltip("Label showing the current mentality; updated by the More Attacking/Defensive buttons.")]
     [SerializeField] TextMeshProUGUI _mentalityText;
-    [Tooltip("Shown only at half-time: opens the team-talk minigame + structural tactic changes.")]
+    [Tooltip("Shown only at half-time: holds the Team Talk + Edit Tactics buttons.")]
     [SerializeField] GameObject _halfTimePanel;
+    [Tooltip("The team-talk overlay. It manages its own visibility, so the match screen closes it whenever " +
+             "half-time ends or we navigate away — otherwise it would linger over the next page.")]
+    [SerializeField] TeamTalkUI _teamTalkPanel;
 
     [SerializeField] Transform _eventsContainer;
     [SerializeField] MatchEventUI _matchEventPrefab;
 
     Queue<Highlight> highlights = new Queue<Highlight>();
+    /// <summary>Match-screen objects switched off while the team-talk overlay is up (see <see cref="SetMatchContentVisible"/>).</summary>
+    readonly List<GameObject> _hiddenForTeamTalk = new List<GameObject>();
     bool isProcessing = false;
     bool _isPaused = false;
     bool _isFastForwarding = false;
@@ -69,6 +74,7 @@ public class MatchSimPageUI : UIPage
         SetState(State.PreKickoff);
         SetPauseButton();
         UpdateMentalityUI();
+        _teamTalkPanel.Close();
 
         _fixtureUI.SetFixtureText(_fixture, true);
         UpdateTimer(0);
@@ -195,6 +201,32 @@ public class MatchSimPageUI : UIPage
         return home - away;
     }
 
+    /// <summary>
+    /// Pre-match EXPECTED goal difference from the player's view, derived from the two starting XIs' relative
+    /// strength (rating gap → goals). Feeds the half-time team-talk "over/under-performing" read: a 0-0 is great
+    /// against a far stronger side and dismal against a far weaker one. Ability-based, so it isn't polluted by
+    /// in-match morale/slumps. 0 if there's no live match.
+    /// </summary>
+    public float ExpectedGoalDifferenceForMyTeam()
+    {
+        if (match == null || _fixture == null) return 0f;
+        Team me = TeamManager.Instance.MyTeam;
+        Team opponent = _fixture.HomeTeam == me ? _fixture.AwayTeam : _fixture.HomeTeam;
+        return (StartingStrength(me) - StartingStrength(opponent)) / TeamTalkChatter.RATING_POINTS_PER_GOAL;
+    }
+
+    /// <summary>Average rating of a team's starting XI, each player rated in the slot they're lined up in.</summary>
+    static float StartingStrength(Team team)
+    {
+        if (team == null || team.Players.Count < 11 || team.Formation == null) return 0f;
+
+        int slots = Mathf.Min(11, team.Formation.Positions.Length);
+        float sum = 0f;
+        for (int i = 0; i < slots; i++)
+            sum += team.Players[i].GetAverage(team.Formation.Positions[i].ID);
+        return slots > 0 ? sum / slots : 0f;
+    }
+
     // ————————————————————— Half-time: full tactics access —————————————————————
 
     /// <summary>
@@ -204,8 +236,33 @@ public class MatchSimPageUI : UIPage
     public void OpenHalfTimeTactics()
     {
         if (_state != State.HalfTime) return;
+        _teamTalkPanel.Close();
         TacticsPageUI.Instance?.EnterReturnToMatchMode();
         UIManager.Instance.ShowTactics();
+    }
+
+    /// <summary>
+    /// Hides (or restores) everything on the match screen except the team-talk overlay, so the talk gets the whole
+    /// screen. Restoring re-activates exactly what was showing before — so e.g. the half-time panel comes back but
+    /// a panel that was already hidden stays hidden, without this needing to know the state machine.
+    /// </summary>
+    public void SetMatchContentVisible(bool visible)
+    {
+        if (visible)
+        {
+            foreach (GameObject go in _hiddenForTeamTalk) go.SetActive(true);
+            _hiddenForTeamTalk.Clear();
+            return;
+        }
+
+        if (_hiddenForTeamTalk.Count > 0) return; // already hidden — don't stack
+
+        foreach (Transform child in Elements)
+        {
+            if (child == _teamTalkPanel.transform || !child.gameObject.activeSelf) continue;
+            child.gameObject.SetActive(false);
+            _hiddenForTeamTalk.Add(child.gameObject);
+        }
     }
 
     /// <summary>Re-shows the match screen after half-time tactics editing, WITHOUT restarting the match.</summary>
@@ -404,6 +461,7 @@ public class MatchSimPageUI : UIPage
             case State.HalfTime:
                 // Leaving half-time closes the structural-change window.
                 TeamManager.Instance.MyTeam.Tactic.IsHalfTime = false;
+                _teamTalkPanel.Close();
                 _currentSimulation = StartCoroutine(SimulateHalf(Half.Second));
                 SetState(State.SecondHalf);
                 break;

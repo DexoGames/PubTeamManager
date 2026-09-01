@@ -72,9 +72,10 @@ for kits) — symmetric, stable across save/load, **nothing to serialize**, most
 
 It only matters **in a match**, and only between two **starters in linked positions** (`Chemistry.ArePositionsLinked`:
 same role, or adjacency like LB/LM, LB/LW, RW/ST, AM/CM, DM/CM, CB/CB…). Such a pair shifts a deterministic subset
-(3) of both players' **combination stats** — Passing / Teamwork / Positioning / Creativity / Composure — by the
+(3) of both players' **combination stats** — Passing / Technique / Teamwork / Positioning / Creativity / Marking /
+Composure — by the
 amount above. Resolved once at kickoff (`Tactic.ComputeChemistry`, cached per slot via `ChemistryDelta`) and folded
-into effective ability in `PlayerExtensions.AverageStats`.
+into effective ability in `SquadStatProfile` (and its `PlayerExtensions.AverageStats` compatibility view).
 
 **Trade-off (per the design rule):** chemistry is hidden and you don't choose it. To *get* a boost you must field
 the two players next to each other in linked roles; to *avoid* a clash you must split clashing players up — either

@@ -2,14 +2,14 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Drives the half-time team talk and converts the result into a squad morale swing. Two paths exist:
-/// the tone-based talk (<see cref="DeliverTalk"/>, the active one — Praise/Rage/Encourage/…) and the older
-/// minigame path (<see cref="CreateRandom"/>/<see cref="ApplyResult"/>, kept dormant for now).
-/// One team talk per match. The trade-off (core design rule): a strong performance fires the squad up,
-/// but a flop actually flattens them — attempting a rousing talk and bottling it costs you.
+/// Drives the half-time team talk and converts the result into a squad morale swing. The active flow is two-stage:
+/// one squad-wide tone (<see cref="DeliverTalk"/> — Praise/Rage/Encourage/…) followed by up to
+/// <see cref="MaxIndividualTalks"/> capped PRIVATE words (<see cref="TalkToPlayer"/>) with players you judge need
+/// one. Both stages run through the same discussion reaction path (<see cref="React"/>). The trade-off (core design
+/// rule): a mistimed tone flattens the room, and individual talks are scarce — under the deliberate ambiguity of the
+/// dressing-room chatter (<see cref="TeamTalkChatter"/>) you'll sometimes spend one on a player who was fine.
 ///
-/// The UI (a <c>TeamTalkUI</c> built in the editor — see TEAM_TALK_UI.md) asks <see cref="CreateRandom"/>
-/// for a game, lets the player solve it, then calls <see cref="ApplyResult"/> with the finished game.
+/// The older minigame path (<see cref="CreateRandom"/>/<see cref="ApplyResult"/>) is kept dormant.
 /// </summary>
 public class TeamTalkController : MonoBehaviour
 {
@@ -23,11 +23,26 @@ public class TeamTalkController : MonoBehaviour
     [Tooltip("Scores below this are a flop and DENT morale.")]
     [SerializeField, Range(0f, 1f)] private float flopThreshold = 0.4f;
 
+    [Header("Individual talks")]
+    [Tooltip("How many players you may single out for a private word AFTER the squad tone, each match.")]
+    [SerializeField] private int maxIndividualTalks = 2;
+    [Tooltip("A personal word is a stronger slump-lifter than the blanket talk — multiplies the recovery chance.")]
+    [SerializeField, Range(1f, 2f)] private float individualRecoveryMultiplier = 1.3f;
+
     /// <summary>The active minigame, if one is in progress.</summary>
     public TeamTalkMinigame Current { get; private set; }
 
-    /// <summary>True once a team talk has been used this match (only one allowed).</summary>
+    /// <summary>True once the squad team talk has been used this match (only one allowed).</summary>
     public bool Used { get; private set; }
+
+    /// <summary>How many private words you get after the squad tone (a difficulty dial).</summary>
+    public int MaxIndividualTalks => maxIndividualTalks;
+
+    /// <summary>Private words spent this match (reset at kickoff).</summary>
+    public int IndividualTalksUsed { get; private set; }
+
+    /// <summary>Private words still available this match.</summary>
+    public bool CanTalkIndividually => IndividualTalksUsed < maxIndividualTalks;
 
     private void Awake()
     {
@@ -42,11 +57,12 @@ public class TeamTalkController : MonoBehaviour
         return Current;
     }
 
-    /// <summary>Resets the one-per-match flag — call at kickoff.</summary>
+    /// <summary>Resets the one-per-match flags — call at kickoff.</summary>
     public void ResetForMatch()
     {
         Used = false;
         Current = null;
+        IndividualTalksUsed = 0;
     }
 
     /// <summary>
@@ -64,25 +80,50 @@ public class TeamTalkController : MonoBehaviour
         if (table == null) return reactions;
 
         foreach (var p in me.Players)
-        {
-            if (!table.TryGetValue((response, p.Personality), out Event.Reaction reaction)) continue;
-
-            reaction = Event.ReactionSeverityChange(response, reaction, severity);
-            (int mood, int passion) = p.NewMorale(0, reaction, severity); // applies + clamps morale, returns the delta
-
-            // A well-received talk can snap a slumping player out of it (the human's lever against slumps).
-            bool wasInSlump = p.InSlump;
-            if (wasInSlump && Random.value < MoraleEffects.SlumpRecoveryChance(reaction)) p.InSlump = false;
-
-            reactions.Add(new PlayerReaction
-            {
-                player = p, reaction = reaction, mood = mood, passion = passion,
-                wasInSlump = wasInSlump, recoveredFromSlump = wasInSlump && !p.InSlump
-            });
-        }
+            reactions.Add(React(p, response, severity, 1f));
 
         Used = true;
         return reactions;
+    }
+
+    /// <summary>
+    /// A private word with ONE player after the squad tone (up to <see cref="MaxIndividualTalks"/> per match). Same
+    /// reaction path as the squad talk, but a personal word is a STRONGER slump-lifter (recovery ×
+    /// <see cref="individualRecoveryMultiplier"/>). The trade-off (core design rule): talks are scarce and the tone
+    /// can still backfire — under the ambiguity of the chatter you may spend one on a player who was fine.
+    /// </summary>
+    public PlayerReaction TalkToPlayer(Player player, Event.Response response, EventType.Severity severity)
+    {
+        PlayerReaction reaction = React(player, response, severity, individualRecoveryMultiplier);
+        IndividualTalksUsed++;
+        return reaction;
+    }
+
+    /// <summary>
+    /// The shared per-player reaction path (squad talk and individual talk both run through this): look the personality
+    /// reaction up in the discussion <c>ReactionTable</c>, bend it by the scoreline severity, apply the morale swing
+    /// via <c>Person.NewMorale</c>, and roll whether a well-received talk snaps them out of a slump.
+    /// </summary>
+    private PlayerReaction React(Player p, Event.Response response, EventType.Severity severity, float recoveryMultiplier)
+    {
+        var table = EventsManager.Instance.ReactionTable;
+        Event.Reaction reaction = table.TryGetValue((response, p.Personality), out var r) ? r : Event.Reaction.Neutral;
+
+        reaction = Event.ReactionSeverityChange(response, reaction, severity);
+        (int mood, int passion) = p.NewMorale(0, reaction, severity); // applies + clamps morale, returns the delta
+
+        bool wasInSlump = p.InSlump;
+        if (wasInSlump)
+        {
+            float chance = Mathf.Clamp01(MoraleEffects.SlumpRecoveryChance(reaction) * recoveryMultiplier);
+            if (Random.value < chance) p.InSlump = false;
+        }
+
+        return new PlayerReaction
+        {
+            player = p, reaction = reaction, mood = mood, passion = passion,
+            wasInSlump = wasInSlump, recoveredFromSlump = wasInSlump && !p.InSlump
+        };
     }
 
     /// <summary>

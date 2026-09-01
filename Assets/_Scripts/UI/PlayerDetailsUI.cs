@@ -68,12 +68,10 @@ public class PlayerDetailsUI : UIPage
 
     void PopulateStats(Player player)
     {
-        for(int i = 0; i < Player.SKILL_NO; i++)
+        Player.Stats stats = player.GetStats();
+        foreach (PlayerStat stat in Player.SkillDisplayOrder)
         {
-            int value = player.GetStats().Skills[i];
-            string stat = ((PlayerStat)i).ToString();
-
-            Instantiate(statPrefab, statsContainer).SetText(stat, value);
+            Instantiate(statPrefab, statsContainer).SetText(stat.ToString(), stats.GetStat(stat));
         }
     }
 }

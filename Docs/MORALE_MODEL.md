@@ -15,7 +15,7 @@ creation) — morale is measured as the signed gap to that ideal, so "good moral
 
 ```
 passion drop per stat  fₚ = ceil(Sₚ / 3)     → applied to PassionStats (8)
-mood drop    per stat  f_m = ceil(S_m / 5)    → applied to MoodStats   (9)   [in a slump, M is treated as 0]
+mood drop    per stat  f_m = ceil(S_m / 5)    → applied to MoodStats   (11)  [in a slump, M is treated as 0]
 ```
 
 Passion is the **stronger** drop (÷3); mood is **weaker** (÷5); both use `ceil`, so any shortfall ≥1 costs at
@@ -24,7 +24,7 @@ least −1. Two coherent groups (Height & Durability never move):
 | Group | Driven by | Stats |
 |---|---|---|
 | **PassionStats** (physical / intensity) | Passion below ideal | Pace, Stamina, Strength, Jumping, Agility, Tackling, Heading, Aggression |
-| **MoodStats** (technical / mental / confidence) | Mood below ideal | Passing, Shooting, Dribbling, Crossing, Positioning, Creativity, Composure, Teamwork, Intelligence |
+| **MoodStats** (technical / mental / confidence) | Mood below ideal | Passing, Shooting, Technique, Dribbling, Crossing, Positioning, Creativity, Intelligence, Marking, Composure, Teamwork |
 
 Per-stat drop as a function of shortfall:
 
@@ -104,7 +104,7 @@ drop. E=30 → blunder **10.5%/min (~7/game).** *Too content and under-pumped: h
 low mood, high passion.*
 
 **D — Smart (ideal 70/80), M 38 / P 76.** Sₚ=4→**−2**; S_m=32→**−7** to all MoodStats normally. Slump 0.74%/min →
-~23%/half; **if he slumps, mood→0 → −14** to all 9 MoodStats (Passing/Creativity/Composure/Intelligence/…). *An
+~23%/half; **if he slumps, mood→0 → −14** to all 11 MoodStats (Passing/Technique/Creativity/Marking/…). *An
 unhappy playmaker has a poor game; a slump makes it a shocker until a team talk lifts him.*
 
 **E — Shy (ideal 100/70), M 70 / P 50.** Sₚ=20→**−7** PassionStats; S_m=30→**−6** MoodStats; slump 0.69%/min

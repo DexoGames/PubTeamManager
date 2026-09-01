@@ -1,5 +1,9 @@
 # Team Talk UI — build guide
 
+> ⚠️ **The editor wiring here is superseded by [`MATCH_SIM_AND_TEAM_TALK_BUILD.md`](MATCH_SIM_AND_TEAM_TALK_BUILD.md)**
+> (Part B) — it's more complete and fixes the overlay's visibility/parenting. **The reaction model below (§"The
+> reaction model") is still accurate** and is the best explanation of the severity/personality maths.
+
 The half-time team talk **reuses the exact 1-on-1 player-discussion system**, just broadcast to the whole squad.
 Every squad member shows as a little morale box along a shallow arch across the top of the screen; you pick one
 **response** — the same `Event.Response` options a discussion uses (**Praise, Encourage, Challenge, Persuade,

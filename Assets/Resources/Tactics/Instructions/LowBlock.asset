@@ -33,7 +33,7 @@ MonoBehaviour:
   - stat: 6
     group: 1
     strength: 2
-  - stat: 18
+  - stat: 20
     group: 1
     strength: 1
   - stat: 11

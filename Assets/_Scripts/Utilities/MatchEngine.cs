@@ -349,7 +349,12 @@ public class MatchEngine
     private static float AssistWeight(Player p)
     {
         var s = p.GetStats();
-        return 1f + s.Passing + s.Creativity + s.Crossing * 0.5f;
+        return 1f + WeightedAverage(
+            (s.Passing, 0.35f),
+            (s.Creativity, 0.25f),
+            (s.Technique, 0.20f),
+            (s.Crossing, 0.15f),
+            (s.Teamwork, 0.05f));
     }
 
     private ShotType SelectShotType(Phase.Type phase, float baseXG)
@@ -388,21 +393,33 @@ public class MatchEngine
     private float CalculatePlayerEffect(ShotType shotType, Player shooter, float baseXG)
     {
         var stats = shooter.GetStats();
-        float relevantSkill = stats.Shooting;
+        float relevantSkill = WeightedAverage((stats.Shooting, 0.7f), (stats.Technique, 0.3f));
         float composure = stats.Composure;
 
         switch (shotType)
         {
             case ShotType.Tap_In:
-                relevantSkill = stats.Positioning; break;
+                relevantSkill = WeightedAverage(
+                    (stats.Shooting, 0.4f), (stats.Positioning, 0.35f), (stats.Technique, 0.25f));
+                break;
             case ShotType.Header:
-                relevantSkill = (stats.Heading + stats.Jumping) / 2f; break;
+                relevantSkill = WeightedAverage(
+                    (stats.Heading, 0.38f), (stats.Jumping, 0.25f), (stats.Height, 0.15f),
+                    (stats.Strength, 0.12f), (stats.Positioning, 0.10f));
+                break;
             case ShotType.Solo:
-                relevantSkill = (stats.Shooting + stats.Dribbling) / 2f; break;
+                relevantSkill = WeightedAverage(
+                    (stats.Shooting, 0.3f), (stats.Dribbling, 0.3f), (stats.Technique, 0.2f),
+                    (stats.Pace, 0.1f), (stats.Agility, 0.1f));
+                break;
             case ShotType.Stylish:
-                relevantSkill = (stats.Shooting + stats.Creativity) / 2f; break;
+                relevantSkill = WeightedAverage(
+                    (stats.Technique, 0.35f), (stats.Shooting, 0.3f),
+                    (stats.Creativity, 0.2f), (stats.Agility, 0.15f));
+                break;
             case ShotType.Screamer:
-                relevantSkill = stats.Shooting;
+                relevantSkill = WeightedAverage(
+                    (stats.Shooting, 0.55f), (stats.Technique, 0.3f), (stats.Strength, 0.15f));
                 composure = (stats.Shooting + stats.Composure) / 2f; break;
         }
 
@@ -467,16 +484,31 @@ public class MatchEngine
 
     public float CalculateRandomness()
     {
-        float randomRange = 5 + (100 - match.HomeTeam.Tactic.Stability) / 25f + (100 - match.AwayTeam.Tactic.Stability) / 100f * 6f;
+        float averageStability = (match.HomeTeam.Tactic.Stability + match.AwayTeam.Tactic.Stability) * 0.5f;
+        float randomRange = 5f + (100f - averageStability) / 10f;
         return Random.Range(-randomRange, randomRange);
+    }
+
+    private static SquadStatProfile Profile(Team team, PlayerGroup players, PlayerGroup? relianceContext = null)
+    {
+        return team.GetGroup(players).StatProfile(team.Tactic, relianceContext ?? players);
+    }
+
+    private static (float value, float weight) PhaseStat(
+        SquadStatProfile profile,
+        PlayerStat stat,
+        float weight,
+        StatAggregation aggregation = StatAggregation.Cohesive)
+    {
+        return (profile.Get(stat, aggregation), weight);
     }
 
     public float ResolvePhase(Phase.Parameters parameters, Team attacking, Team defending, float overflow = 0f, bool debug = false)
     {
-        int attackingAbility = (int)WeightedAverage(parameters.AttackingStats);
-        int attackingTactic = (int)WeightedAverage(parameters.AttackingTactics);
-        int defendingAbility = (int)WeightedAverage(parameters.DefendingStats);
-        int defendingTactic = (int)WeightedAverage(parameters.DefendingTactics);
+        float attackingAbility = WeightedAverage(parameters.AttackingStats);
+        float attackingTactic = WeightedAverage(parameters.AttackingTactics);
+        float defendingAbility = WeightedAverage(parameters.DefendingStats);
+        float defendingTactic = WeightedAverage(parameters.DefendingTactics);
 
         float tacticDiff = attackingTactic - defendingTactic;
         float abilityDiff = attackingAbility - defendingAbility;
@@ -495,13 +527,13 @@ public class MatchEngine
         if (score > parameters.SuccessThreshold)
             result = Mathf.Pow(score - parameters.SuccessThreshold, 0.75f);
         else if (score < parameters.FailThreshold)
-            result = -Mathf.Pow(Mathf.Abs(score + parameters.FailThreshold), 0.75f);
+            result = -Mathf.Pow(parameters.FailThreshold - score, 0.75f);
 
         if (debug)
         {
             Debug.Log($"== {parameters.PhaseName.ToUpper()} PHASE ==");
-            Debug.Log($"Attacking Team: {attacking.Name} | Tactic: {attackingTactic}, Ability: {attackingAbility}");
-            Debug.Log($"Defending Team: {defending.Name} | Tactic: {defendingTactic}, Ability: {defendingAbility}");
+            Debug.Log($"Attacking Team: {attacking.Name} | Tactic: {attackingTactic:F1}, Ability: {attackingAbility:F1}");
+            Debug.Log($"Defending Team: {defending.Name} | Tactic: {defendingTactic:F1}, Ability: {defendingAbility:F1}");
             Debug.Log($"TacticDiff: {tacticDiff}, AbilityDiff: {abilityDiff}");
             Debug.Log($"TacticInfluence: {tacticInfluence:F2} | TacticWeight: {tacticWeight:F2} | AbilityWeight: {abilityWeight:F2}");
             Debug.Log($"WeightedTactic: {weightedTactic:F2}, WeightedAbility: {weightedAbility:F2}");
@@ -516,36 +548,43 @@ public class MatchEngine
 
     public float BuildLogic(Team attacking, Team defending, float overflow = 0f, bool debug = false)
     {
-        var atkStats = attacking.Defenders.AverageStats(attacking.Tactic, PlayerGroup.Defenders);
-        var defStats = defending.Attackers.AverageStats(defending.Tactic, PlayerGroup.Attackers);
+        SquadStatProfile atkStats = Profile(attacking, PlayerGroup.GoalkeeperAndDefense, PlayerGroup.Defenders);
+        SquadStatProfile defStats = Profile(defending, PlayerGroup.MidfieldAndAttack);
 
         var parameters = new Phase.Parameters
         {
             AttackingStats = new()
             {
-                (atkStats.Passing, 0.5f),
-                (atkStats.Intelligence, 0.5f),
-                (atkStats.Positioning, 0.2f),
-                (atkStats.Composure, 0.2f)
+                PhaseStat(atkStats, PlayerStat.Passing, 0.26f, StatAggregation.StarInfluenced),
+                PhaseStat(atkStats, PlayerStat.Technique, 0.20f, StatAggregation.WeakLinkInfluenced),
+                PhaseStat(atkStats, PlayerStat.Composure, 0.17f, StatAggregation.WeakLinkInfluenced),
+                PhaseStat(atkStats, PlayerStat.Intelligence, 0.14f),
+                PhaseStat(atkStats, PlayerStat.Teamwork, 0.10f),
+                PhaseStat(atkStats, PlayerStat.Positioning, 0.08f),
+                PhaseStat(atkStats, PlayerStat.Agility, 0.05f, StatAggregation.Mean)
             },
             AttackingTactics = new()
             {
-                (attacking.Tactic.Control, 0.5f),
-                (attacking.Tactic.Stability, 0.3f),
-                (attacking.Tactic.Security, 0.15f)
+                (attacking.Tactic.Control, 0.45f),
+                (attacking.Tactic.Stability, 0.35f),
+                (attacking.Tactic.Security, 0.20f)
             },
             DefendingStats = new()
             {
-                (defStats.Positioning, 0.5f),
-                (defStats.Intelligence, 0.3f),
-                (defStats.Teamwork, 0.2f),
-                (defStats.Aggression, 0.1f),
-                (defStats.Tackling, 0.1f)
+                PhaseStat(defStats, PlayerStat.Positioning, 0.20f),
+                PhaseStat(defStats, PlayerStat.Marking, 0.18f),
+                PhaseStat(defStats, PlayerStat.Intelligence, 0.15f),
+                PhaseStat(defStats, PlayerStat.Pace, 0.14f, StatAggregation.StarInfluenced),
+                PhaseStat(defStats, PlayerStat.Stamina, 0.10f),
+                PhaseStat(defStats, PlayerStat.Aggression, 0.09f, StatAggregation.Mean),
+                PhaseStat(defStats, PlayerStat.Tackling, 0.08f, StatAggregation.BestPairInfluenced),
+                PhaseStat(defStats, PlayerStat.Teamwork, 0.06f)
             },
             DefendingTactics = new()
             {
-                (defending.Tactic.Pressure, 1f),
-                (defending.Tactic.Intensity, 0.2f)
+                (defending.Tactic.Pressure, 0.55f),
+                (defending.Tactic.Intensity, 0.30f),
+                (defending.Tactic.Control, 0.15f)
             },
             PhaseName = "Build",
             TacticExponent = 1f,
@@ -560,38 +599,46 @@ public class MatchEngine
 
     public float ProgressLogic(Team attacking, Team defending, float overflow = 0f, bool debug = false)
     {
-        var atkStats = attacking.Midfielders.AverageStats(attacking.Tactic, PlayerGroup.Midfielders);
-        var defStats = defending.Midfielders.AverageStats(defending.Tactic, PlayerGroup.Midfielders);
+        SquadStatProfile atkStats = Profile(attacking, PlayerGroup.Midfielders);
+        SquadStatProfile defStats = Profile(defending, PlayerGroup.Midfielders);
 
         var parameters = new Phase.Parameters
         {
             AttackingStats = new()
             {
-                (atkStats.Passing, 0.4f),
-                (atkStats.Intelligence, 0.2f),
-                (atkStats.Positioning, 0.2f),
-                (atkStats.Creativity, 0.2f),
-                (atkStats.Dribbling, 0.2f)
+                PhaseStat(atkStats, PlayerStat.Passing, 0.23f),
+                PhaseStat(atkStats, PlayerStat.Technique, 0.18f),
+                PhaseStat(atkStats, PlayerStat.Intelligence, 0.14f),
+                PhaseStat(atkStats, PlayerStat.Positioning, 0.12f),
+                PhaseStat(atkStats, PlayerStat.Teamwork, 0.10f),
+                PhaseStat(atkStats, PlayerStat.Dribbling, 0.09f, StatAggregation.StarInfluenced),
+                PhaseStat(atkStats, PlayerStat.Creativity, 0.08f, StatAggregation.StarInfluenced),
+                PhaseStat(atkStats, PlayerStat.Composure, 0.06f, StatAggregation.WeakLinkInfluenced)
             },
             AttackingTactics = new()
             {
-                (attacking.Tactic.Stability, 0.5f),
-                (attacking.Tactic.Control, 0.3f),
-                (attacking.Tactic.Security, 0.1f)
+                (attacking.Tactic.Control, 0.40f),
+                (attacking.Tactic.Stability, 0.30f),
+                (attacking.Tactic.Creativity, 0.20f),
+                (attacking.Tactic.Security, 0.10f)
             },
             DefendingStats = new()
             {
-                (defStats.Positioning, 0.5f),
-                (defStats.Intelligence, 0.4f),
-                (defStats.Teamwork, 0.2f),
-                (defStats.Aggression, 0.1f),
-                (defStats.Tackling, 0.1f)
+                PhaseStat(defStats, PlayerStat.Marking, 0.21f),
+                PhaseStat(defStats, PlayerStat.Positioning, 0.19f),
+                PhaseStat(defStats, PlayerStat.Intelligence, 0.15f),
+                PhaseStat(defStats, PlayerStat.Tackling, 0.14f, StatAggregation.BestPairInfluenced),
+                PhaseStat(defStats, PlayerStat.Teamwork, 0.11f),
+                PhaseStat(defStats, PlayerStat.Agility, 0.08f),
+                PhaseStat(defStats, PlayerStat.Stamina, 0.07f),
+                PhaseStat(defStats, PlayerStat.Aggression, 0.05f, StatAggregation.Mean)
             },
             DefendingTactics = new()
             {
-                (defending.Tactic.Pressure, 0.2f),
-                (defending.Tactic.Intensity, 0.2f),
-                (defending.Tactic.Stability, 0.1f)
+                (defending.Tactic.Pressure, 0.35f),
+                (defending.Tactic.Stability, 0.30f),
+                (defending.Tactic.Intensity, 0.20f),
+                (defending.Tactic.Security, 0.15f)
             },
             PhaseName = "Progress",
             TacticExponent = 1f,
@@ -606,41 +653,48 @@ public class MatchEngine
 
     public float ProbeLogic(Team attacking, Team defending, float overflow = 0f, bool debug = false)
     {
-        var atkStats = attacking.Attackers.Union(attacking.Midfielders).ToArray().AverageStats(attacking.Tactic, PlayerGroup.MidfieldAndAttack);
-        var defStats = defending.Defenders.AverageStats(defending.Tactic, PlayerGroup.Defenders);
+        SquadStatProfile atkStats = Profile(attacking, PlayerGroup.MidfieldAndAttack);
+        SquadStatProfile defStats = Profile(defending, PlayerGroup.Defenders);
 
         var parameters = new Phase.Parameters
         {
             AttackingStats = new()
             {
-                (atkStats.Intelligence, 0.4f),
-                (atkStats.Passing, 0.3f),
-                (atkStats.Composure, 0.3f),
-                (atkStats.Positioning, 0.3f),
-                (atkStats.Creativity, 0.2f),
-                (atkStats.Dribbling, 0.2f),
-                (atkStats.Crossing, 0.1f)
+                PhaseStat(atkStats, PlayerStat.Creativity, 0.20f, StatAggregation.StarInfluenced),
+                PhaseStat(atkStats, PlayerStat.Intelligence, 0.16f),
+                PhaseStat(atkStats, PlayerStat.Technique, 0.15f),
+                PhaseStat(atkStats, PlayerStat.Passing, 0.13f),
+                PhaseStat(atkStats, PlayerStat.Composure, 0.11f),
+                PhaseStat(atkStats, PlayerStat.Positioning, 0.10f, StatAggregation.BestPairInfluenced),
+                PhaseStat(atkStats, PlayerStat.Dribbling, 0.08f, StatAggregation.BestPairInfluenced),
+                PhaseStat(atkStats, PlayerStat.Crossing, 0.04f, StatAggregation.StarInfluenced),
+                PhaseStat(atkStats, PlayerStat.Teamwork, 0.03f)
             },
             AttackingTactics = new()
             {
-                (attacking.Tactic.Creativity, 0.5f),
-                (attacking.Tactic.Control, 0.3f),
-                (attacking.Tactic.Stability, 0.3f),
-                (attacking.Tactic.Pressure, 0.2f)
+                (attacking.Tactic.Creativity, 0.40f),
+                (attacking.Tactic.Control, 0.30f),
+                (attacking.Tactic.Stability, 0.20f),
+                (attacking.Tactic.Pressure, 0.10f)
             },
             DefendingStats = new()
             {
-                (defStats.Positioning, 0.5f),
-                (defStats.Teamwork, 0.4f),
-                (defStats.Composure, 0.2f),
-                (defStats.Aggression, 0.2f),
-                (defStats.Tackling, 0.2f)
+                PhaseStat(defStats, PlayerStat.Marking, 0.22f),
+                PhaseStat(defStats, PlayerStat.Positioning, 0.21f),
+                PhaseStat(defStats, PlayerStat.Intelligence, 0.15f),
+                PhaseStat(defStats, PlayerStat.Teamwork, 0.13f),
+                PhaseStat(defStats, PlayerStat.Composure, 0.09f),
+                PhaseStat(defStats, PlayerStat.Tackling, 0.08f, StatAggregation.BestPairInfluenced),
+                PhaseStat(defStats, PlayerStat.Agility, 0.05f),
+                PhaseStat(defStats, PlayerStat.Heading, 0.04f),
+                PhaseStat(defStats, PlayerStat.Aggression, 0.03f, StatAggregation.Mean)
             },
             DefendingTactics = new()
             {
-                (defending.Tactic.Security, 0.5f),
-                (Mathf.Max(40, 100 - defending.Tactic.DefensiveWidth), 0.3f),
-                (defending.Tactic.Pressure, 0.2f)
+                (defending.Tactic.Security, 0.45f),
+                (Mathf.Max(40, 100 - defending.Tactic.DefensiveWidth), 0.25f),
+                (defending.Tactic.Stability, 0.20f),
+                (defending.Tactic.Pressure, 0.10f)
             },
             PhaseName = "Probe",
             TacticExponent = 1f,
@@ -655,38 +709,46 @@ public class MatchEngine
 
     public float AdvanceLogic(Team attacking, Team defending, float overflow = 0f, bool debug = false)
     {
-        var atkStats = attacking.Midfielders.AverageStats(attacking.Tactic, PlayerGroup.Midfielders);
-        var defStats = defending.Midfielders.AverageStats(defending.Tactic, PlayerGroup.Midfielders);
+        SquadStatProfile atkStats = Profile(attacking, PlayerGroup.MidfieldAndAttack);
+        SquadStatProfile defStats = Profile(defending, PlayerGroup.DefenseAndMidfield);
 
         var parameters = new Phase.Parameters
         {
             AttackingStats = new()
             {
-                (atkStats.Creativity, 0.5f),
-                (atkStats.Passing, 0.3f),
-                (atkStats.Crossing, 0.2f),
-                (atkStats.Dribbling, 0.2f),
-                (atkStats.Teamwork, 0.2f),
-                (atkStats.Pace, 0.2f)
+                PhaseStat(atkStats, PlayerStat.Pace, 0.21f, StatAggregation.StarInfluenced),
+                PhaseStat(atkStats, PlayerStat.Dribbling, 0.16f, StatAggregation.BestPairInfluenced),
+                PhaseStat(atkStats, PlayerStat.Technique, 0.14f),
+                PhaseStat(atkStats, PlayerStat.Passing, 0.12f),
+                PhaseStat(atkStats, PlayerStat.Creativity, 0.11f, StatAggregation.StarInfluenced),
+                PhaseStat(atkStats, PlayerStat.Crossing, 0.09f, StatAggregation.StarInfluenced),
+                PhaseStat(atkStats, PlayerStat.Agility, 0.08f, StatAggregation.BestPairInfluenced),
+                PhaseStat(atkStats, PlayerStat.Teamwork, 0.05f),
+                PhaseStat(atkStats, PlayerStat.Stamina, 0.04f)
             },
             AttackingTactics = new()
             {
-                (attacking.Tactic.Creativity, 0.5f),
-                (attacking.Tactic.Intensity, 0.3f),
-                (attacking.Tactic.Security, 0.1f)
+                (attacking.Tactic.Creativity, 0.40f),
+                (attacking.Tactic.Intensity, 0.30f),
+                (attacking.Tactic.Control, 0.20f),
+                (attacking.Tactic.Security, 0.10f)
             },
             DefendingStats = new()
             {
-                (defStats.Positioning, 0.5f),
-                (defStats.Tackling, 0.3f),
-                (defStats.Teamwork, 0.3f),
-                (defStats.Aggression, 0.2f)
+                PhaseStat(defStats, PlayerStat.Pace, 0.21f, StatAggregation.WeakLinkInfluenced),
+                PhaseStat(defStats, PlayerStat.Positioning, 0.19f),
+                PhaseStat(defStats, PlayerStat.Marking, 0.17f),
+                PhaseStat(defStats, PlayerStat.Tackling, 0.14f, StatAggregation.BestPairInfluenced),
+                PhaseStat(defStats, PlayerStat.Agility, 0.10f, StatAggregation.WeakLinkInfluenced),
+                PhaseStat(defStats, PlayerStat.Teamwork, 0.08f),
+                PhaseStat(defStats, PlayerStat.Stamina, 0.06f),
+                PhaseStat(defStats, PlayerStat.Strength, 0.05f)
             },
             DefendingTactics = new()
             {
-                (defending.Tactic.Pressure, 0.5f),
-                (defending.Tactic.Security, 0.3f),
-                (defending.Tactic.Stability, 0.1f)
+                (defending.Tactic.Pressure, 0.40f),
+                (defending.Tactic.Security, 0.35f),
+                (defending.Tactic.Stability, 0.25f)
             },
             PhaseName = "Advance",
             TacticExponent = 0.95f,
@@ -701,41 +763,50 @@ public class MatchEngine
 
     public float PenetrateLogic(Team attacking, Team defending, float overflow = 0f, bool debug = false)
     {
-        var atkStats = attacking.Attackers.AverageStats(attacking.Tactic, PlayerGroup.Attackers);
-        var defStats = defending.Defenders.AverageStats(defending.Tactic, PlayerGroup.Defenders);
+        SquadStatProfile atkStats = Profile(attacking, PlayerGroup.MidfieldAndAttack);
+        SquadStatProfile defStats = Profile(defending, PlayerGroup.Defenders);
 
         var parameters = new Phase.Parameters
         {
             AttackingStats = new()
             {
-                (atkStats.Creativity, 0.5f),
-                (atkStats.Crossing, 0.3f),
-                (atkStats.Dribbling, 0.3f),
-                (atkStats.Passing, 0.2f),
-                (atkStats.Teamwork, 0.2f),
-                (atkStats.Pace, 0.1f),
+                PhaseStat(atkStats, PlayerStat.Technique, 0.15f),
+                PhaseStat(atkStats, PlayerStat.Dribbling, 0.15f, StatAggregation.BestPairInfluenced),
+                PhaseStat(atkStats, PlayerStat.Creativity, 0.14f, StatAggregation.StarInfluenced),
+                PhaseStat(atkStats, PlayerStat.Passing, 0.11f),
+                PhaseStat(atkStats, PlayerStat.Crossing, 0.10f, StatAggregation.StarInfluenced),
+                PhaseStat(atkStats, PlayerStat.Positioning, 0.10f, StatAggregation.BestPairInfluenced),
+                PhaseStat(atkStats, PlayerStat.Composure, 0.09f),
+                PhaseStat(atkStats, PlayerStat.Pace, 0.07f, StatAggregation.StarInfluenced),
+                PhaseStat(atkStats, PlayerStat.Heading, 0.05f, StatAggregation.BestPairInfluenced),
+                PhaseStat(atkStats, PlayerStat.Teamwork, 0.04f)
             },
             AttackingTactics = new()
             {
-                (attacking.Tactic.Creativity, 1f),
-                (attacking.Tactic.Intensity, 0.4f),
-                (attacking.Tactic.Security, 0.1f)
+                (attacking.Tactic.Creativity, 0.55f),
+                (attacking.Tactic.Intensity, 0.30f),
+                (attacking.Tactic.Control, 0.15f)
             },
             DefendingStats = new()
             {
-                (defStats.Positioning, 0.5f),
-                (defStats.Tackling, 0.4f),
-                (defStats.Teamwork, 0.4f),
-                (defStats.Aggression, 0.2f),
-                (defStats.Strength, 0.2f)
+                PhaseStat(defStats, PlayerStat.Marking, 0.19f),
+                PhaseStat(defStats, PlayerStat.Positioning, 0.18f),
+                PhaseStat(defStats, PlayerStat.Tackling, 0.15f, StatAggregation.BestPairInfluenced),
+                PhaseStat(defStats, PlayerStat.Strength, 0.10f),
+                PhaseStat(defStats, PlayerStat.Agility, 0.10f),
+                PhaseStat(defStats, PlayerStat.Teamwork, 0.09f),
+                PhaseStat(defStats, PlayerStat.Composure, 0.06f),
+                PhaseStat(defStats, PlayerStat.Jumping, 0.05f, StatAggregation.BestPairInfluenced),
+                PhaseStat(defStats, PlayerStat.Heading, 0.05f, StatAggregation.BestPairInfluenced),
+                PhaseStat(defStats, PlayerStat.Height, 0.03f, StatAggregation.BestPairInfluenced)
             },
             DefendingTactics = new()
             {
-                (defending.Tactic.Security, 0.5f),
-                (defending.Tactic.Control, 0.2f),
-                (defending.Tactic.Stability, 0.2f)
+                (defending.Tactic.Security, 0.50f),
+                (defending.Tactic.Stability, 0.30f),
+                (defending.Tactic.Control, 0.20f)
             },
-            PhaseName = "Strike",
+            PhaseName = "Penetrate",
             TacticExponent = 0.95f,
             AbilityExponent = 0.75f,
             RandomnessBonus = 0,
@@ -748,36 +819,45 @@ public class MatchEngine
 
     public float CounterLogic(Team attacking, Team defending, float overflow = 0f, bool debug = false)
     {
-        var atkStats = attacking.Midfielders.Union(attacking.Defenders).ToArray().AverageStats(attacking.Tactic, PlayerGroup.DefenseAndMidfield);
-        var defStats = defending.Midfielders.Union(defending.Attackers).ToArray().AverageStats(defending.Tactic, PlayerGroup.MidfieldAndAttack);
+        SquadStatProfile atkStats = Profile(attacking, PlayerGroup.DefenseAndMidfield);
+        SquadStatProfile defStats = Profile(defending, PlayerGroup.MidfieldAndAttack);
 
         var parameters = new Phase.Parameters
         {
             AttackingStats = new()
             {
-                (atkStats.Pace, 0.6f),
-                (atkStats.Creativity, 0.3f),
-                (atkStats.Crossing, 0.2f),
-                (atkStats.Dribbling, 0.2f),
-                (atkStats.Passing, 0.2f)
+                PhaseStat(atkStats, PlayerStat.Passing, 0.20f, StatAggregation.StarInfluenced),
+                PhaseStat(atkStats, PlayerStat.Technique, 0.15f),
+                PhaseStat(atkStats, PlayerStat.Intelligence, 0.14f),
+                PhaseStat(atkStats, PlayerStat.Creativity, 0.13f, StatAggregation.StarInfluenced),
+                PhaseStat(atkStats, PlayerStat.Pace, 0.12f, StatAggregation.StarInfluenced),
+                PhaseStat(atkStats, PlayerStat.Dribbling, 0.10f, StatAggregation.BestPairInfluenced),
+                PhaseStat(atkStats, PlayerStat.Composure, 0.08f, StatAggregation.WeakLinkInfluenced),
+                PhaseStat(atkStats, PlayerStat.Teamwork, 0.05f),
+                PhaseStat(atkStats, PlayerStat.Stamina, 0.03f)
             },
             AttackingTactics = new()
             {
-                (Mathf.Max(20, 100 - attacking.Tactic.Stability), 0.5f),
-                (attacking.Tactic.Intensity, 0.5f)
+                (Mathf.Max(20, 100 - attacking.Tactic.Stability), 0.45f),
+                (attacking.Tactic.Intensity, 0.40f),
+                (attacking.Tactic.Creativity, 0.15f)
             },
             DefendingStats = new()
             {
-                (defStats.Pace, 0.6f),
-                (defStats.Tackling, 0.3f),
-                (defStats.Positioning, 0.2f),
-                (defStats.Aggression, 0.1f)
+                PhaseStat(defStats, PlayerStat.Pace, 0.20f, StatAggregation.WeakLinkInfluenced),
+                PhaseStat(defStats, PlayerStat.Marking, 0.18f),
+                PhaseStat(defStats, PlayerStat.Positioning, 0.16f),
+                PhaseStat(defStats, PlayerStat.Tackling, 0.13f, StatAggregation.BestPairInfluenced),
+                PhaseStat(defStats, PlayerStat.Stamina, 0.11f),
+                PhaseStat(defStats, PlayerStat.Aggression, 0.08f, StatAggregation.Mean),
+                PhaseStat(defStats, PlayerStat.Teamwork, 0.08f),
+                PhaseStat(defStats, PlayerStat.Intelligence, 0.06f)
             },
             DefendingTactics = new()
             {
-                (defending.Tactic.Security, 1f),
-                (defending.Tactic.Stability, 0.3f),
-                (defending.Tactic.Pressure, 0.1f)
+                (defending.Tactic.Security, 0.55f),
+                (defending.Tactic.Stability, 0.30f),
+                (defending.Tactic.Pressure, 0.15f)
             },
             PhaseName = "Counter",
             TacticExponent = 0.9f,
@@ -792,34 +872,44 @@ public class MatchEngine
 
     public float BreakLogic(Team attacking, Team defending, float overflow = 0f, bool debug = false)
     {
-        var atkStats = attacking.Attackers.AverageStats(attacking.Tactic, PlayerGroup.Attackers);
-        var defStats = defending.Defenders.AverageStats(defending.Tactic, PlayerGroup.Defenders);
+        SquadStatProfile atkStats = Profile(attacking, PlayerGroup.Attackers);
+        SquadStatProfile defStats = Profile(defending, PlayerGroup.Defenders);
 
         var parameters = new Phase.Parameters
         {
             AttackingStats = new()
             {
-                (atkStats.Creativity, 0.4f),
-                (atkStats.Pace, 0.4f),
-                (atkStats.Crossing, 0.2f),
-                (atkStats.Dribbling, 0.2f),
-                (atkStats.Passing, 0.1f)
+                PhaseStat(atkStats, PlayerStat.Pace, 0.23f, StatAggregation.StarInfluenced),
+                PhaseStat(atkStats, PlayerStat.Dribbling, 0.16f, StatAggregation.BestPairInfluenced),
+                PhaseStat(atkStats, PlayerStat.Technique, 0.14f),
+                PhaseStat(atkStats, PlayerStat.Composure, 0.12f),
+                PhaseStat(atkStats, PlayerStat.Passing, 0.10f),
+                PhaseStat(atkStats, PlayerStat.Creativity, 0.09f, StatAggregation.StarInfluenced),
+                PhaseStat(atkStats, PlayerStat.Positioning, 0.08f, StatAggregation.BestPairInfluenced),
+                PhaseStat(atkStats, PlayerStat.Agility, 0.05f, StatAggregation.BestPairInfluenced),
+                PhaseStat(atkStats, PlayerStat.Stamina, 0.03f)
             },
             AttackingTactics = new()
             {
-                (attacking.Tactic.Creativity, 1f),
-                (attacking.Tactic.Intensity, 0.5f)
+                (attacking.Tactic.Creativity, 0.55f),
+                (attacking.Tactic.Intensity, 0.45f)
             },
             DefendingStats = new()
             {
-                (defStats.Pace, 0.4f),
-                (defStats.Tackling, 0.3f),
-                (defStats.Positioning, 0.2f)
+                PhaseStat(defStats, PlayerStat.Pace, 0.23f, StatAggregation.WeakLinkInfluenced),
+                PhaseStat(defStats, PlayerStat.Positioning, 0.19f),
+                PhaseStat(defStats, PlayerStat.Marking, 0.17f, StatAggregation.WeakLinkInfluenced),
+                PhaseStat(defStats, PlayerStat.Tackling, 0.13f, StatAggregation.BestPairInfluenced),
+                PhaseStat(defStats, PlayerStat.Composure, 0.08f, StatAggregation.WeakLinkInfluenced),
+                PhaseStat(defStats, PlayerStat.Strength, 0.07f),
+                PhaseStat(defStats, PlayerStat.Agility, 0.06f, StatAggregation.WeakLinkInfluenced),
+                PhaseStat(defStats, PlayerStat.Teamwork, 0.04f),
+                PhaseStat(defStats, PlayerStat.Heading, 0.03f)
             },
             DefendingTactics = new()
             {
-                (defending.Tactic.Security, 1f),
-                (defending.Tactic.Stability, 0.2f)
+                (defending.Tactic.Security, 0.70f),
+                (defending.Tactic.Stability, 0.30f)
             },
             PhaseName = "Break",
             TacticExponent = 0.9f,

@@ -26,7 +26,10 @@ public enum DrillId
     // Special
     TacticDrills,   // tactic familiarity
     TeamSocial,     // morale
-    Positional      // position strength
+    Positional,     // position strength
+    // Appended for save compatibility.
+    Technique,
+    Marking
 }
 
 /// <summary>
@@ -71,6 +74,8 @@ public static class DrillCatalog
             new[] { PlayerStat.Passing },   "Tightens distribution. Boosts Passing."),
         new Drill(DrillId.Defending, "Defensive Training",  TrainingType.Technical,
             new[] { PlayerStat.Tackling },  "Drills tackling and challenges. Boosts Tackling."),
+        new Drill(DrillId.Technique, "Technique Sessions",  TrainingType.Technical,
+            new[] { PlayerStat.Technique },  "Sharpens first touch and execution. Boosts Technique."),
         new Drill(DrillId.Dribbling, "Dribbling Drills",    TrainingType.Technical,
             new[] { PlayerStat.Dribbling }, "Improves close control. Boosts Dribbling."),
         new Drill(DrillId.Crossing,  "Crossing Practice",   TrainingType.Technical,
@@ -83,6 +88,8 @@ public static class DrillCatalog
             new[] { PlayerStat.Positioning },  "Shape and movement off the ball. Boosts Positioning."),
         new Drill(DrillId.TacticalAwareness, "Tactical Awareness",  TrainingType.Mental,
             new[] { PlayerStat.Intelligence }, "Reading the game. Boosts Intelligence."),
+        new Drill(DrillId.Marking,           "Marking Practice",    TrainingType.Mental,
+            new[] { PlayerStat.Marking },      "Works on tracking runners and defensive focus. Boosts Marking."),
         new Drill(DrillId.CreativePlay,      "Creative Play",       TrainingType.Mental,
             new[] { PlayerStat.Creativity },   "Encourages flair and invention. Boosts Creativity."),
         new Drill(DrillId.TeamBonding,       "Team Bonding Drills", TrainingType.Mental,
