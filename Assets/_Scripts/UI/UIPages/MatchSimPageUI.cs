@@ -16,7 +16,6 @@ public class MatchSimPageUI : UIPage
     [SerializeField] Button _advanceButton, _pauseButton;
 
     [Header("In-match tactics")]
-    [Tooltip("Label showing the current mentality; updated by the More Attacking/Defensive buttons.")]
     [SerializeField] TextMeshProUGUI _mentalityText;
     [Tooltip("Shown only at half-time: holds the Team Talk + Edit Tactics buttons.")]
     [SerializeField] GameObject _halfTimePanel;

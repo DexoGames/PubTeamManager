@@ -29,20 +29,27 @@ instincts. The deep code/design context lives in [PROJECT_OVERVIEW.md](PROJECT_O
   than copy-paste. (Strong preference — I've pushed back on this before.)
 - **Derive-on-read** where consistency matters (one source of truth); only denormalize deliberately.
 - **Tunables as `const`/`SerializeField` with a short comment**, never buried magic numbers.
-- **Robust/defensive, but NOT cluttered.** Graceful degradation and rebuilding any `[JsonIgnore]` field the runtime
-  reads in `OnAfterDeserialize` (recurring bug class) are wanted. But **do not null-check things that can't
-  realistically be null during play** — it clutters the code and I'll ask you to strip it:
-  - **Core singletons/state:** `TeamManager.Instance`, `.MyTeam`, `.MyTeam.Tactic`, and the persistent manager
-    singletons (`GameManager`/`UIManager`/`SaveManager`/`CalenderManager`/`ScheduleManager`/…). They exist for the
-    whole session — guard once at load or in the few genuinely relevant spots, not on every access. (Controllers'
-    load/generation-order guards and page-instance cross-refs that may not be in the scene are fine to keep.)
-  - **Inspector-assigned `[SerializeField]` references** — their assignment is implied, so no null risk. (Keep guards
-    on ones explicitly tooltipped *Optional*, on `GetComponent`/`GetComponentInChildren`/`FindObjectOfType` results,
-    and on array elements — those genuinely can be null.)
-  - Extend this to other obvious "can't be null here" cases.
-- **Comments earn their place.** Only comment complex/non-obvious logic. Don't restate what the code already says when
-  the name or flow is self-explanatory, and delete conversational/narrative asides ("// 1. …", "// CRITICAL FIX",
-  "request 2"). Strip restating comments on sight.
+- **Let it crash on a wiring mistake — do NOT null-check `[SerializeField]` references (IMPORTANT).** If a
+  reference isn't assigned in the Inspector that's a *bug I need to see*, so I want the `NullReferenceException`
+  pointing straight at it. Never write `if (x != null) x.foo = ...` around an inspector field, never silently
+  no-op, and never invent an "Optional" field with a `GetComponent` fallback to justify a guard. Every serialized
+  reference is assumed wired. If something genuinely should be optional, say so and ask — don't guard by default.
+- **Don't null-check core singletons/state either:** `TeamManager.Instance`, `.MyTeam`, `.MyTeam.Tactic`, and the
+  persistent managers (`GameManager`/`UIManager`/`SaveManager`/`CalenderManager`/`ScheduleManager`/`InterviewManager`/…).
+  They exist for the whole session — guard once at load, or in the few genuinely relevant spots, not on every access.
+  (Controllers' load/generation-order guards and page-instance cross-refs that may not be in the scene are fine.)
+- **Guards that DO earn their place:** genuine runtime state that can legitimately be absent (no interviewee yet,
+  an empty slot, a dictionary/lookup miss, a nullable the caller may omit), and rebuilding any `[JsonIgnore]` field
+  the runtime reads in `OnAfterDeserialize` (recurring bug class). Graceful degradation of *data*, yes; defensive
+  padding around *wiring*, no.
+- **Comments earn their place.** Only comment complex/non-obvious logic — the WHY, a hidden constraint, a balance
+  reason. Don't restate what the code already says when the name or flow is self-explanatory, and delete
+  conversational/narrative asides ("// 1. …", "// CRITICAL FIX", "request 2"). Strip restating comments on sight.
+- **Same bar for `[Tooltip]` and `/// <summary>` (IMPORTANT).** No tooltip on a field whose name already says it
+  (`nameText`, `background`, `selectButton`); no `<summary>` on a method whose name already says it (`RefreshMorale`,
+  `SetSelectable`, `Setup`). Reserve tooltips for balance tunables whose *meaning or range* isn't obvious, and
+  summaries for the class-level "what is this screen/system and how does it fit together" note plus genuinely
+  non-obvious methods. Doc-comment noise is as unwelcome as comment noise.
 - **Match the surrounding file's style and idioms.**
 
 ## The one design rule

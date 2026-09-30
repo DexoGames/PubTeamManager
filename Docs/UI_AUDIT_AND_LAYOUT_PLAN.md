@@ -9,6 +9,10 @@ one records reality — see [§7 Doc drift](#7--doc-drift).
 
 Everything below is either **[SCENE]** (fix in the editor, no code) or **[CODE]** (drop-in script change).
 
+> **Status:** every **[CODE]** item is now **done and in the working tree** — see §8 for the list. Everything left
+> is **[SCENE]** editor work, laid out step by step in §8. For a whole-project sweep of *other* incomplete wiring,
+> dead code and described-but-unbuilt features, see [`COMPLETENESS_AUDIT.md`](COMPLETENESS_AUDIT.md).
+
 ---
 
 ## 0. Method
@@ -65,9 +69,9 @@ the Team Talk overlaps in §3 went unnoticed.
 **Fix:** rename to the serialized field name (`SituationText`, `FlavourText`, `OverallText`, `TalksRemainingText`,
 `HeaderText`, `CandidateInfoText`, …). Renaming does **not** break references — Unity tracks fileIDs, not names.
 
-Special case: **`Assets/Prefabs/Matchca.prefab` is the player morale box.** Rename it `PlayerMoraleBox` and rename
-its children (`Name`, `MoraleIcon`, `MoraleText`, `ReactionText`, `Bubble/BubbleText`). The old build doc already
-flagged this and it's still outstanding — it's why the prefab is hard to find.
+Special case: the player morale box prefab has already been renamed from `Matchca.prefab` to
+**`Assets/Prefabs/TeamTalk/HalfTimePlayer.prefab`**. Its children (`Name`, `MoraleIcon`, `MoraleText`,
+`ReactionText`, `Bubble/BubbleText`) still want the same renaming pass described above if not already done.
 
 ### 2.3 `using UnityEngine.UIElements;` in uGUI files — **[CODE]**
 
@@ -90,6 +94,26 @@ match (`Back()` already no-ops mid-match, but a visibly dead button is worse tha
 
 While you're in `Constants`: `hideForMatchSim` currently holds 7 of the 9 children — **`Exit` and `ResumeGame_Btn`
 are not hidden during a match.** A live Exit button over the match screen is a footgun.
+
+### 2.5 🔴 A UnityEvent still targets a deleted class — **[SCENE]**
+
+The Competition page's prev/next week buttons both carry a persistent call with:
+
+```
+m_Target: {fileID: 0}
+m_TargetAssemblyTypeName: FixtureListUI, Assembly-CSharp
+m_MethodName: ChangeWeekFocus
+```
+
+`FixtureListUI` no longer exists — the class was renamed to `CompetitionPageUI` (which still declares
+`ChangeWeekFocus(int)` at `CompetitionPageUI.cs:30`). A renamed MonoBehaviour does **not** carry its UnityEvent
+subscribers across, so both buttons are inert and the Inspector shows a missing-method entry on each.
+
+**Fix:** delete the dead entry on each button, then re-add: **+** → drag the **Competition Page** object →
+`CompetitionPageUI.ChangeWeekFocus`, argument `-1` (prev) / `+1` (next).
+
+> Worth a sweep whenever a UI class is renamed: Inspector-hooked methods are matched by **class name string**, so a
+> rename silently unhooks every button that called into it. Only `ChangeWeekFocus` is affected today.
 
 ---
 
@@ -276,6 +300,19 @@ gives it an opaque background), take it out of the HLG flow: keep it parented to
 with **Ignore Layout** ticked and stretch it `0,0`–`1,1`. Then `SetMatchContentVisible` can stop disabling siblings
 altogether.
 
+### 4.5 🔴 BLOCKER — half-time "Edit Tactics" is a one-way trip
+
+`TacticsPageUI.resumeMatchButton` is assigned (→ `Canvas > Constants > ResumeGame_Btn`, which starts inactive and is
+switched on by `EnterReturnToMatchMode`). But that Button's **OnClick list is empty** — `m_PersistentCalls.m_Calls: []`
+— and `TacticsPageUI.ResumeMatch` is hooked nowhere in the project.
+
+So at half-time: **Edit Tactics** → the tactics page opens, the Resume button appears, clicking it does nothing.
+`UIManager.Back()` also refuses to run mid-match by design, and the nav bar is hidden. The match is stranded.
+
+`NEW_SYSTEMS_BUILD.md:188` and `WIRING_RECRUITMENT_HALFTIME_SIM.md` §3b both specify this hook; it was never made.
+
+**Fix — [SCENE]:** `ResumeGame_Btn` → OnClick **+** → drag the **Tactics Page** object → `TacticsPageUI.ResumeMatch`.
+
 ---
 
 ## 5. Recruitment page
@@ -388,7 +425,7 @@ Also: **`Horizontal` is ticked** on the ScrollRect and a horizontal scrollbar is
 
 **Fix:** untick `Horizontal`, delete `Scrollbar Horizontal`, add `ContentSizeFitter` (Vertical = Preferred Size) to
 `Content`. And widen the cell — 150px cannot show "Strength & Conditioning". A `VerticalLayoutGroup` list at full
-column width (as `TRAINING_UI_LAYOUT.md` originally specified) suits 18 named drills better than a 4-column grid;
+column width suits 18 named drills better than a 4-column grid;
 if you keep the grid, go to 2 columns at ~340 wide.
 
 ### 6.3 🟠 `InfoPanel` is three hand-anchored blocks — **[SCENE]**
@@ -406,9 +443,11 @@ the three children, and `EffectText` on flexibleHeight 1.
 slot is filled, `PlayerSlotUI.Refresh()` shows the name alone — so after picking you can't see whether your five
 picks were a good fit without reopening the picker.
 
-**Fix:** add a second TMP to `TrainingPlayerSlot.prefab` for the descriptor line. **[CODE]** needs a small
-`PlayerSlotUI` addition (optional `subLabel` + keep the `describe` func around after the pick) — deliberately kept
-optional so the prefab degrades to today's behaviour, matching how `PlayerMoraleBoxUI` handles its optional refs.
+**Fix (CODE done, SCENE outstanding):** `PlayerSlotUI` now has a `subLabel` field and keeps the `describe` func
+around after the pick, re-running it whenever the target position changes. **`TrainingPlayerSlot.prefab` still has
+no second TMP**, so `subLabel` is unassigned — and the field is **required** (house style: inspector refs are not
+null-checked), so the positional panel throws a `NullReferenceException` in `Refresh()` until you add it.
+Add a second TMP under the slot (below the name) and assign it to `Sub Label`.
 
 ### 6.5 🟡 `PositionalPanel` has no layout group — **[SCENE]**
 
@@ -421,8 +460,8 @@ Dropdown at the top, count text at the top, four slots wherever they were droppe
 
 | Doc | Status |
 |---|---|
-| `TRAINING_UI_LAYOUT.md` | **Stale.** Describes `playerListContainer` + `playerRowPrefab` (Toggle rows). Those fields no longer exist — the code uses `playerSlots[]` + `PlayerPickerPopup`. Also specifies a VLG drill list; the scene has a grid. |
-| `MATCH_SIM_AND_TEAM_TALK_BUILD.md` appendix | Partly stale. Its "left to do" item 1 (assign a `ResponseManager`) **is done**; items 2 (stretch anchors), 3 (opaque background) and 4 (Close button) are **still outstanding** — see §3.1/§3.6. |
+| `TRAINING_UI_LAYOUT.md` | **Deleted** — it described `playerListContainer` + `playerRowPrefab` (Toggle rows), fields that no longer exist. §6 of this doc is now the training page's reference. |
+| `MATCH_SIM_AND_TEAM_TALK_BUILD.md` | **Rewritten.** Its old "left to do" list mixed done and outstanding items; it now opens with just the three that remain (Close button, ResumeMatch hook, opaque/stretched panel) and keeps the rest as reference. |
 | `HALFTIME_TEAM_TALK_REWORK_BUILD.md` §3 | Correct as written, but the scene diverges: one shared `ResponseManager` instead of two (§3.2), and `BubbleBackground` unassigned (§3.7). |
 | `WIRING_RECRUITMENT_HALFTIME_SIM.md` §1 | Still accurate for the fields; silent on which question buttons to place, which is how §5.1 happened. |
 
@@ -430,44 +469,85 @@ Fold these corrections in as the fixes land rather than leaving a fourth doc to 
 
 ---
 
-## 8. Prioritised plan
+## 8. The plan — status & step-by-step
 
-### P0 — the match is soft-lockable (do first)
+### ✅ Done — [CODE] (already in the working tree)
+
+| # | Change | File |
+|---|---|---|
+| 16 | Dropped the three `using UnityEngine.UIElements;` lines | `FormationInteractableUI`, `PlayerDetailsUI`, `TacticsPageUI` |
+| 17 | Deleted dead `arcWidth`/`arcDepth`/`topMargin` + the commented-out arch block (`BuildSquadArch` → `BuildSquadGrid`), and the unused `squadTone` field | `TeamTalkUI` |
+| 17 | Deleted the unused `MoraleColour` helper (superseded by `player.GetMoraleColor()`) | `PlayerMoraleBoxUI` |
+| 14 | Question buttons can now be **spawned** from `InterviewManager.GetGeneralQuestions()` / `GetPersonalityQuestions()` / `GetStatQuestions()` + the comparison question, so the page can no longer drift from the enum. Adds `SetQuestion(InterviewQuestion)` | `RecruitmentPageUI`, `InterviewQuestionButton` |
+| 15 | Question buttons grey out when there's no live interview or the five questions are spent (`RefreshInteractable`), applied to spawned **and** hand-placed buttons via `Elements.GetComponentsInChildren` | `RecruitmentPageUI`, `InterviewQuestionButton` |
+| — | Skipping a candidate now ends the interview, and a successful hire clears `interviewStarted` | `RecruitmentPageUI` |
+| — | "No interviews today" now names the next interview day. `GetNextTrainingDay()` generalised to `GetNextDay(ScheduleEntryType)` and kept as a wrapper (reuse, not a parallel method) | `ScheduleManager`, `RecruitmentPageUI` |
+| 19 | `subLabel` on a slot keeps the picker's descriptor ("Natural · 78 @ ST") visible after the pick; re-runs when the target position changes | `PlayerSlotUI`, `TrainingPageUI` |
+
+**#14 is opt-in and degrades gracefully:** leave `Question Container` / `Question Button Prefab` empty and the 16
+hand-placed buttons keep working exactly as before — but they stay incomplete (§5.1), so wiring the spawner is the
+recommended path.
+
+---
+
+### P0 — [SCENE] — three ways to strand the player mid-match (do these first)
+
+**1. Team-talk Close button** (§3.1) — *without this, opening the team talk soft-locks the match.*
+   - `Match Simulation Page > Elements > Team Talk UI` → add a `Base UI/Button.prefab` child named `CloseButton`,
+     label it "Back to the match", anchor bottom-right.
+   - OnClick **+** → drag the **Team Talk UI** object → `TeamTalkUI.Close`.
+
+**2. Resume-match hook** (§4.5) — *without this, half-time "Edit Tactics" is a one-way trip.*
+   - Select `Canvas > Constants > ResumeGame_Btn` (it already exists and is already assigned to
+     `TacticsPageUI.resumeMatchButton`; only its OnClick is empty).
+   - OnClick **+** → drag the **Tactics Page** object → `TacticsPageUI.ResumeMatch`.
+
+**3. Competition-page week arrows** (§2.5) — *both currently point at a class that no longer exists.*
+   - `Competition Page` → the prev/next week buttons. Their OnClick shows a missing-method entry targeting
+     `FixtureListUI` (renamed to `CompetitionPageUI`).
+   - Remove the broken entry, then **+** → drag the **Competition Page** object → `CompetitionPageUI.ChangeWeekFocus`,
+     and set the int argument (`-1` on prev, `+1` on next).
+
+### P0b — [SCENE] — mechanics that silently under-deliver
+
+**4. Second `ResponseManager` for private words** (§3.2)
+   - Inside `Team Talk UI > Individual`, drag in a **second** instance of `Assets/Prefabs/Interview/Responses.prefab`.
+   - On `TeamTalkUI`, repoint **Individual Response Manager** at the `ResponseManager` on *that* new instance.
+     (It currently points at the same object as **Response Manager** — the squad row.)
+   - Leave its **On Response Chosen** empty; `TeamTalkUI` subscribes in code.
+
+**5. Fifth training slot** (§6.1)
+   - Duplicate a `TrainingPlayerSlot` under `Training Page > … > PositionalPanel` and add it to
+     `TrainingPageUI ▸ Player Slots` (the array has 4; `MAX_POSITIONAL_PLAYERS` is 5).
+
+**6. The three missing interview questions** (§5.1)
+   - **Preferred:** on `RecruitmentPageUI`, assign **Question Container** → `InterviewButtons` and
+     **Question Button Prefab** → `InterviewButton.prefab`, then **delete the 16 hand-placed buttons**. The row now
+     builds itself from the enum. Optionally set **Stat Questions** to the subset you want (empty = all 20).
+   - **Or, minimally:** add three `InterviewButton` prefabs set to `CareerGoals`, `HandleCriticism` and
+     `BigGameMentality`, and repoint the one button with no override (currently a duplicate `AskAboutStat`/Shooting).
+
+### P1 — [SCENE] — layout correctness
 
 | # | Fix | Where |
 |---|---|---|
-| 1 | Add `CloseButton` → `TeamTalkUI.Close` on the talk panel | §3.1 **[SCENE]** |
-| 2 | Second `Responses.prefab` inside `Individual` → `individualResponseManager` | §3.2 **[SCENE]** |
-| 3 | Add the 5th `TrainingPlayerSlot` | §6.1 **[SCENE]** |
-| 4 | Add buttons for `CareerGoals`, `HandleCriticism`, `BigGameMentality` | §5.1 **[SCENE]** |
+| 7 | Rebuild `Team Talk UI` per the target hierarchy: VLG, opaque background, stretch anchors, squad grid in a ScrollRect with a `ContentSizeFitter`, `TalksRemainingText` moved to the header | §3.3–§3.6 |
+| 8 | `Individual` → a real centred dialog: dim `Image` backdrop (raycast on) + `CancelButton` → `TeamTalkUI.CancelIndividual` | §3.5 |
+| 9 | Assign `BubbleBackground` on the morale box; size the cell so a line of chatter fits | §3.7 |
+| 10 | Training `DrillScroll`: untick Horizontal, delete the horizontal scrollbar, add `ContentSizeFitter` (Vertical = Preferred) to `Content`, widen the cells | §6.2 |
+| 11 | Training `InfoPanel` + `PositionalPanel` → VerticalLayoutGroups | §6.3, §6.5 |
+| 12 | Recruitment: one bottom-right `ActionBar` (Interview / Hire / Reject / Skip); `ContentSizeFitter` on `candidateInfoText` | §5.2, §5.3 |
+| 13 | Match Sim `Buttons` column → VerticalLayoutGroup | §4.1 |
+| 14 | Add a `SubLabel` TMP to `TrainingPlayerSlot.prefab` and assign it to `PlayerSlotUI ▸ Sub Label` (code is in) | §6.4 |
 
-Four editor jobs, no code. After these the three focus pages are playable end to end.
-
-### P1 — layout correctness
-
-| # | Fix | Where |
-|---|---|---|
-| 5 | Rebuild `Team Talk UI` as a VLG (header / squad scroll / feedback / responses / footer); opaque background; stretch anchors; move `TalksRemainingText` to the header | §3.3–§3.6 **[SCENE]** |
-| 6 | `Individual` → real centred dialog with dim backdrop + `CancelButton` | §3.5 **[SCENE]** |
-| 7 | Training `DrillScroll`: vertical-only + `ContentSizeFitter` + wider cells | §6.2 **[SCENE]** |
-| 8 | Training `InfoPanel` and `PositionalPanel` → VerticalLayoutGroups | §6.3, §6.5 **[SCENE]** |
-| 9 | Recruitment: single bottom-right `ActionBar`; `candidateInfoText` fitter | §5.2, §5.3 **[SCENE]** |
-| 10 | Match Sim `Buttons` column → VerticalLayoutGroup | §4.1 **[SCENE]** |
-| 11 | Assign `BubbleBackground` on the morale box; size the cell for the line | §3.7 **[SCENE]** |
-
-### P2 — structure, clarity, hygiene
+### P2 — [SCENE] — structure, clarity, hygiene
 
 | # | Fix | Where |
 |---|---|---|
-| 12 | Rename `Matchca.prefab` → `PlayerMoraleBox`; rename every `Texty`/`Text (TMP)`/`Button (n)` to its field name | §2.2 **[SCENE]** |
-| 13 | Put `BackButton` in `Constants`; add `Exit` + `ResumeGame_Btn` to `hideForMatchSim` | §2.4 **[SCENE]** |
-| 14 | Spawn interview question buttons from the three `InterviewManager.Get*Questions()` lists | §5.1 **[CODE]** |
-| 15 | Disable question buttons when `QuestionsRemaining == 0` / no live interview | §5.3 **[CODE]** |
-| 16 | Drop the three `using UnityEngine.UIElements;` lines | §2.3 **[CODE]** |
-| 17 | Delete dead `arcWidth`/`arcDepth`/`topMargin` + commented arch block; delete `PlayerMoraleBoxUI.MoraleColour` | §3.6 **[CODE]** |
-| 18 | `HalfTimeBanner`; mentality tick labels | §4.2, §4.3 **[SCENE]** |
-| 19 | Optional `subLabel` on `PlayerSlotUI` so a filled slot keeps its fit descriptor | §6.4 **[CODE]** |
-| 20 | Team talk as a true stretch overlay with Ignore Layout | §4.4 **[SCENE]** |
+| 15 | Rename `Matchca.prefab` → `PlayerMoraleBox`; rename every `Texty` / `Text (TMP)` / `Button (n)` to its serialized-field name | §2.2 |
+| 16 | Put a `Back` button with `BackButton` in `Constants`; add `Exit` (and the new Back) to `UIManager.hideForMatchSim` | §2.4 |
+| 17 | `HalfTimeBanner` text inside `HalfTimePanel`; mentality tick labels (check `MentalitySelectorUI` for reuse first) | §4.2, §4.3 |
+| 18 | Team talk as a true stretch overlay (`LayoutElement ▸ Ignore Layout`) | §4.4 |
 
 ### Deliberately not on the list
 

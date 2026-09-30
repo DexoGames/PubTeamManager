@@ -1,28 +1,28 @@
-# Half-Time Team Talk — dressing-room chatter + individual talks (build guide)
+# Half-Time Team Talk rework — remaining editor work
 
 Editor wiring for the team-talk **rework**: per-player speech bubbles (a *read-the-room* puzzle) and a capped
-**individual-talk** phase after the squad tone. The design is [`TEAM_TALK_REWORK_PLAN.md`](TEAM_TALK_REWORK_PLAN.md);
-this doc is what to add **in the scene**. It builds on the already-wired squad talk in
-[`MATCH_SIM_AND_TEAM_TALK_BUILD.md`](MATCH_SIM_AND_TEAM_TALK_BUILD.md) Part B — do that first; nothing here replaces it.
+**individual-talk** phase after the squad tone. Design rationale is
+[`TEAM_TALK_REWORK_PLAN.md`](TEAM_TALK_REWORK_PLAN.md); the base squad talk is
+[`MATCH_SIM_AND_TEAM_TALK_BUILD.md`](MATCH_SIM_AND_TEAM_TALK_BUILD.md).
 
-**All the C# is done and drop-in.** New/changed scripts:
-`TeamTalkChatter` (new, pure), `TeamTalkController` (+ individual talks), `PlayerMoraleBoxUI` (+ bubble + click),
-`TeamTalkUI` (+ pre/post bubbles + individual phase), `MatchSimPageUI` (+ `ExpectedGoalDifferenceForMyTeam`).
+**Status:** all C# ships. `PlayerMoraleBoxUI` has its Bubble Text and Select Button assigned,
+`TeamTalkController`'s two tuning fields are live, and `TeamTalkUI`'s `individualPanel`,
+`individualTargetText` and `talksRemainingText` are all assigned. **Four wiring problems remain**, and until
+they're fixed the individual-talk phase is broken and the bubbles have no bubble.
 
-> **Graceful degradation:** the squad talk works with **none** of this wired. The individual-talk phase only turns on
-> once you assign **both** the Individual Panel and the Individual Response Manager on `TeamTalkUI` (§3). The bubbles
-> only appear if `PlayerMoraleBoxUI` has a Bubble Text (§1). So you can wire it in stages.
+> Every `[SerializeField]` on `PlayerMoraleBoxUI` and `TeamTalkUI` is now **required** — the scripts no longer
+> null-check inspector references, so anything left unassigned throws instead of silently doing nothing.
 
 ---
 
-## What the player now sees
+## What the player is supposed to see
 
 1. **Open the talk** → a few players have a speech bubble (most silent — little to react to yet). Your first read.
-2. **Pick one squad tone** (existing response row) → the squad reacts; boxes flash ±delta **and now most players
-   speak** (post-talk lines coloured by how they took it).
+2. **Pick one squad tone** → the squad reacts; boxes flash ±delta **and now most players speak** (post-talk lines
+   coloured by how they took it).
 3. **Individual phase** → a "Private words left: N" counter appears and boxes become **clickable**. Click a player →
-   a small popup ("A word with *Surname*") with the tone buttons → they react, a stronger chance to lift a slump,
-   and their bubble updates. Counter ticks down; at 0 the boxes stop responding.
+   a small popup ("A word with *Surname*") with tone buttons → they react, a stronger chance to lift a slump, and
+   their bubble updates. Counter ticks down; at 0 the boxes stop responding.
 4. **Begin Second Half** as before.
 
 The bubbles are a **deliberately ambiguous** view of hidden state (personality × scoreline × expectation × morale ×
@@ -30,135 +30,97 @@ hidden slump). Reading them is the skill; individual talks are scarce, so misrea
 
 ---
 
-## 1. `PlayerMoraleBox` prefab (`Assets/Prefabs/Matchca.prefab`)
+## 1. 🔴 The two response rows are the same object
 
-Already carries `PlayerMoraleBoxUI` with its six original fields assigned. **Add three things** (all optional — the
-box degrades to today's behaviour without them, but the bubble is the whole point of the rework):
+`TeamTalkUI ▸ Response Manager` and `▸ Individual Response Manager` both point at fileID `1414398093` — the single
+`Responses` prefab instance parented to the talk panel. The code assumes two separate rows, so today:
 
-```
-PlayerMoraleBox                 Image  ← background (tinted by the reaction, as now)
-                                Button          ← NEW: makes the box selectable in the individual phase
-                                PlayerMoraleBoxUI
-├── Name       (TMP)
-├── MoodBar    (Image, Filled)
-├── PassionBar (Image, Filled)
-├── Morale     (TMP)
-├── Reaction   (TMP)             the "+8" / "−5" flash
-└── Bubble                       ← NEW: the speech bubble
-    ├── BubbleBG   (Image)       optional backing, toggled + tinted with the line
-    └── BubbleText (TMP)         the spoken line
-```
+- `Deliver` and `DeliverIndividual` are both subscribed to one `OnResponseChosen`.
+- `EnterIndividualPhase()` locks the squad row, then `OnBoxClicked` calls `SpawnButtons()` on that **same** row and
+  un-locks it.
+- The private-word tone buttons spawn into the **squad row at the bottom of the panel**, not inside the popup. The
+  popup shows a name and nothing else.
 
-New `PlayerMoraleBoxUI` fields (Inspector, under the added headers):
+**Fix:** drop a **second** instance of `Assets/Prefabs/Interview/Responses.prefab` inside `Team Talk UI > Individual`, and
+repoint **Individual Response Manager** at the `ResponseManager` on *that* instance.
 
-| Header | Inspector | Assign | Notes |
-|---|---|---|---|
-| Chatter | **Bubble Text** | `BubbleText` | the spoken line; auto-hidden when the player is silent |
-| Chatter | **Bubble Background** | `BubbleBG` | optional; shown/hidden with the line, tinted by the reaction |
-| Individual talk | **Select Button** | the `Button` on the root | optional; enables click-to-single-out |
-
-Wiring notes:
-- The bubble sits **above** the box (the arch dips at the ends, so leave headroom at the top of the arch container —
-  see Arc Depth / Top Margin in Part B). It's a child of the box, so it rides along at each arch position. Give
-  `BubbleText` **auto-size** or a fixed small font; keep it narrow (boxes are ~67 px apart).
-- **Don't** hand-type `BubbleText` — code writes it (and blanks it for silence).
-- The **Select Button** should target a graphic that *isn't* the reaction-tinted `background` (or set its Transition
-  to **None**), otherwise its disabled/hover tint fights the reaction colour. A transparent full-rect Image child as
-  the button's Target Graphic is cleanest. **Do not** add an OnClick entry — `PlayerMoraleBoxUI` wires the listener
-  in code (it needs the player reference).
-
----
-
-## 2. `TeamTalkController` (managers object)
-
-Two new tuning fields under an **Individual talks** header — defaults are sensible, adjust for difficulty:
-
-| Inspector | Default | Meaning |
-|---|---|---|
-| **Max Individual Talks** | `2` | private words allowed per match after the squad tone |
-| **Individual Recovery Multiplier** | `1.3` | a personal word is this-times better at snapping a player out of a slump |
-
-`ResetForMatch()` (already called at kickoff) now also resets the individual-talk count. Nothing else to wire.
-
----
-
-## 3. `TeamTalkUI` — the individual-talk popup
-
-Add a **child popup** to the existing `TeamTalkPanel` (from Part B) and four field assignments. Everything is a
-direct child of the panel so it's hidden/restored with it.
-
-```
-TeamTalkPanel                              ← TeamTalkUI   [INACTIVE in scene]
-├── Backdrop / TitleText / SituationText / BoxContainer / FlavourText / OverallText   (existing, Part B)
-├── ResponseRow                            ← ResponseManager  (existing squad tone row, Part B)
-├── TalksRemaining        (TMP)            ← NEW  "Private words left: 2"
-├── IndividualPanel                        ← NEW  [set INACTIVE — code shows it on a box click]
-│   ├── TargetText        (TMP)            ← NEW  "A word with Smith"
-│   ├── IndividualResponseRow              ← NEW  a SECOND ResponseManager  [Horizontal Layout Group]
-│   └── CancelButton                        → TeamTalkUI.CancelIndividual
-└── CloseButton                             → TeamTalkUI.Close   (existing)
-```
-
-New `TeamTalkUI` fields, under **"Individual talks (optional…)"**:
-
-| # | Inspector | Assign |
-|---|---|---|
-| 1 | **Individual Panel** | `IndividualPanel` GameObject (leave inactive in the scene) |
-| 2 | **Individual Response Manager** | the `ResponseManager` on `IndividualResponseRow` (§3a) |
-| 3 | **Individual Target Text** | `TargetText` |
-| 4 | **Talks Remaining Text** | `TalksRemaining` |
-
-> Assign **both** Individual Panel *and* Individual Response Manager or the phase stays off (the squad talk still
-> works). Target/Talks-Remaining texts are optional niceties.
-
-### 3a. The second `ResponseManager` (`IndividualResponseRow`)
-
-Same component/prefab as the squad row — see `MATCH_SIM_AND_TEAM_TALK_BUILD.md` §B2a / Part C2. It's a **separate
-instance** so the two rows don't interfere.
-
-| Inspector | Value |
+| Its Inspector | Value |
 |---|---|
-| **Response Button Prefab** | `ResponseButton.prefab` |
-| **Container** | `IndividualResponseRow`'s own transform |
-| **Dialogue** | leave empty |
-| **Responses** | 8 entries soft→harsh (same as the squad row), or empty for all |
-| **Lock After Pick** | ✅ (the popup rebuilds the row on each open anyway) |
+| Response Button Prefab | `ResponseButton.prefab` |
+| Container | the new instance's own transform |
+| Dialogue | leave empty |
+| Responses | 8 entries soft→harsh (same as the squad row), or empty for all |
+| Lock After Pick | ✅ (the popup rebuilds the row on each open anyway) |
 | **On Response Chosen** | **leave empty** — `TeamTalkUI` subscribes in code (`DeliverIndividual`) |
 
-### 3b. OnClick hooks (only these two are manual)
+> Assign **both** Individual Panel *and* Individual Response Manager or the phase stays off (the squad talk still
+> works). That graceful degradation is why this reads as "half working" rather than throwing.
 
-| Button | Hook |
-|---|---|
-| IndividualPanel → CancelButton | `TeamTalkUI.CancelIndividual` |
-| (Team Talk button, half-time panel) | `TeamTalkUI.Open` — unchanged |
+## 2. 🔴 No Cancel button on the popup
 
-Box clicks, the squad tone pick, and the individual tone pick are all wired **in code** — don't add listeners for them.
+`TeamTalkUI.CancelIndividual()` exists and is hooked nowhere. Add a `Base UI/Button.prefab` named `CancelButton`
+inside `Individual`, OnClick → drag **Team Talk UI** → `TeamTalkUI.CancelIndividual`.
+
+While you're there: `Individual` currently stretches `0,0`–`1,1` with **no `Image`**, so it neither dims the squad
+behind it nor blocks raycasts — clicks land on the morale boxes underneath and re-target `individualTarget`
+mid-popup. Give it a dim `Image` (≈ `0,0,0,0.6`, **Raycast Target on**) and size it as a real centred dialog.
+
+## 3. 🟠 "Private words left" is inside the popup it advertises
+
+`talksRemainingText` (`Texty (5)`) is a child of `Individual`, but `UpdateTalksRemaining()` runs from
+`EnterIndividualPhase()` — the moment the squad talk lands, while the popup is **closed**. So the counter is only
+ever visible once you've already committed to spending one, and the "Deliver a team talk first" prompt is never seen.
+
+It is also positioned at exactly `(17.99, 0)` — the same pixel as `individualTargetText` *and* `overallText`.
+
+**Fix:** move `TalksRemainingText` out of `Individual` and onto the panel's header row, next to the title. It's a
+persistent HUD read-out, not popup chrome. (Covered by the panel rebuild in
+[`UI_AUDIT_AND_LAYOUT_PLAN.md`](UI_AUDIT_AND_LAYOUT_PLAN.md) §3.6.)
+
+## 4. 🔴 The speech bubble has no bubble — and now it throws
+
+`PlayerMoraleBoxUI ▸ Bubble Background` is unassigned on `HalfTimePlayer.prefab` (the morale box). Only `bubbleText`
+is wired, so the chatter — the entire mechanic — renders as bare text over the box, and `ShowBubble(line, tint)`'s
+reaction tint has nothing to tint. **`PlayerMoraleBoxUI` no longer null-guards its references** (house style: an
+unwired field should fail loudly), so opening the team talk now throws a `NullReferenceException` in `ShowBubble`
+until this is assigned. Assign it, or say the word and the field comes out of the script.
+
+**Fix:** add a `BubbleBG` (Image) under the box's Bubble object and assign it. A 200×150 grid cell can't hold a box
+*and* a legible line for 25 players, so either drop the bubble to 1–2 lines with TMP auto-size + `Ellipsis`
+overflow, or (recommended) raise the cell to ~240×190 and let the squad grid scroll.
+
+Wiring notes for the box, if you rebuild it:
+- The **Select Button** should target a graphic that *isn't* the reaction-tinted `background` (or set its Transition
+  to **None**), otherwise its disabled/hover tint fights the reaction colour. A transparent full-rect Image child as
+  the target graphic is cleanest.
+- **Do not** add an OnClick entry — `PlayerMoraleBoxUI` wires the listener in code (it needs the player reference).
+- **Don't** hand-type `BubbleText` — code writes it, and blanks it for silence.
 
 ---
 
-## 4. No wiring needed (code drives it)
+## Driven by code — nothing to wire
 
-- **Expectation read.** The situation line now reads e.g. *"Half-time — level — Irrelevant · punching above your
-  weight"*. The over/under-performing part comes from `MatchSimPageUI.ExpectedGoalDifferenceForMyTeam()` (starting-XI
-  strength gap) vs the live score — nothing to assign.
+- **Expectation read.** The situation line reads e.g. *"Half-time — level — Irrelevant · punching above your
+  weight"*. The over/under-performing half comes from `MatchSimPageUI.ExpectedGoalDifferenceForMyTeam()`
+  (starting-XI strength gap) vs the live score.
 - **Pre-talk / post-talk / individual bubbles** — `TeamTalkUI` fills them via `TeamTalkChatter`.
-- **Selectable boxes / counter** — enabled by `TeamTalkUI` when the squad tone is delivered, disabled at 0 talks.
+- **Selectable boxes / counter** — enabled when the squad tone is delivered, disabled at 0 talks.
+- **Squad grid layout** — `BuildSquadGrid()` just instantiates into `boxContainer`; the Grid Layout Group does the
+  placement. (The old arch-placement fields `arcWidth`/`arcDepth`/`topMargin` have been removed from the script.)
 
----
-
-## 5. Test checklist (extends Part D)
+## Test checklist
 
 1. **Open the talk** → a *handful* of boxes have bubbles; the situation line shows the score band **and** an
    over/under-performing phrase.
-2. **Deliver a tone** → boxes flash ±delta and **most** now show a coloured bubble; "Private words left: 2" appears.
-3. **Click a box** → popup "A word with *Name*" + tone buttons. **Cancel** → popup closes, counter unchanged.
+2. **Deliver a tone** → boxes flash ±delta, most now show a coloured bubble, "Private words left: 2" appears
+   **on the panel header** (not hidden in the popup).
+3. **Click a box** → popup "A word with *Name*" **with tone buttons inside it**. **Cancel** → popup closes, counter
+   unchanged.
 4. **Click a box → pick a tone** → that box reacts + its bubble updates; counter → 1. Repeat → 0; boxes stop
-   responding to clicks.
-5. A **normally-loud** player (Driven/Cocky/Silly) who's gone **quiet** post-talk is your slump tell; a **Shy/Lazy**
-   player *speaking* is the inverse tell. (Reads, not certainties — you'll misjudge some. That's intended.)
-6. **Begin Second Half** → panel closes; **next match** the squad tone *and* the individual talks are available again.
-
----
+   responding.
+5. A **normally-loud** player (Driven/Cocky/Silly) gone **quiet** post-talk is your slump tell; a **Shy/Lazy**
+   player *speaking* is the inverse tell. Reads, not certainties — you'll misjudge some. That's intended.
+6. **Begin Second Half** → panel closes; next match both the squad tone and the individual talks reset.
 
 ## Tuning cheat-sheet
 
@@ -171,3 +133,6 @@ Box clicks, the squad tone pick, and the individual tone pick are all wired **in
 | the line pools | `TeamTalkChatter` (per-personality methods) | **the feature itself** — voices, tells and red herrings |
 | `SlumpRecoveryChance` | `MoraleEffects` | base chance any talk lifts a slump |
 | reaction table | `EventsManager.CreateReactionTable()` | which tone lands for which personality (shared with 1-on-1s) |
+
+> `maxMoodSwing` / `maxPassionSwing` / `flopThreshold` on `TeamTalkController` feed only the **dormant** minigame
+> path — they do nothing for the shipping talk. Leave them alone (or delete them with the minigame classes).

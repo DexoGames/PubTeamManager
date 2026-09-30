@@ -3,8 +3,8 @@ using TMPro;
 using UnityEngine;
 
 /// <summary>
-/// Half-time team-talk screen — a "read the room" puzzle. Every squad member is a little morale box along a shallow
-/// arch, each carrying a SPEECH BUBBLE (from <see cref="TeamTalkChatter"/>) that's a deliberately ambiguous view onto
+/// Half-time team-talk screen — a "read the room" puzzle. Every squad member is a morale box in the squad grid,
+/// each carrying a SPEECH BUBBLE (from <see cref="TeamTalkChatter"/>) that's a deliberately ambiguous view onto
 /// their hidden state. The flow:
 ///   1. Open → pre-talk chatter: a few players speak (little to react to yet) — your first read.
 ///   2. Pick ONE squad tone (shared <see cref="ResponseManager"/>) → the whole squad reacts through the discussion
@@ -12,29 +12,26 @@ using UnityEngine;
 ///   3. Individual phase: single out up to <see cref="TeamTalkController.MaxIndividualTalks"/> players for a private
 ///      word — a stronger slump-lifter, but scarce, so misreading the chatter wastes one (the trade-off).
 ///
-/// Open it from the Half-Time Panel's "Team Talk" button (hook the button to <see cref="Open"/>).
+/// Button hooks: the Half-Time Panel's "Team Talk" → <see cref="Open"/>, the screen's Done → <see cref="Close"/>,
+/// the individual popup's Cancel → <see cref="CancelIndividual"/>.
 /// </summary>
 public class TeamTalkUI : MonoBehaviour
 {
-    [Header("Squad arch")]
+    [Header("Squad")]
     [SerializeField] private PlayerMoraleBoxUI boxPrefab;
     [SerializeField] private RectTransform boxContainer;
-    [SerializeField] private float arcWidth = 1600f;
-    [SerializeField] private float arcDepth = 130f;
-    [SerializeField] private float topMargin = 40f;
 
     [Header("Response buttons")]
     [SerializeField] private ResponseManager responseManager;
 
     [Header("Feedback")]
     [SerializeField] private TextMeshProUGUI titleText;
-    [SerializeField] private TextMeshProUGUI situationText; // "Half-time — 1 up — Pleasant · about as expected"
-    [SerializeField] private TextMeshProUGUI flavourText;   // the line the manager "said"
-    [SerializeField] private TextMeshProUGUI overallText;   // overall verdict
+    [SerializeField] private TextMeshProUGUI situationText;
+    [SerializeField] private TextMeshProUGUI flavourText;
+    [SerializeField] private TextMeshProUGUI overallText;
 
-    [Header("Individual talks (optional — wire to enable the private-word phase)")]
+    [Header("Individual talks")]
     [SerializeField] private GameObject individualPanel;
-    [Tooltip("A SECOND ResponseManager, inside the individual popup, for the private-word tone.")]
     [SerializeField] private ResponseManager individualResponseManager;
     [SerializeField] private TextMeshProUGUI individualTargetText;
     [SerializeField] private TextMeshProUGUI talksRemainingText;
@@ -44,16 +41,12 @@ public class TeamTalkUI : MonoBehaviour
     private int goalDifference;
     private EventType.Severity severity;
     private Expectation expectation;
-    private Event.Response squadTone;
     private Player individualTarget;
 
-    private bool HasIndividualPhase => individualPanel != null && individualResponseManager != null;
-
-    /// <summary>Show the panel, (re)build the squad arch, read the scoreline, and voice the pre-talk chatter.</summary>
     public void Open()
     {
         gameObject.SetActive(true);
-        // Take over the whole match screen — the arch needs the full width for a 20+ man squad.
+        // Take over the whole match screen — the squad grid needs the full width for a 25-man squad.
         MatchSimPageUI.Instance.SetMatchContentVisible(false);
 
         goalDifference = MatchSimPageUI.Instance.CurrentGoalDifferenceForMyTeam();
@@ -61,18 +54,15 @@ public class TeamTalkUI : MonoBehaviour
         expectation = TeamTalkChatter.ExpectationFromScore(
             goalDifference, MatchSimPageUI.Instance.ExpectedGoalDifferenceForMyTeam());
 
-        BuildSquadArch();
+        BuildSquadGrid();
 
         responseManager.OnResponseChosen.RemoveListener(Deliver);
         responseManager.OnResponseChosen.AddListener(Deliver);
         responseManager.SpawnButtons();
 
-        if (HasIndividualPhase)
-        {
-            individualResponseManager.OnResponseChosen.RemoveListener(DeliverIndividual);
-            individualResponseManager.OnResponseChosen.AddListener(DeliverIndividual);
-            individualPanel.SetActive(false);
-        }
+        individualResponseManager.OnResponseChosen.RemoveListener(DeliverIndividual);
+        individualResponseManager.OnResponseChosen.AddListener(DeliverIndividual);
+        individualPanel.SetActive(false);
 
         situationText.text = "Half-time — " + TeamTalkReactions.SituationText(goalDifference, severity)
                            + " · " + TeamTalkChatter.ExpectationText(expectation);
@@ -86,38 +76,23 @@ public class TeamTalkUI : MonoBehaviour
         RefreshState();
     }
 
-    /// <summary>Hide the panel (hook a Close/Done button here) and give the match screen back.</summary>
     public void Close()
     {
-        if (individualPanel != null) individualPanel.SetActive(false);
+        individualPanel.SetActive(false);
         individualTarget = null;
         gameObject.SetActive(false);
         MatchSimPageUI.Instance.SetMatchContentVisible(true);
     }
 
-    private void BuildSquadArch()
+    private void BuildSquadGrid()
     {
         Game.ClearContainer(boxContainer);
         boxes.Clear();
 
-        Team me = TeamManager.Instance.MyTeam;
-        int n = me.Players.Count;
-        for (int i = 0; i < n; i++)
+        foreach (Player p in TeamManager.Instance.MyTeam.Players)
         {
-            Player p = me.Players[i];
             PlayerMoraleBoxUI box = Instantiate(boxPrefab, boxContainer);
             box.Setup(p);
-
-            // // Place along a shallow ∩: even spacing left→right, height peaks in the middle and dips at the ends.
-            // var rt = (RectTransform)box.transform;
-            // rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f);
-            // rt.pivot = new Vector2(0.5f, 1f);
-
-            // float u = n > 1 ? (i / (float)(n - 1)) * 2f - 1f : 0f; // -1 (far left) … +1 (far right)
-            // float x = u * (arcWidth * 0.5f);
-            // float y = -topMargin - arcDepth * (u * u);             // centre highest, ends lowest
-            // rt.anchoredPosition = new Vector2(x, y);
-
             boxes[p] = box;
         }
     }
@@ -126,7 +101,6 @@ public class TeamTalkUI : MonoBehaviour
     {
         if (TeamTalkController.Instance.Used) return;
 
-        squadTone = response;
         flavourText.text = TeamTalkReactions.Flavour(response);
 
         List<PlayerReaction> reactions = TeamTalkController.Instance.DeliverTalk(response, severity);
@@ -146,7 +120,6 @@ public class TeamTalkUI : MonoBehaviour
 
     private void EnterIndividualPhase()
     {
-        if (!HasIndividualPhase) return;
         bool available = TeamTalkController.Instance.CanTalkIndividually;
         foreach (var box in boxes.Values) box.SetSelectable(available, OnBoxClicked);
         UpdateTalksRemaining();
@@ -157,15 +130,14 @@ public class TeamTalkUI : MonoBehaviour
         if (!TeamTalkController.Instance.CanTalkIndividually) return;
 
         individualTarget = p;
-        if (individualTargetText != null) individualTargetText.text = $"A word with {p.Surname}";
+        individualTargetText.text = $"A word with {p.Surname}";
         individualPanel.SetActive(true);
         individualResponseManager.SpawnButtons();
     }
 
-    /// <summary>Back out of an individual talk without spending one (hook a Cancel button on the popup here).</summary>
     public void CancelIndividual()
     {
-        if (individualPanel != null) individualPanel.SetActive(false);
+        individualPanel.SetActive(false);
         individualTarget = null;
     }
 
@@ -193,7 +165,6 @@ public class TeamTalkUI : MonoBehaviour
 
     private void UpdateTalksRemaining()
     {
-        if (talksRemainingText == null) return;
         int remaining = TeamTalkController.Instance.MaxIndividualTalks - TeamTalkController.Instance.IndividualTalksUsed;
         talksRemainingText.text = TeamTalkController.Instance.Used
             ? $"Private words left: {remaining}"

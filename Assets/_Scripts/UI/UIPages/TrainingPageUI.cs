@@ -33,7 +33,6 @@ public class TrainingPageUI : UIPage
     [Header("Positional sub-panel")]
     [SerializeField] private GameObject positionalPanel;
     [SerializeField] private TMP_Dropdown positionDropdown;
-    [Tooltip("Up to MAX_POSITIONAL_PLAYERS (5) slot widgets; click an empty one to add a player, X to remove.")]
     [SerializeField] private PlayerSlotUI[] playerSlots;
     [SerializeField] private TextMeshProUGUI selectedCountText;
 
@@ -110,24 +109,16 @@ public class TrainingPageUI : UIPage
         {
             GameObject buttonObj = Instantiate(optionButtonPrefab, optionContainer);
 
-            var text = buttonObj.GetComponentInChildren<TextMeshProUGUI>();
-            if (text != null) text.text = drill.Name;
+            buttonObj.GetComponentInChildren<TextMeshProUGUI>().text = drill.Name;
 
-            var button = buttonObj.GetComponent<Button>();
-            if (button != null)
-            {
-                DrillId captured = drill.Id;
-                button.onClick.AddListener(() => SelectDrill(captured));
-            }
+            DrillId captured = drill.Id;
+            buttonObj.GetComponent<Button>().onClick.AddListener(() => SelectDrill(captured));
 
-            var image = buttonObj.GetComponentInChildren<Image>();
-            if (image != null)
-            {
-                Color baseColor = TypeColor(drill.Type);
-                image.color = baseColor;
-                drillButtonImages[drill.Id] = image;
-                drillBaseColors[drill.Id] = baseColor;
-            }
+            Color baseColor = TypeColor(drill.Type);
+            Image image = buttonObj.GetComponentInChildren<Image>();
+            image.color = baseColor;
+            drillButtonImages[drill.Id] = image;
+            drillBaseColors[drill.Id] = baseColor;
         }
 
         ApplyHighlight();
@@ -178,7 +169,7 @@ public class TrainingPageUI : UIPage
 
         // Build a transient session just to reuse its description logic.
         var preview = BuildSelectedSession();
-        effectText.text = drill.Description + "\n\n" + (preview != null ? preview.GetEffectivenessDescription() : "");
+        effectText.text = drill.Description + "\n\n" + preview.GetEffectivenessDescription();
 
         UpdateNextSession();
     }
@@ -246,25 +237,26 @@ public class TrainingPageUI : UIPage
 
     private void OnPositionDropdownChanged(int index)
     {
-        if (dropdownPositions != null && index >= 0 && index < dropdownPositions.Length)
-            selectedPosition = dropdownPositions[index];
+        selectedPosition = dropdownPositions[index];
 
-        // Slot labels are just names (position-independent); the picker's per-player description reads the
-        // new position live, so no slot rebuild is needed — just refresh the preview.
+        // The slots' sub-labels describe each player AT the selected position, so they have to re-read.
+        RefreshSlotLabels();
         UpdateInfoPanel();
     }
 
     // ————————————————————— player slots (click to add, X to remove) —————————————————————
 
+    private void RefreshSlotLabels()
+    {
+        foreach (PlayerSlotUI slot in playerSlots) slot.Refresh();
+    }
+
     private void SetupSlots()
     {
-        if (playerSlots == null) return;
-
         int max = Mathf.Min(playerSlots.Length, TrainingSession.MAX_POSITIONAL_PLAYERS);
         for (int i = 0; i < playerSlots.Length; i++)
         {
             PlayerSlotUI slot = playerSlots[i];
-            if (slot == null) continue;
 
             // Hide any slots beyond the cap.
             slot.gameObject.SetActive(i < max);
@@ -281,9 +273,8 @@ public class TrainingPageUI : UIPage
         Team team = TeamManager.Instance.MyTeam;
 
         var taken = new HashSet<int>();
-        if (playerSlots != null)
-            foreach (var s in playerSlots)
-                if (s != null && !s.IsEmpty) taken.Add(s.PlayerId);
+        foreach (var s in playerSlots)
+            if (!s.IsEmpty) taken.Add(s.PlayerId);
 
         return team.Players.Where(p => !taken.Contains(p.PersonID));
     }
@@ -298,9 +289,8 @@ public class TrainingPageUI : UIPage
     private void RebuildSelectedFromSlots()
     {
         selectedPlayerIds.Clear();
-        if (playerSlots == null) return;
         foreach (var s in playerSlots)
-            if (s != null && !s.IsEmpty) selectedPlayerIds.Add(s.PlayerId);
+            if (!s.IsEmpty) selectedPlayerIds.Add(s.PlayerId);
     }
 
     /// <summary>Per-candidate line shown in the picker: their strength + rating at the selected position.</summary>
@@ -352,14 +342,7 @@ public class TrainingPageUI : UIPage
 
     // ————————————————————— helpers —————————————————————
 
-    /// <summary>Colour for a position strength, matching the tactics menu (indexed by PositionStrength).</summary>
-    private Color StrengthColor(Player.PositionStrength strength)
-    {
-        int i = (int)strength;
-        if (strengthColors != null && i >= 0 && i < strengthColors.Length)
-            return strengthColors[i];
-        return Color.white;
-    }
+    private Color StrengthColor(Player.PositionStrength strength) => strengthColors[(int)strength];
 
     private static Color TypeColor(TrainingType type)
     {

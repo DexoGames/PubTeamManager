@@ -11,7 +11,6 @@ public class CupTieRowUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI homeText;
     [SerializeField] private TextMeshProUGUI awayText;
     [SerializeField] private TextMeshProUGUI scoreText;
-    [Tooltip("Optional row background, tinted when this is the player's tie.")]
     [SerializeField] private Image background;
 
     public void Set(Fixture tie, Team myTeam)
@@ -20,8 +19,7 @@ public class CupTieRowUI : MonoBehaviour
         awayText.text = tie.AwayTeam != null ? LinkBuilder.BuildLink(tie.AwayTeam) : "—";
         scoreText.text = tie.BeenPlayed ? $"{tie.Result.score.home} - {tie.Result.score.away}" : "vs";
 
-        bool involvesMe = myTeam != null && (tie.HomeTeam == myTeam || tie.AwayTeam == myTeam);
-        if (background != null && involvesMe)
+        if (tie.HomeTeam == myTeam || tie.AwayTeam == myTeam)
             background.color = new Color(0.95f, 0.85f, 0.35f, 0.5f);
     }
 }

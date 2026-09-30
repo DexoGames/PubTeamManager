@@ -1,12 +1,9 @@
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// UI page for the recruitment/interview flow.
-/// Shows interview session candidates, handles hire/reject cycle.
-/// </summary>
 public class RecruitmentPageUI : UIPage
 {
     public static RecruitmentPageUI Instance { get; private set; }
@@ -19,9 +16,16 @@ public class RecruitmentPageUI : UIPage
     [SerializeField] private Button rejectButton;
     [SerializeField] private Button skipButton;
 
+    [SerializeField] private Transform questionContainer;
+    [SerializeField] private InterviewQuestionButton questionButtonPrefab;
+    [Tooltip("Which stats may be asked about, in display order. Leave EMPTY to offer every stat.")]
+    [SerializeField] private PlayerStat[] statQuestions;
+
     private List<Player> candidates;
     private int currentIndex = 0;
     private bool interviewStarted = false;
+
+    private readonly List<InterviewQuestionButton> questionButtons = new();
 
     private void Awake()
     {
@@ -34,18 +38,55 @@ public class RecruitmentPageUI : UIPage
     protected override void OnShow()
     {
         base.OnShow();
+        BuildQuestionButtons();
         StartSession();
+    }
+
+
+    private void BuildQuestionButtons()
+    {
+        Game.ClearContainer(questionContainer);
+        questionButtons.Clear();
+
+        foreach (InterviewQuestion question in QuestionsToOffer())
+        {
+            InterviewQuestionButton button = Instantiate(questionButtonPrefab, questionContainer);
+            button.SetQuestion(question);
+            questionButtons.Add(button);
+        }
+
+        RefreshQuestionButtons();
+    }
+
+    private IEnumerable<InterviewQuestion> QuestionsToOffer()
+    {
+        var questions = new List<InterviewQuestion>();
+        questions.AddRange(InterviewManager.GetGeneralQuestions());
+        questions.AddRange(InterviewManager.GetPersonalityQuestions());
+        questions.Add(new InterviewQuestion(InterviewQuestionType.CompareToPlayer));
+
+        questions.AddRange(statQuestions.Length > 0
+            ? statQuestions.Select(s => new InterviewQuestion(InterviewQuestionType.AskAboutStat, s))
+            : InterviewManager.GetStatQuestions());
+
+        return questions;
+    }
+
+    private void RefreshQuestionButtons()
+    {
+        foreach (InterviewQuestionButton button in questionButtons)
+            button.RefreshInteractable();
     }
 
     private void StartSession()
     {
-        // Interviews are only available on a scheduled interview day, once per day.
         if (!RecruitmentManager.Instance.CanInterviewToday)
         {
             headerText.text = "No Interviews Today";
             candidateInfoText.text = RecruitmentManager.Instance.IsInterviewDay
                 ? "You've already held your interviews today. Come back on the next interview day."
-                : "Interviews are only held on scheduled interview days — check your calendar.";
+                : "Interviews are only held on scheduled interview days." + NextInterviewDaySuffix();
+            questionsRemainingText.text = "";
             SetButtonsActive(false);
             return;
         }
@@ -60,11 +101,18 @@ public class RecruitmentPageUI : UIPage
         ShowCurrentCandidate();
     }
 
+    private string NextInterviewDaySuffix()
+    {
+        System.DateTime? next = ScheduleManager.Instance.GetNextDay(ScheduleEntryType.Interview);
+        return next.HasValue ? $"\n\nNext interview day: {next.Value:ddd dd MMM}" : "\n\nCheck your calendar.";
+    }
+
     private void ShowCurrentCandidate()
     {
-        if (candidates == null || currentIndex >= candidates.Count)
+        if (currentIndex >= candidates.Count)
         {
             candidateInfoText.text = "All candidates reviewed. Session complete.";
+            EndInterview();
             SetButtonsActive(false);
             return;
         }
@@ -81,12 +129,12 @@ public class RecruitmentPageUI : UIPage
         hireButton.gameObject.SetActive(false);
         rejectButton.gameObject.SetActive(false);
         skipButton.gameObject.SetActive(true);
+
+        RefreshQuestionButtons();
     }
 
     public void OnInterviewClicked()
     {
-        if (candidates == null || currentIndex >= candidates.Count) return;
-
         Player candidate = candidates[currentIndex];
         InterviewManager.Instance.StartInterview(candidate);
         interviewStarted = true;
@@ -103,7 +151,6 @@ public class RecruitmentPageUI : UIPage
     {
         if (!interviewStarted) return;
 
-        // Squad cap: the player must release someone before signing a new player.
         if (RecruitmentManager.Instance.IsSquadFull)
         {
             candidateInfoText.text =
@@ -113,11 +160,12 @@ public class RecruitmentPageUI : UIPage
             return;
         }
 
-        bool success = InterviewManager.Instance.HireInterviewee();
-        if (success)
+        if (InterviewManager.Instance.HireInterviewee())
         {
             candidateInfoText.text = $"<b>{candidates[currentIndex].FullName}</b> has been signed!\n\nSession complete — only one hire per session.";
+            interviewStarted = false;
             SetButtonsActive(false);
+            RefreshQuestionButtons();
             Debug.Log($"[Recruitment UI] Hired {candidates[currentIndex].FullName}");
         }
     }
@@ -133,7 +181,14 @@ public class RecruitmentPageUI : UIPage
 
     public void OnSkipClicked()
     {
+        EndInterview();
         AdvanceToNextCandidate();
+    }
+
+    private void EndInterview()
+    {
+        interviewStarted = false;
+        InterviewManager.Instance.EndInterview();
     }
 
     private void AdvanceToNextCandidate()
@@ -142,10 +197,10 @@ public class RecruitmentPageUI : UIPage
         ShowCurrentCandidate();
     }
 
-    /// <summary>Called by an InterviewQuestionButton after a question is asked, to refresh the read-out.</summary>
     public void OnQuestionAsked()
     {
         UpdateQuestionsRemaining();
+        RefreshQuestionButtons();
     }
 
     private void UpdateQuestionsRemaining()

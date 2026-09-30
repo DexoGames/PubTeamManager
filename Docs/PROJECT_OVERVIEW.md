@@ -94,7 +94,8 @@ around **morale** and **personality** systems rather than money/transfers.
   ⚠️ **`IdManager` must be on a scene GameObject** (same managers object) or allocations NRE.
 - **Tweening:** DOTween (Demigiant) is available incl. the UI module (`DOAnchorPos`, `DOSizeDelta`, `DOFade`).
 - **Scripts root:** `Assets/_Scripts/`, organized into `Controllers`, `DataModels`, `UI`, `Utilities`,
-  `Serialization`, `Interfaces`, `Interview`.
+  `Serialization`, `Interfaces`, `Interview`, each split into themed subfolders (see below) so no folder
+  is a flat junk-drawer.
 - **Authored data:** `Assets/Resources/` — loaded at runtime via `Resources.Load`/`LoadAll`.
 
 ### Repository layout (top level)
@@ -110,29 +111,64 @@ PubTeamManager/
 ### Folder layout (scripts)
 ```
 _Scripts/
-  Controllers/    GameManager, TeamManager, FixturesManager, CalenderManager, EventsManager,
-                  PersonManager, RecruitmentManager, ScheduleManager, TrainingManager,
-                  SaveManager, UIManager, IdManager, InjuryManager
-  DataModels/     Person, Player, Manager, Team, Pub, Competition, League, Cup, Fixture,
-                  CompetitionSeries, LeagueTableEntry, LeagueTemplate, Event, EventType,
-                  CompetitionEvents, ClubStats, ScheduleEntry, TrainingSession, Drill, Formation
-    Tactics/      Tactic (+ Mentality/TacticState), TacticInstruction (+ Reliance), TacticStats(legacy), TacticTemplate
-    MatchSim/     Highlight + subclasses (Goal/Shot/Miss/Mistake/Possession/PossessionFail/Foul)
-  TeamTalk/       TeamTalkReactions (tones + score→severity, the ACTIVE talk), TeamTalkChatter (pure
-                  per-personality dressing-room line generator — the read-the-room bubbles), TeamTalkController,
-                  TeamTalkMinigame (+ GerrymanderGame/BalanceGame — dormant microgame path)
-  Utilities/      Game, Match, MatchEngine, Phase, SquadStatProfile (phase aggregation), StatLeaderboards,
-                  FixtureGenerator, LinkBuilder, LinkHandler, KitColors
-  Serialization/  GameState (=> CoreSaveState/SeasonSaveState/SeasonIndexEntry), ISaveable,
-                  TeamConverter, *RefConverter (Team/Person/Competition/Fixture), ScriptableObjectRefConverter
-  Interview/      InterviewQuestion (+ InterviewAnswerGenerator — grouped/bucketed answers)
-  Analysis/       TacticLab (headless A/B sim harness for balancing — see "Analysis harness" below)
-  UI/             page controllers (UIPages/, incl. StatsPageUI), widgets, dialogue, contexts,
-                  BackButton, StatLeaderboardWidget/Row
-    TeamTalk/     TeamTalkUI (squad arch of morale boxes), PlayerMoraleBoxUI
-    Home/         DayTimelineWidget, DayBox, CompetitionContextWidget, CupTieRowUI,
-                  CurrentRoundWidget, SquadStatusWidget, AdvanceOrHomeButton, PlayerRowUI
-  Interfaces/     UIPage (abstract base), IDialogueContext
+  Controllers/      GameManager, TeamManager, FixturesManager, CalenderManager, EventsManager,
+                     PersonManager, RecruitmentManager, ScheduleManager, TrainingManager,
+                     SaveManager, UIManager, IdManager, InjuryManager
+  DataModels/
+    Core/            Person, Player, Manager, Team, Pub, Chemistry, ClubStats, ScheduleEntry
+    Competitions/    Competition, CompetitionEvents, CompetitionSeries, Cup, League,
+                      LeagueTemplate, LeagueTableEntry, Fixture
+    Events/          Event, EventType
+    Training/        Drill, TrainingSession
+    Tactics/         Tactic (+ Mentality/TacticState), TacticInstruction (+ Reliance),
+                      TacticStats(legacy), TacticTemplate, Formation
+    MatchSim/        Highlight + subclasses (Goal/Shot/Miss/Mistake/Possession/PossessionFail/Foul)
+  TeamTalk/         TeamTalkReactions (tones + score→severity, the ACTIVE talk), TeamTalkChatter (pure
+                    per-personality dressing-room line generator — the read-the-room bubbles), TeamTalkController,
+                    TeamTalkMinigame (+ GerrymanderGame/BalanceGame — dormant microgame path)
+  Utilities/
+    Simulation/      Match, MatchEngine, Phase, MoraleEffects
+    Generation/      FixtureGenerator, Game
+    Stats/           SquadStatProfile (phase aggregation), StatLeaderboards
+    (root)           LinkBuilder, LinkHandler, KitColors — true cross-cutting utilities
+  Serialization/    GameState (=> CoreSaveState/SeasonSaveState/SeasonIndexEntry), ISaveable,
+                    TeamConverter, *RefConverter (Team/Person/Competition/Fixture), ScriptableObjectRefConverter
+  Interview/        InterviewQuestion (+ InterviewAnswerGenerator — grouped/bucketed answers)
+  Analysis/         TacticLab (headless A/B sim harness for balancing — see "Analysis harness" below)
+  UI/
+    Common/          BackButton, DraggableUI, DraggableWithLinkUI, DOTweenLayoutAnimator, LoadingOverlay,
+                      Notification, OnStartUI, ScrollStartTop, UIObject, TabController
+    Controls/        ComplexitySlider, FamiliaritySlider, MentalitySelectorUI, TacticStatSlider,
+                      TacticsSlider, TacticsToggle, TacticOptionToggle
+    Tactics/         FormationDisplayModeControl, FormationInteractableUI, FormationUI, TacticGridLayout,
+                      TacticInfoUI, PositionStrengthUI, PositionUI, BenchPositionUI, BenchManager
+    Players/         PlayerDetailsUI, PlayerEventUI, PlayerEventsUI, PlayerPickerPopup, PlayerPickerRow,
+                      PlayerRowUI, PlayerSlotUI, TeamPlayerUI, MoraleUI, StatUI, UIStatDisplay
+    Match/           FixtureUI, MatchEventUI, LeagueTable, LeagueTableTeamUI, StatLeaderboardRowUI,
+                      StatLeaderboardWidget
+    Interview/       DialogueUI, InterviewManager, InterviewQuestionButton, ResponseButtonUI, ResponseManager
+    UIPages/         page controllers, incl. StatsPageUI
+    Contexts/        DiscussionContext, InterviewContext
+    TeamTalk/        TeamTalkUI (squad arch of morale boxes), PlayerMoraleBoxUI
+    Home/            DayTimelineWidget, DayBox, CompetitionContextWidget, CupTieRowUI,
+                      CurrentRoundWidget, SquadStatusWidget, AdvanceOrHomeButton, PlayerRowUI
+  Interfaces/       UIPage (abstract base), IDialogueContext
+```
+
+### Folder layout (prefabs)
+```
+Prefabs/
+  Base UI/    Button, Notification, Panel 1, Scroller, Slider, Toggle
+  Rows/       list-row prefabs (Fixture, LeagueStanding, MatchEvent, PlayerEventUI, PlayerPickerRow,
+              StatLeaderboardRow, TeamPlayerUI, TrainingPlayerUI, CupBracket)
+  Widgets/    FixturesPanel Variant, PlayerEvents Variant, SquadStatus Variant, StatWidget
+  Tactics/    BenchPositionUI, FormationDisplayModeControl, PositionStrengthUI, PositionUI,
+              ReadPositionUI, TacticsStatSlider
+  Interview/  Dialogue, InterviewButton, ResponseButton, Responses
+  Match/      LeagueTable, Stat
+  Home/       DayBox, ScheduleEntryUI
+  Training/   TrainingOptionUI, TrainingPlayerSlot
+  TeamTalk/   HalfTimePlayer
 ```
 
 > **Adding a system, the house style:** pure logic in a plain C# class (testable) → a thin `UIObject`/`UIPage`
@@ -381,6 +417,13 @@ shot is attempted or possession is lost.
   (they just can't run team talks to fix slumps). `IsCpuControlled` is **false in headless tools with no human
   team** (e.g. `TacticLab`), so balancing analysis still sees the full, unmodified mechanics. Adding a new
   exemption is a one-liner: gate the penalty site on `team.IsCpuControlled`.
+  **Considered and deliberately NOT exempted:** the off-position penalty (only bites a CPU side when an injury
+  auto-sub forces it — arguably realistic), reliance weakness-amplification (the AI auto-binds its reliance to its
+  best eligible player, so the downside is already small) and negative chemistry (mild and symmetric across the
+  league, so it doesn't systematically weaken the AI). Each is a one-liner if the AI ever looks too strong.
+  **Chemistry tuning** — all consts at the top of `Chemistry.cs`: `BAD_BLOOD_CHANCE 0.04`, `FROSTY_CHANCE 0.11`,
+  `IN_SYNC_CHANCE 0.11` (rest Neutral), `STAT_STEP 5` (magnitude per level), `AFFECTED_STAT_COUNT 3` (how many of
+  the link-stats each pairing moves), `LinkStats[]`, and the `ArePositionsLinked` adjacency table.
 
 ---
 
@@ -445,7 +488,7 @@ No transfer market — players are hired via **interview days** (now schedule-ga
 - **InterviewManager** (`UI/`): drives an interview via `DialogueUI` (≤5 questions); intersects buckets into
   `NarrowedPersonalities` (`NarrowedPersonalitiesText()` → e.g. "Cocky / Aggressive"). UI helper
   `InterviewQuestionButton`. `RecruitmentManager.debugEndlessInterviews` makes every day an interview day for testing.
-  See `INTERVIEW_INMATCH_TEAMTALK_BUILD.md` / `WIRING_RECRUITMENT_HALFTIME_SIM.md`.
+  See `WIRING_RECRUITMENT_HALFTIME_SIM.md` §1.
 
 ---
 
@@ -464,12 +507,18 @@ positional development. The player sets one ongoing drill that repeats every tra
   - Boost drills: `+1` to affected stats (cap 15), `-1` decay to the rest, via `Player.ApplyBoostSession`.
   - Tactical → `TacticFamiliarity`; Social → morale; Positional → `Player.TickPositionalRoll` for ≤5 players.
   - Tunables: `MAX_BOOST=15`, `BUILD_PER_SESSION=1`, `DECAY_PER_SESSION=1`, `MAX_POSITIONAL_PLAYERS=5`.
+  - **Positional progression** (`Player.TickPositionalRoll`): a `POSITIONAL_ROLL_CHANCE` (50%) roll per session
+    ticks a per-position counter; hitting `ProgressThreshold(current)` promotes the strength one level (permanent)
+    and resets the counter. Thresholds **None→Poor 2, Poor→Okay 3, Okay→Good 4, Good→Natural 8** — the last step is
+    a deliberate jump, so a natural position is earned over a season, not bought in a month. Caps at Natural.
 - **TrainingManager**: `GetDrills()`→`DrillCatalog.All`; `SetTraining(session)` **persists only** (no execute);
   `ExecuteTraining()` runs on scheduled training days (default drill = Fitness). `CurrentSession` is saved in
   `CoreSaveState.CurrentTraining`.
 - **TrainingPageUI**: drill list + info panel + positional sub-panel (position dropdown + up-to-5 player
-  multiselect with rating image + clickable name links); "Set Training" persists and `SaveCore()`s. (Build guide:
-  `TRAINING_UI_LAYOUT.md`.)
+  multiselect with rating image + clickable name links); "Set Training" persists and `SaveCore()`s. Drill buttons
+  spawn from `optionButtonPrefab` (a Button + a child TMP; code sets the label and the type colour — don't add an
+  Inspector OnClick, the click is wired by `DrillId`). Current page layout + its outstanding fixes:
+  `UI_AUDIT_AND_LAYOUT_PLAN.md` §6.
 
 ---
 
@@ -578,6 +627,19 @@ with all results in; you then advance separately. Autosave fires every advance a
 
 ## 12. ID & Save System (v2 — multi-file)
 
+### Design decisions behind it (locked in)
+- **Per-type counters, not one global counter** — Person/Team/Competition/Fixture/Series IDs each stay small and
+  contiguous within their type.
+- **Fixtures are full ID-bearing entities**, so any historical game is individually addressable and queryable.
+- **`IdManager` is its own singleton**, not folded into `GameManager` — separation of concerns and testability.
+- **ScriptableObject assets** (`Formation`, `TacticTemplate`, `EventType`) stay keyed by asset **name**: they're
+  editor content, not runtime entities, so they get no ID migration.
+- **Each season is its own retained `Competition` instance**, never re-initialised in place; instances of the same
+  competition across years are linked by a `CompetitionSeries` lineage, so the UI can browse every season of a
+  division.
+- **Runtime stays direct-reference.** IDs are only the persistence and lookup key — `Fixture.HomeTeam` is a real
+  `Team` in memory, so no gameplay call site changed.
+
 ### ID allocation
 `IdManager` holds five per-type counters (`NextPersonId/TeamId/CompetitionId/FixtureId/SeriesId`) with
 `Allocate*Id()`. Counters are stored in the core save and re-seeded via `SeedFromState` on load so post-load
@@ -608,6 +670,10 @@ them through the managers on read. `ScriptableObjectRefConverter` resolves SOs b
   then the current season file, then schedule/training wiring; returns `false` on failure (GameManager handles it).
 - `HasSave` checks `core.json`; `DeleteSave` removes the slot folder (+ legacy `autosave.json`).
 - `ArchiveSeason(year, comps)` (called at rollover) slims **non-player** matches then writes the season file once.
+  Slimming keeps the score, the starting XIs and the scorers, and drops the per-match detail (fouls, possession,
+  the full shot log) — so archived AI-vs-AI games stay browsable but cheap, while **the player's own matches keep
+  full detail**. Only the starting XI is recorded, never substitutes; a player who featured in both a league game
+  and a cup tie is kept in full in both.
 - `LoadSeasonForViewing(year)` deserializes a past season into a **viewing cache** (`FixturesManager.RegisterViewedSeason`)
   for a future history UI, without merging into live state.
 
@@ -637,9 +703,9 @@ resolves EventType + persons). Mutable structs that round-trip carry `[JsonConst
 - `Events/` & `Events/Random/` — win/loss + flavour life events; `Responses/` — managerial response assets.
 - `Competitions/Leagues/` — the four `LeagueTemplate`s with promotion/relegation links.
 - `Art/Morale/` — morale face sprites; `Art/Ratings/` — F–S rating badge sprites (`UIStatDisplay.GetRatingSprite`).
-- **Needed for the new UI (not yet authored / wired in-scene):** day-type icon sprites (match/training/interview/
-  pub-trip/rest) for the home day strip; a spinner sprite for `LoadingOverlay`. The home dashboard and `LoadingOverlay`
-  GameObjects must be **built/wired in the scene** (the C# is done) — see `HOME_SCREEN_BUILD.md`.
+- The day-type icon sprites (match/training/interview/pub-trip/rest) and the `LoadingOverlay` spinner are now
+  **authored and assigned in-scene**. The one home-screen widget still missing from the scene is `SquadStatus`
+  (the prefab exists but is never instanced) — see `COMPLETENESS_AUDIT.md` §2.
 
 ---
 
@@ -650,21 +716,16 @@ resolves EventType + persons). Mutable structs that round-trip carry `[JsonConst
 | Doc | Purpose |
 |---|---|
 | `WORKING_PREFERENCES.md` | How to work on this project — code conventions + AI-assistant prompting preferences |
-| `SAVE_SYSTEM_PLAN.md` | Original ID-migration + reference-by-ID plan |
-| `SAVE_SPLIT_PLAN.md` | Save v2: per-season files + archived-match slimming |
-| `TRAINING_SYSTEM_PLAN.md` | The Boost training system design |
-| `TRAINING_UI_LAYOUT.md` | Editor build guide for the training page |
+| **`COMPLETENESS_AUDIT.md`** | **Code vs. scene vs. docs sweep**: documented wiring never done, components placed nowhere, described-but-unbuilt features, dead code, doc drift |
+| **`UI_AUDIT_AND_LAYOUT_PLAN.md`** | **Scene-level UI audit** (hierarchy, RectTransforms, layout groups) for Training / Recruitment / Match Sim / half-time Team Talk, + the staged fix plan |
 | `HOME_SCREEN_PLAN.md` | Home dashboard design + decisions |
-| `HOME_SCREEN_BUILD.md` | Step-by-step editor build guide for the home screen |
-| `NEW_SYSTEMS_BUILD.md` | **Editor/UI wiring for the new systems** (tactics depth, in-match changes, injuries/suspensions, interview day, reliances/picker) + a tuning cheat-sheet |
-| **`MATCH_SIM_AND_TEAM_TALK_BUILD.md`** | **Authoritative** from-scratch build guide for the match screen + half-time team-talk overlay (prefabs, hierarchy, Inspector order, the overlay visibility model). Supersedes the match-sim/team-talk wiring in the three docs below |
-| `INTERVIEW_INMATCH_TEAMTALK_BUILD.md` | In-depth build/explanation of in-match tactical changes, half-time, and interview day. §2 (minigame talk) is **obsolete** |
-| `WIRING_RECRUITMENT_HALFTIME_SIM.md` | Field-by-field Inspector checklist for recruitment/interview. §2–3 (match sim, half-time) superseded |
-| `TEAM_TALK_UI.md` | Team-talk reaction model (severity, shared discussion table). Wiring superseded |
-| `STATS_WIDGETS_BUILD.md` | Stat leaderboard widgets (top scorers/assists/saves/cards/clean sheets…) for the home/My Team/stats pages |
-| `CHEMISTRY_AND_AI_TACTICS_BUILD.md` | Player chemistry (links/levels/effect) + CPU penalty exemptions (`Team.IsCpuControlled`); the 3 extra instruction assets + tuning |
+| `HOME_SCREEN_BUILD.md` | Home screen: what's built + the one widget still to place (`SquadStatus`) |
+| `NEW_SYSTEMS_BUILD.md` | Remaining wiring for the new systems + the **authoring reference** for reliances/synergies and the **tuning cheat-sheet** (where every number lives) |
+| **`MATCH_SIM_AND_TEAM_TALK_BUILD.md`** | Match screen + half-time team-talk overlay: what's left to wire, plus the rules that govern them (overlay visibility model, mentality-label states, `ResponseManager` reuse) |
+| `WIRING_RECRUITMENT_HALFTIME_SIM.md` | Recruitment/interview field reference + how the interview plays (buckets, personality narrowing) |
+| `STATS_WIDGETS_BUILD.md` | Stat leaderboard widgets: the widget field reference + stat meanings; the dedicated Stats page is the one placement still to build |
 | `TEAM_TALK_REWORK_PLAN.md` | **Design rationale (now built)**: dressing-room chatter (pre/post-talk reaction lines, all 10 personalities × result/expectation/morale/rut, deliberately ambiguous) + capped individual talks |
-| **`HALFTIME_TEAM_TALK_REWORK_BUILD.md`** | **Editor wiring for the team-talk rework**: per-player speech bubbles, the individual-talk popup (2nd `ResponseManager`), the new `TeamTalkUI`/`PlayerMoraleBoxUI`/`TeamTalkController` fields. Builds on `MATCH_SIM_AND_TEAM_TALK_BUILD.md` Part B |
+| **`HALFTIME_TEAM_TALK_REWORK_BUILD.md`** | The four outstanding team-talk-rework wiring problems (shared `ResponseManager`, no Cancel button, misplaced counter, missing bubble background) + the chatter tuning knobs |
 | `MORALE_MODEL.md` | The morale→stats maths: formulas, affected-stat groups, slump/blunder probabilities, worked examples, tuning |
 | **`PLAYER_STATS_MATCH_SIM_REWORK_BUILD.md`** | Implemented 20-skill schema, old-save migration, correlated generation, aggregation maths, exact phase stat weights and verification |
 | **`MATCH_SIM_AND_CONTEXTUAL_EVENTS_PLAN.md`** | **Future design only:** deeper match actions/spatial state/calibration plus contextual event threads, personality voice, memory, promises and squad propagation |
@@ -763,7 +824,7 @@ hidden personality. Ability questions add **shape variation** (a clear standout 
 versatile) with the threshold shifted by bucket. A **CompareToPlayer** question opens `PlayerPickerPopup` to pick any
 squad member and scores ability by *signed √ of each stat difference, summed* → "about the same / an edge / miles
 off", biased by personality. `RecruitmentManager.debugEndlessInterviews` makes every day an interview day for testing.
-UI helper: `InterviewQuestionButton`. See `INTERVIEW_INMATCH_TEAMTALK_BUILD.md` / `WIRING_RECRUITMENT_HALFTIME_SIM.md`.
+UI helper: `InterviewQuestionButton`. See `WIRING_RECRUITMENT_HALFTIME_SIM.md` §1.
 
 **16.5 Half-time team talk — reuses the discussion system, now a "read-the-room" puzzle
 (`HALFTIME_TEAM_TALK_REWORK_BUILD.md`, design in `TEAM_TALK_REWORK_PLAN.md`).** The base talk is a squad-wide

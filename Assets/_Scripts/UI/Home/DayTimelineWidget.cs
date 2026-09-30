@@ -20,9 +20,7 @@ public class DayTimelineWidget : MonoBehaviour
     [SerializeField] private float leadWidth = 220f;
     [SerializeField] private float smallWidth = 110f;
     [SerializeField] private float spacing = 12f;
-    [Tooltip("Height of the lead (today) box.")]
     [SerializeField] private float leadHeight = 200f;
-    [Tooltip("Height of the smaller future-day boxes.")]
     [SerializeField] private float smallHeight = 130f;
 
     [Header("Animation")]
@@ -132,7 +130,7 @@ public class DayTimelineWidget : MonoBehaviour
 
     private void Populate(DayBox box, List<ScheduleEntry> data, int index, bool isLead)
     {
-        ScheduleEntry entry = (data != null && index < data.Count) ? data[index] : null;
+        ScheduleEntry entry = index < data.Count ? data[index] : null;
         string label = entry != null
             ? (isLead ? entry.Date.ToString("ddd d MMM") : entry.Date.ToString("ddd"))
             : "";

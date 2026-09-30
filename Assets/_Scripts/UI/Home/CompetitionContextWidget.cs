@@ -1,6 +1,5 @@
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 /// <summary>
 /// Bottom-left home panel that adapts to the player's NEXT fixture:
@@ -70,7 +69,7 @@ public class CompetitionContextWidget : UIObject
         Game.ClearContainer(leagueRowContainer);
 
         var standings = league.GetStandings();
-        if (standings == null || standings.Count == 0) return;
+        if (standings.Count == 0) return;
 
         int myIdx = standings.FindIndex(e => e.team == myTeam);
         if (myIdx < 0) myIdx = 0;
@@ -83,7 +82,7 @@ public class CompetitionContextWidget : UIObject
         {
             var row = Instantiate(leagueRowPrefab, leagueRowContainer);
             row.SetLeagueStandingText(standings[i], i + 1); // real position (1-based)
-            if (standings[i].team == myTeam) Highlight(row.gameObject);
+            if (standings[i].team == myTeam) row.Highlight(myTeamHighlight);
         }
     }
 
@@ -111,12 +110,6 @@ public class CompetitionContextWidget : UIObject
             var row = Instantiate(tieRowPrefab, bracketRowContainer);
             row.Set(tie, myTeam);
         }
-    }
-
-    private void Highlight(GameObject row)
-    {
-        var img = row.GetComponent<Image>();
-        if (img != null) img.color = myTeamHighlight;
     }
 
     /// <summary>Names a knockout round from the number of ties it contains.</summary>

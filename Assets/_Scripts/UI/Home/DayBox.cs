@@ -16,40 +16,37 @@ public class DayBox : MonoBehaviour
     [Tooltip("Shown only on the lead (today) box — e.g. the club crest / 'HOME' label.")]
     [SerializeField] private GameObject leadExtras;
 
-    public RectTransform Rect => rect != null ? rect : (RectTransform)transform;
+    public RectTransform Rect => rect;
 
     public void SetData(string label, Sprite iconSprite, bool isLead)
     {
         dayLabel.text = label;
         icon.sprite = iconSprite;
         icon.enabled = iconSprite != null;
-        if (leadExtras != null) leadExtras.SetActive(isLead);
+        leadExtras.SetActive(isLead);
     }
 
     public void SetSlotInstant(Vector2 anchoredPos, Vector2 size)
     {
         Rect.anchoredPosition = anchoredPos;
         Rect.sizeDelta = size;
-        if (canvasGroup != null) canvasGroup.alpha = 1f;
+        canvasGroup.alpha = 1f;
     }
 
     public void AnimateToSlot(Vector2 anchoredPos, Vector2 size, float duration)
     {
         Rect.DOAnchorPos(anchoredPos, duration).SetEase(Ease.OutCubic);
         Rect.DOSizeDelta(size, duration).SetEase(Ease.OutCubic);
-        if (canvasGroup != null) canvasGroup.DOFade(1f, duration);
+        canvasGroup.DOFade(1f, duration);
     }
 
-    public void FadeOut(float duration)
-    {
-        if (canvasGroup != null) canvasGroup.DOFade(0f, duration);
-    }
+    public void FadeOut(float duration) => canvasGroup.DOFade(0f, duration);
 
     public void SetVisible(bool visible) => gameObject.SetActive(visible);
 
     public void KillTweens()
     {
         Rect.DOKill();
-        if (canvasGroup != null) canvasGroup.DOKill();
+        canvasGroup.DOKill();
     }
 }

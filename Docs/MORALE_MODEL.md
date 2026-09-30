@@ -1,7 +1,7 @@
 # Morale → stats: the maths
 
 How a player's `Morale` (Mood + Passion, each 0–100) bends their in-match stats. All logic is in
-`Assets/_Scripts/Utilities/MoraleEffects.cs` and is applied in `Player.GetStats`. Every team is subject to it
+`Assets/_Scripts/Utilities/Simulation/MoraleEffects.cs` and is applied in `Player.GetStats`. Every team is subject to it
 (the AI included). Each player has a **personality-specific ideal** (`Person.IdealMorale`, ±5 random jitter at
 creation) — morale is measured as the signed gap to that ideal, so "good morale" means *near your ideal*, not
 "high numbers".
