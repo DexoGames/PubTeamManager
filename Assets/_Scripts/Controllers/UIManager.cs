@@ -47,7 +47,7 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    public void Setup()
+    public void Setup(bool chooseClub = false)
     {
         Debug.Log("[TRACE] UIManager.Setup — begin");
         playerDetailsUI = PlayerDetailsUI.Instance;
@@ -62,8 +62,14 @@ public class UIManager : MonoBehaviour
         recruitmentPageUI = RecruitmentPageUI.Instance;
         statsPageUI = StatsPageUI.Instance;   // may be null until the page is added to the scene
 
-        //START PAGE IS THE HOME PAGE
-        ShowHomePage();
+        if (chooseClub)
+        {
+            HideAllUI();
+            ShowNavigationButtons(false);
+            statsPageUI.DisplayUI();
+            statsPageUI.ChoosePub();
+        }
+        else ShowHomePage();
     }
 
     public void ShowPlayerDetails(int personID)
@@ -205,7 +211,7 @@ public class UIManager : MonoBehaviour
     /// <summary>Return to the previously shown page. No-op during a live match (use the match controls) or with no history.</summary>
     public void Back()
     {
-        if (TeamManager.Instance.MyTeam.Tactic.InMatch) return;
+        if (TeamManager.Instance.HumanTeam == null || TeamManager.Instance.MyTeam.Tactic.InMatch) return;
 
         if (_backStack.Count == 0) return;
 

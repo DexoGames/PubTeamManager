@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   description: <1> put in a USB the wrong way, flipped it, only to find they were
     right the first time
-  discussion: 
+  discussion: Spent half my break trying to plug the thing in.
   odds: 0.088
   noAffected: 1
-  moraleChange: -2
+  moodChange: -2
   severity: 3

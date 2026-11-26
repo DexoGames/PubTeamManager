@@ -19,6 +19,10 @@ public class League : Competition, ISaveable
 
     public int PromotionSpots;
     public int PlayoffSpots;
+    public int FirstPlayoffRound = -1;
+
+    public bool IsPlayoff(Fixture fixture) => FirstPlayoffRound >= 0 && fixture.Round >= FirstPlayoffRound;
+
     public int RelegationSpots;
 
     List<LeagueTableEntry> standings = new List<LeagueTableEntry>();
@@ -172,6 +176,12 @@ public class League : Competition, ISaveable
 
     public void UpdateStandings(Fixture fixture)
     {
+        if (IsPlayoff(fixture))
+        {
+            CheckSeasonEnd();
+            return;
+        }
+
         var homeTeamEntry = standings.FirstOrDefault(entry => entry.team.TeamId == fixture.HomeTeam.TeamId);
         var awayTeamEntry = standings.FirstOrDefault(entry => entry.team.TeamId == fixture.AwayTeam.TeamId);
 
@@ -224,6 +234,23 @@ public class League : Competition, ISaveable
         if (IsComplete) return;
         if (Fixtures.Any(f => !f.BeenPlayed)) return;
 
+        if (PlayoffSpots == 4 && standings.Count >= PromotionSpots + 4)
+        {
+            if (FirstPlayoffRound < 0)
+            {
+                FirstPlayoffRound = Rounds.Length;
+                var qualifiers = standings.Skip(PromotionSpots).Take(4).Select(entry => entry.team).ToList();
+                AddPlayoffRound(qualifiers[0], qualifiers[3], qualifiers[1], qualifiers[2]);
+                return;
+            }
+            if (Rounds.Length == FirstPlayoffRound + 1)
+            {
+                var semiFinals = Rounds[FirstPlayoffRound];
+                AddPlayoffRound(semiFinals[0].GetWinner(), semiFinals[1].GetWinner());
+                return;
+            }
+        }
+
         // All matches played — season is complete
         IsComplete = true;
         SortStandings();
@@ -265,7 +292,18 @@ public class League : Competition, ISaveable
     public List<Team> GetPromotedTeams()
     {
         if (PromotionSpots <= 0) return new List<Team>();
-        return standings.Take(PromotionSpots).Select(e => e.team).ToList();
+        var promoted = standings.Take(PromotionSpots).Select(e => e.team).ToList();
+        if (FirstPlayoffRound >= 0 && Rounds.Length == FirstPlayoffRound + 2)
+        {
+            Team winner = Rounds[FirstPlayoffRound + 1][0].GetWinner();
+            if (winner != null) promoted.Add(winner);
+        }
+        else if (IsComplete && PlayoffSpots == 4 && standings.Count > PromotionSpots)
+        {
+            // Old completed leagues had no playoff fixtures. Use the highest qualifier on migration.
+            promoted.Add(standings[PromotionSpots].team);
+        }
+        return promoted;
     }
 
     /// <summary>Returns teams that are relegated (bottom N based on RelegationSpots).</summary>
@@ -273,6 +311,22 @@ public class League : Competition, ISaveable
     {
         if (RelegationSpots <= 0) return new List<Team>();
         return standings.Skip(standings.Count - RelegationSpots).Select(e => e.team).ToList();
+    }
+
+    void AddPlayoffRound(params Team[] teams)
+    {
+        int round = Rounds.Length;
+        DateTime date = Fixtures.Max(f => f.Date).AddDays(7);
+        var ties = new List<Fixture>();
+        for (int i = 0; i < teams.Length; i += 2)
+        {
+            var tie = new Fixture(teams[i], teams[i + 1], FindNextAvailableDate(teams[i], teams[i + 1], date), this, round);
+            Fixtures.Add(tie);
+            ties.Add(tie);
+        }
+
+        BuildRoundsFromFixtures();
+        FixturesManager.Instance.RegisterFixtures(ties);
     }
 
     void SortStandings()

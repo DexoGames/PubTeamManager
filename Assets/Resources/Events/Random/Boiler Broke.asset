@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Boiler Broke
   m_EditorClassIdentifier: 
   description: <1>'s boiler broke
-  discussion: 
+  discussion: The boiler packed in. I was up half the night trying to fix it.
   odds: 0.165
   noAffected: 1
-  moraleChange: -5
+  moodChange: -5
   severity: 3

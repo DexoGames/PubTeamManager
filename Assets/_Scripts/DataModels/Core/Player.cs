@@ -65,8 +65,23 @@ public class Player : Person
         };
     }
 
-    public int Fatigue { get; private set; }
-    public float TacticFamiliarity { get; set; } = 0f;
+    public SelectionHistory Selection = new SelectionHistory();
+
+    [JsonProperty] public int Fatigue { get; private set; }
+    [JsonIgnore] public bool SentOff;
+    [JsonIgnore] public bool LeftInjured;
+    [JsonIgnore] public bool CanPlay => IsAvailable && !SentOff && !LeftInjured;
+
+    public void AccumulateFatigue(int intensity)
+    {
+        int exertion = 2 + (intensity + 100 - RawStats.Stamina) / 45;
+        Fatigue = Mathf.Min(100, Fatigue + exertion);
+    }
+
+    public void RecoverOvernight()
+    {
+        Fatigue = Mathf.Max(0, Fatigue - 8 - RawStats.Stamina / 12);
+    }
 
     // ————————————————————— Transient per-match morale state (not saved) —————————————————————
     /// <summary>True once this player has dropped into a morale SLUMP this match (mood treated as 0 until the end
@@ -328,10 +343,8 @@ public class Player : Person
     {
         Stats newStats = GetBoostedRawStats();
 
-        if (GetTeamIndex() < Team.Formation.Positions.Length)
-        {
-            newStats = GetStatsFor(Team.Formation.Positions[GetTeamIndex()].ID);
-        }
+        Position? position = GetPosition();
+        if (position.HasValue) newStats = GetStatsFor(position.Value);
 
         // Morale: a constant drop-off when below ideal (with a slump pinning mood to its worst), plus a one-minute
         // collapse when blundering. Applies to ALL teams — the AI is subject to morale too. See MoraleEffects.
@@ -341,6 +354,9 @@ public class Player : Person
             if (MoraleBlunder) newStats = MoraleEffects.ApplyBlunder(newStats);
         }
 
+        newStats.Pace -= Fatigue / 6;
+        newStats.Agility -= Fatigue / 8;
+        newStats.Composure -= Fatigue / 12;
         return newStats;
     }
 
@@ -491,7 +507,7 @@ public class Player : Person
 
     public int GetTeamIndex()
     {
-        return Team.GetPlayerIndex(this);
+        return Team != null ? Team.GetPlayerIndex(this) : -1;
     }
 
     /// <summary>This player's hidden chemistry with another (symmetric, deterministic). For UI/inspection;
@@ -500,11 +516,9 @@ public class Player : Person
 
     public Position? GetPosition()
     {
-        if(GetTeamIndex() < Team.Formation.Positions.Length)
-        {
-            return Team.Formation.Positions[GetTeamIndex()].ID;
-        }
-        return null;
+        int slot = GetTeamIndex();
+        if (slot < 0 || slot >= Team.Formation.Positions.Length) return null;
+        return Team.Formation.Positions[slot].ID;
     }
 
     public bool IsPositionIn(params Position[] validPositions)

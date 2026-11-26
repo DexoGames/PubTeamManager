@@ -16,5 +16,5 @@ MonoBehaviour:
   discussion: Hey boss, I'm feeling a bit under the weather right now..
   odds: 0.377
   noAffected: 1
-  moraleChange: -5
+  moodChange: -5
   severity: 2

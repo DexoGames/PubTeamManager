@@ -1,19 +1,15 @@
-using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
-[RequireComponent(typeof(TMP_Dropdown))]
 public class FormationDisplayModeControl : UIObject
 {
-    TMP_Dropdown dropdown;
+    [SerializeField] TMP_Dropdown dropdown;
     [SerializeField] FormationUI formationUI;
     [SerializeField] GameObject[] otherContainers;
 
     public override void Setup()
     {
-        dropdown = GetComponent<TMP_Dropdown>();
         SetDropdown();
         SetDisplayMode(dropdown.value);
     }
@@ -23,6 +19,7 @@ public class FormationDisplayModeControl : UIObject
         dropdown.ClearOptions();
         dropdown.onValueChanged.RemoveAllListeners();
         dropdown.onValueChanged.AddListener(SetDisplayMode);
+
         List<string> options = new List<string>();
         foreach (DisplayMode mode in System.Enum.GetValues(typeof(DisplayMode)))
         {

@@ -24,7 +24,7 @@ public class TeamManager : MonoBehaviour
 
 
     public List<Team> teams;
-    public int numberOfTeams = 81; // 1 player team + 80 AI teams
+    public int numberOfTeams = 80;
     private List<Pub> allPubs = new List<Pub>();
     List<Team> spawnedTeams = new List<Team>();
     private readonly Dictionary<int, Team> _byId = new Dictionary<int, Team>();
@@ -37,12 +37,6 @@ public class TeamManager : MonoBehaviour
     private void OnEnable()
     {
         Debug.Log("[TRACE] TeamManager.OnEnable — component is enabled");
-    }
-
-    private void Start()
-    {
-        Debug.Log("[TRACE] TeamManager.Start — LoadPubsFromCSV");
-        LoadPubsFromCSV();
     }
 
     private void LoadPubsFromCSV()
@@ -66,10 +60,10 @@ public class TeamManager : MonoBehaviour
                     name: values[1].Trim().Trim('"'),
                     address: values[2].Trim().Trim('"'),
                     postcode: values[3].Trim(),
-                    easting: float.Parse(values[4].Trim()),
-                    northing: float.Parse(values[5].Trim()),
-                    latitude: float.Parse(values[6].Trim()),
-                    longitude: float.Parse(values[7].Trim()),
+                    easting: float.Parse(values[4].Trim(), System.Globalization.CultureInfo.InvariantCulture),
+                    northing: float.Parse(values[5].Trim(), System.Globalization.CultureInfo.InvariantCulture),
+                    latitude: float.Parse(values[6].Trim(), System.Globalization.CultureInfo.InvariantCulture),
+                    longitude: float.Parse(values[7].Trim(), System.Globalization.CultureInfo.InvariantCulture),
                     localAuthority: values[8].Trim()
                 );
 
@@ -115,22 +109,17 @@ public class TeamManager : MonoBehaviour
         return result.ToArray();
     }
 
-    public void SpawnTeams()
+    public void SpawnTeams(string pubId = null)
     {
+        if (allPubs.Count == 0) LoadPubsFromCSV();
         if (allPubs.Count == 0)
         {
             Debug.LogError("No pubs loaded! Cannot spawn teams.");
             return;
         }
 
-        // Find "The Hobbit" pub in Southampton as the first team
-        Pub playerPub = allPubs.FirstOrDefault(p => p.Name.Contains("The Hobbit"));
-        
-        if (playerPub == null)
-        {
-            Debug.LogWarning("Could not find The Five Dials pub, using first pub in list");
-            playerPub = allPubs[0];
-        }
+        Pub playerPub = allPubs.FirstOrDefault(p => p.FasId == pubId)
+            ?? allPubs.FirstOrDefault(p => p.Name.Contains("The Hobbit")) ?? allPubs[0];
 
         List<Pub> selectedPubs = SelectPubs(playerPub, numberOfTeams);
 
@@ -241,6 +230,7 @@ public class TeamManager : MonoBehaviour
 
     public List<Pub> GetAllPubs()
     {
+        if (allPubs.Count == 0) LoadPubsFromCSV();
         return allPubs;
     }
 

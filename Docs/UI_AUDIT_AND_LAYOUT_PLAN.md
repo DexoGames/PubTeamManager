@@ -1,5 +1,8 @@
 # UI Audit & Layout Plan
 
+For the current scene wiring, implemented career and match flows, and outstanding play checks, see [Career and match flows](CAREER_AND_MATCH_BUILD.md). The descriptions below record the earlier design and build state.
+
+
 **Audit of `Menu.unity` as it stands today** (hierarchy, RectTransforms, layout components and every
 `[SerializeField]` reference on the page scripts), plus a prioritised plan for fixing the layout, wiring and
 structure. Focus pages: **Training**, **Recruitment**, **Match Sim** and especially the **half-time Team Talk**.

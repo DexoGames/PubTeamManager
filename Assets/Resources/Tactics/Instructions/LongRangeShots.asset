@@ -27,5 +27,9 @@ MonoBehaviour:
     group: 3
     strength: -2
   tacticDependencies: []
-  reliances: []
+  reliance:
+    stats: 0000000012000000
+    multiplier: 1.5
+    eligibleGroups: 03000000
+    familiarityPenalty: 0.12
   incompatibleInstructions: []

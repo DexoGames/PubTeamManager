@@ -17,6 +17,7 @@ public class EventType : ScriptableObject
         Basic, Special          // Basic is for wins and losses, special for other (might add more later)
     }
 
+    public ClubConcern concern;
     public Tag tag = Tag.Special;
     public string description;  // Use <1> to discuss the first person affected, <2> for the second etc. or use <all> for everyone affected, <w1> to use custom words
     [TextArea] public string discussion;

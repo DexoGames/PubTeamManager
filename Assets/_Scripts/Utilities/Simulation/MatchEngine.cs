@@ -6,7 +6,6 @@ using static Game;
 public class MatchEngine
 {
     private readonly Match match;
-    private float temp; // debug helper as in original
 
     public MatchEngine(Match match)
     {
@@ -21,13 +20,16 @@ public class MatchEngine
         Team attackingTeam = Random.Range(0f, 1f) < possession ? match.HomeTeam : match.AwayTeam;
         Team defendingTeam = attackingTeam == match.HomeTeam ? match.AwayTeam : match.HomeTeam;
 
-        StartingPhase(attackingTeam, defendingTeam);
-
-        // The defending side may foul the attackers as they try to play through.
-        TryFoul(defendingTeam, attackingTeam);
+        if (attackingTeam.OnPitchPlayers.Count > 0 && defendingTeam.OnPitchPlayers.Count > 0)
+            PlayPossession(attackingTeam, defendingTeam);
 
         do
         {
+            if (match.currentMin.Stoppage == 0 && match.currentMin.Base % 10 == 0)
+            {
+                foreach (Player player in match.HomeTeam.OnPitchPlayers) player.AccumulateFatigue(match.HomeTeam.Intensity);
+                foreach (Player player in match.AwayTeam.OnPitchPlayers) player.AccumulateFatigue(match.AwayTeam.Intensity);
+            }
             match.currentMin = AdvanceMinute(match.currentMin);
         }
         while (Random.Range(0, 4) == 0);
@@ -40,21 +42,35 @@ public class MatchEngine
     /// committing side's Fouling instruction and the fouled side's Provoking. A foul may carry a card
     /// (yellow/red) and/or injure the victim — the in-match source of suspensions and injuries.
     /// </summary>
-    private void TryFoul(Team committing, Team fouled)
+    bool TryFoul(Team committing, Team fouled, Phase.Type phase)
     {
-        if (committing?.StartingPlayers == null || fouled?.StartingPlayers == null) return;
-        if (committing.StartingPlayers.Count == 0 || fouled.StartingPlayers.Count == 0) return;
+        float chance = 0.007f + committing.Fouling / 8000f + fouled.Provoking / 12000f;
+        if (Random.value > chance) return false;
 
-        float foulChance = 0.014f + committing.Tactic.Fouling / 4000f + fouled.Tactic.Provoking / 6000f;
-        if (Random.value > foulChance) return;
-
-        Player offender = committing.StartingPlayers[Random.Range(0, committing.StartingPlayers.Count)];
-        Player victim = fouled.StartingPlayers[Random.Range(0, fouled.StartingPlayers.Count)];
-
+        var defenders = committing.OnPitchPlayers;
+        var attackers = fouled.OnPitchPlayers;
+        Player offender = defenders[Random.Range(0, defenders.Count)];
+        Player victim = attackers[Random.Range(0, attackers.Count)];
         Card card = DecideCard(committing, offender);
         InjuryType injury = DecideInjury(card, victim);
-
         match.RecordFoul(card, offender, victim, injury, match.currentMin);
+        offender.SentOff = card == Card.Red || card == Card.RedAndSuspension;
+        victim.LeftInjured = injury != InjuryType.None;
+
+        if (offender.SentOff || victim.LeftInjured)
+        {
+            committing.Tactic.RefreshMatchCache();
+            fouled.Tactic.RefreshMatchCache();
+        }
+
+        bool nearGoal = phase == Phase.Type.Penetrate || phase == Phase.Type.Probe || phase == Phase.Type.Break;
+        if (nearGoal && fouled.OnPitchPlayers.Count > 0 && committing.OnPitchPlayers.Count > 0)
+        {
+            bool penalty = Random.value < 0.16f;
+            AttemptShot(phase, fouled, committing, match.currentMin, penalty ? 0.76f : 0.09f,
+                        penalty ? ShotType.Penalty : ShotType.Free_Kick);
+        }
+        return true;
     }
 
     private Card DecideCard(Team committing, Player offender)
@@ -86,181 +102,102 @@ public class MatchEngine
         return InjuryType.Death;
     }
 
-    private void StartingPhase(Team attacking, Team defending)
+    void PlayPossession(Team attacking, Team defending)
     {
-        // An unfamiliar side (recently changed setup) is far more prone to early mistakes —
-        // the cost the team pays until it re-drills the new tactic. CPU teams are exempt from the EXTRA
-        // unfamiliarity mistakes (they don't deliberately drill familiarity like the human does via training),
-        // so a reshuffled AI side doesn't bleed cheap goals; the base mistake rate still applies to everyone.
+        float control = WeightedAverage((attacking.Tactic.Control, 1f), (100 - attacking.Intensity, 1f), (100 - attacking.Tactic.Tempo, 1f));
+        Phase.Type phase = Random.Range(0f, 100f) < control ? Phase.Type.Build : Phase.Type.Advance;
         float familiarity = attacking.IsCpuControlled ? 1f : attacking.Tactic.Familiarity01;
-        float mistakeThreshold = 10f + (1f - familiarity) * 7f;
-
-        if (Random.Range(0, 10f + match.HomeTeam.Tactic.Stability + match.AwayTeam.Tactic.Stability) <= mistakeThreshold)
+        if (Random.Range(0f, 10f + attacking.Stability + defending.Stability) <= 10f + (1f - familiarity) * 7f)
         {
-            int i = Random.Range(0, 3);
-            match.AddHighlight(new MistakeHighlight(attacking, match.currentMin, attacking.StartingPlayers[Random.Range(0, attacking.StartingPlayers.Count)]));
-            switch (i)
+            var players = attacking.OnPitchPlayers;
+            match.AddHighlight(new MistakeHighlight(attacking, match.currentMin, players[Random.Range(0, players.Count)]));
+            (attacking, defending) = (defending, attacking);
+            phase = Phase.Type.Counter;
+        }
+
+        float momentum = 0f;
+        for (int step = 0; step < 12; step++)
+        {
+            match.AddHighlight(new PossessionHighlight(attacking, match.currentMin, phase));
+            if (TryFoul(defending, attacking, phase)) return;
+
+            float result;
+            Phase.Type success, turnover;
+            float chance = 0f;
+            switch (phase)
             {
-                case 0: Counter(defending, attacking, 0); return;
-                case 1: Penetrate(defending, attacking, 0); return;
-                case 2: Break(defending, attacking, 0); return;
+                case Phase.Type.Build:
+                    result = BuildLogic(attacking, defending);
+                    success = Phase.Type.Progress;
+                    turnover = Phase.Type.Break;
+                    break;
+                case Phase.Type.Progress:
+                    result = ProgressLogic(attacking, defending, momentum);
+                    success = Phase.Type.Probe;
+                    turnover = Phase.Type.Advance;
+                    break;
+                case Phase.Type.Advance:
+                    result = AdvanceLogic(attacking, defending, momentum);
+                    success = Phase.Type.Penetrate;
+                    turnover = Phase.Type.Advance;
+                    break;
+                case Phase.Type.Counter:
+                    result = CounterLogic(attacking, defending, momentum);
+                    success = Phase.Type.Break;
+                    turnover = Phase.Type.Penetrate;
+                    break;
+                case Phase.Type.Probe:
+                    result = ProbeLogic(attacking, defending, momentum);
+                    chance = Random.Range(0.2f, 0.8f);
+                    success = Phase.Type.Probe;
+                    turnover = Phase.Type.Counter;
+                    break;
+                case Phase.Type.Penetrate:
+                    result = PenetrateLogic(attacking, defending, momentum);
+                    chance = Random.Range(0.05f, 0.5f);
+                    success = Phase.Type.Penetrate;
+                    turnover = Phase.Type.Counter;
+                    break;
+                default:
+                    result = BreakLogic(attacking, defending, momentum);
+                    chance = Random.Range(0.02f, 0.3f);
+                    success = Phase.Type.Break;
+                    turnover = Phase.Type.Build;
+                    break;
             }
-        }
 
-        // Whether to build patiently (Build) or go direct (straight to Advance). High Tempo (from the
-        // formation) skips build-up and goes direct more often; low Tempo favours building from the back.
-        float controlScore = WeightedAverage(
-            (attacking.Tactic.Control, 1f),
-            (100 - attacking.Tactic.Intensity, 1f),
-            (100 - attacking.Tactic.Tempo, 1f));
-        float rand = Random.Range(0, 100f);
+            bool wide = Random.Range(0, 100) < attacking.AttackingWidth;
+            Player carrier = SelectCarrier(attacking, phase, wide);
+            var skills = carrier.GetStats();
+            float execution = wide ? skills.Crossing : skills.Passing;
+            if (result != 0f) result += (execution - 50f) / 15f;
+            match.RecordAction(attacking, wide, result < 0f);
 
-        if (rand < controlScore)
-        {
-            Build(attacking, defending);
+            momentum = Mathf.Abs(result);
+            if (result < 0f)
+            {
+                (attacking, defending) = (defending, attacking);
+                phase = turnover;
+                continue;
+            }
+            if (result == 0f || chance > 0f && WinningComplacency(attacking)) break;
+            if (chance > 0f)
+            {
+                AttemptShot(phase, attacking, defending, match.currentMin, Mathf.Clamp(chance + (execution - 50f) / 1000f, 0.02f, 0.9f), provider: carrier);
+                return;
+            }
+            phase = success;
         }
-        else
-        {
-            Advance(attacking, defending, 0);
-        }
+        match.AddHighlight(new PossessionFailHighlight(attacking, match.currentMin, phase));
     }
 
-    private void Build(Team attacking, Team defending)
+    static Player SelectCarrier(Team team, Phase.Type phase, bool wide)
     {
-        match.AddHighlight(new PossessionHighlight(attacking, match.currentMin, Phase.Type.Build));
-
-        float result = BuildLogic(attacking, defending);
-        if (result > 0)
-        {
-            Progress(attacking, defending, result);
-        }
-        else if (result < 0)
-        {
-            Break(defending, attacking, -result);
-        }
-        else
-        {
-            if (Random.Range(0, 3) == 0) Build(attacking, defending);
-            else match.AddHighlight(new PossessionFailHighlight(attacking, match.currentMin, Phase.Type.Build));
-        }
-    }
-
-    private void Progress(Team attacking, Team defending, float overflow)
-    {
-        float result = ProgressLogic(attacking, defending, overflow);
-        if (result > 0)
-        {
-            Probe(attacking, defending, result);
-        }
-        else if (result < 0)
-        {
-            Advance(defending, attacking, -result);
-        }
-        else
-        {
-            if (Random.Range(0, 3) == 0) Build(attacking, defending);
-            else match.AddHighlight(new PossessionFailHighlight(attacking, match.currentMin, Phase.Type.Progress));
-        }
-    }
-
-    private void Probe(Team attacking, Team defending, float overflow)
-    {
-        match.AddHighlight(new PossessionHighlight(attacking, match.currentMin, Phase.Type.Probe));
-
-        float result = ProbeLogic(attacking, defending, overflow);
-        if (result > 0 && !WinningComplacency(attacking))
-        {
-            AttemptShot(Phase.Type.Probe, attacking, defending, match.currentMin, Random.Range(0.2f, 0.8f));
-        }
-        else if (result < 0)
-        {
-            Counter(defending, attacking, -result);
-        }
-        else
-        {
-            if (Random.Range(0, 3) == 0) Progress(attacking, defending, 0);
-            else match.AddHighlight(new PossessionFailHighlight(attacking, match.currentMin, Phase.Type.Probe));
-        }
-    }
-
-    private void Advance(Team attacking, Team defending, float overflow)
-    {
-        match.AddHighlight(new PossessionHighlight(attacking, match.currentMin, Phase.Type.Advance));
-
-        float result = AdvanceLogic(attacking, defending, overflow);
-        if (result > 0)
-        {
-            Penetrate(attacking, defending, result);
-        }
-        else if (result < 0)
-        {
-            Advance(defending, attacking, -result);
-        }
-        else
-        {
-            if (Random.Range(0, 6) == 0) Advance(attacking, defending, 0);
-            else match.AddHighlight(new PossessionFailHighlight(attacking, match.currentMin, Phase.Type.Advance));
-        }
-    }
-
-    private void Penetrate(Team attacking, Team defending, float overflow)
-    {
-        match.AddHighlight(new PossessionHighlight(attacking, match.currentMin, Phase.Type.Penetrate));
-
-        float result = PenetrateLogic(attacking, defending, overflow);
-        if (result > 0 && !WinningComplacency(attacking))
-        {
-            AttemptShot(Phase.Type.Penetrate, attacking, defending, match.currentMin, Random.Range(0.05f, 0.5f));
-        }
-        else if (result < 0)
-        {
-            Counter(defending, attacking, -result);
-        }
-        else
-        {
-            if (Random.Range(0, 7) == 0) Penetrate(attacking, defending, 0);
-            else match.AddHighlight(new PossessionFailHighlight(attacking, match.currentMin, Phase.Type.Penetrate));
-        }
-    }
-
-    private void Counter(Team attacking, Team defending, float overflow)
-    {
-        match.AddHighlight(new PossessionHighlight(attacking, match.currentMin, Phase.Type.Counter));
-
-        float result = CounterLogic(attacking, defending, overflow);
-        if (result > 0)
-        {
-            Break(attacking, defending, result);
-        }
-        else if (result < 0)
-        {
-            Penetrate(defending, attacking, -result);
-        }
-        else
-        {
-            if (Random.Range(0, 4) == 0) Advance(attacking, defending, 0);
-            else match.AddHighlight(new PossessionFailHighlight(attacking, match.currentMin, Phase.Type.Counter));
-        }
-    }
-
-    private void Break(Team attacking, Team defending, float overflow)
-    {
-        match.AddHighlight(new PossessionHighlight(attacking, match.currentMin, Phase.Type.Break));
-
-        float result = BreakLogic(attacking, defending, overflow);
-        if (result > 0 && !WinningComplacency(attacking))
-        {
-            AttemptShot(Phase.Type.Break, attacking, defending, match.currentMin, Random.Range(0.02f, 0.3f));
-        }
-        else if (result < 0)
-        {
-            Build(defending, attacking);
-        }
-        else
-        {
-            if (Random.Range(0, 7) == 0) Advance(attacking, defending, 0);
-            else match.AddHighlight(new PossessionFailHighlight(attacking, match.currentMin, Phase.Type.Break));
-        }
+        PlayerGroup group = wide ? PlayerGroup.WidePlayers : PlayerGroup.Midfielders;
+        if (phase == Phase.Type.Build && !wide) group = PlayerGroup.Defenders;
+        var candidates = team.GetGroup(group).FindAll(p => p.CanPlay);
+        if (candidates.Count == 0) candidates = team.OnPitchPlayers;
+        return candidates[Random.Range(0, candidates.Count)];
     }
 
     private bool WinningComplacency(Team attacking)
@@ -281,16 +218,16 @@ public class MatchEngine
         return complacent;
     }
 
-    public bool AttemptShot(Phase.Type phase, Team attackingTeam, Team defendingTeam, Minute currentMinute, float baseXG)
+    public bool AttemptShot(Phase.Type phase, Team attackingTeam, Team defendingTeam, Minute currentMinute, float baseXG, ShotType? restart = null, Player provider = null)
     {
-        Player shooter = SelectWeightedRandomPlayer(attackingTeam.StartingPlayers);
+        Player shooter = SelectWeightedRandomPlayer(attackingTeam.OnPitchPlayers);
         Player keeper = defendingTeam.Goalkeeper;
+        if (keeper == null || !keeper.CanPlay) keeper = defendingTeam.OnPitchPlayers[0];
 
-        ShotType shotType = SelectShotType(phase, baseXG);
+        ShotType shotType = restart ?? SelectShotType(phase, baseXG);
 
         float playerEffect = CalculatePlayerEffect(shotType, shooter, baseXG) / 1.5f;
         float onTargetChance = Mathf.Clamp(baseXG + playerEffect, 0.01f, 0.99f);
-        temp = onTargetChance;
 
         float rand1 = Random.Range(0f, 1f);
         if (rand1 - 0.25f > onTargetChance)
@@ -307,20 +244,22 @@ public class MatchEngine
         else if (shotType == ShotType.Own_Goal)
         {
             finalGoalChance = Mathf.Clamp(baseXG * 8f, 0.01f, 0.9f);
-            shooter = defendingTeam.StartingPlayers[Random.Range(0, defendingTeam.StartingPlayers.Count)];
+            shooter = defendingTeam.OnPitchPlayers[Random.Range(0, defendingTeam.OnPitchPlayers.Count)];
         }
 
-        temp = finalGoalChance;
 
         float rand2 = rand1;
         ShotOutcome outcome = (rand2 < finalGoalChance) ? ShotOutcome.Goal : ShotOutcome.Saved;
 
         // Credit an assist on most goals (not own goals) to a weighted-random team-mate of the scorer.
-        Player assister = (outcome == ShotOutcome.Goal && shotType != ShotType.Own_Goal)
-            ? DecideAssister(attackingTeam, shooter)
+        Player assister = (outcome == ShotOutcome.Goal && shotType != ShotType.Own_Goal && shotType != ShotType.Penalty && shotType != ShotType.Free_Kick)
+            ? (provider == shooter ? null : provider ?? DecideAssister(attackingTeam, shooter))
             : null;
 
         match.RecordShot(shotType, outcome, attackingTeam, shooter, keeper, baseXG, currentMinute, assister);
+
+        if (!restart.HasValue && outcome == ShotOutcome.Saved && Random.value < 0.2f)
+            return AttemptShot(phase, attackingTeam, defendingTeam, currentMinute, 0.07f, ShotType.Corner);
 
         return outcome == ShotOutcome.Goal;
     }
@@ -330,7 +269,7 @@ public class MatchEngine
     {
         if (Random.value < 0.25f) return null;
 
-        var candidates = team.StartingPlayers.Where(p => p != scorer).ToList();
+        var candidates = team.OnPitchPlayers.Where(p => p != scorer).ToList();
         if (candidates.Count == 0) return null;
 
         float total = 0f;
@@ -402,6 +341,7 @@ public class MatchEngine
                 relevantSkill = WeightedAverage(
                     (stats.Shooting, 0.4f), (stats.Positioning, 0.35f), (stats.Technique, 0.25f));
                 break;
+            case ShotType.Corner:
             case ShotType.Header:
                 relevantSkill = WeightedAverage(
                     (stats.Heading, 0.38f), (stats.Jumping, 0.25f), (stats.Height, 0.15f),
@@ -479,7 +419,9 @@ public class MatchEngine
     // helper used by SimulateMinute
     private static float CalculateHomePossession(Team home, Team away)
     {
-        return home.Control / (float)(home.Control + away.Control);
+        float homeWeight = Mathf.Max(1, home.Control) * home.OnPitchPlayers.Count;
+        float awayWeight = Mathf.Max(1, away.Control) * away.OnPitchPlayers.Count;
+        return homeWeight / Mathf.Max(1f, homeWeight + awayWeight);
     }
 
     public float CalculateRandomness()
@@ -491,7 +433,7 @@ public class MatchEngine
 
     private static SquadStatProfile Profile(Team team, PlayerGroup players, PlayerGroup? relianceContext = null)
     {
-        return team.GetGroup(players).StatProfile(team.Tactic, relianceContext ?? players);
+        return team.GetGroup(players).FindAll(p => p.CanPlay).StatProfile(team.Tactic, relianceContext ?? players);
     }
 
     private static (float value, float weight) PhaseStat(
@@ -963,7 +905,7 @@ public class MatchEngine
             return new { Player = p, Weight = weight };
         }).Where(p => p.Weight > 0).ToList();
 
-        if (weightedPlayers.Count == 0) return null;
+        if (weightedPlayers.Count == 0) return players[Random.Range(0, players.Count)];
 
         double totalWeight = weightedPlayers.Sum(p => p.Weight);
         double randomValue = UnityEngine.Random.Range(0, 1f) * totalWeight;

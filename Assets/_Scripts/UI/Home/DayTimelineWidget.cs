@@ -138,7 +138,7 @@ public class DayTimelineWidget : MonoBehaviour
         box.SetData(label, icon, isLead);
     }
 
-    private Sprite IconFor(ScheduleEntryType type)
+    public Sprite IconFor(ScheduleEntryType type)
     {
         switch (type)
         {

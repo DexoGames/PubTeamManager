@@ -38,6 +38,9 @@ public class TeamConverter : JsonConverter<Team>
         writer.WritePropertyName("Players");
         serializer.Serialize(writer, value.Players);
 
+        writer.WritePropertyName("ShirtNumbers");
+        serializer.Serialize(writer, value.Players.ConvertAll(p => p.GetKitNumber()));
+
         writer.WritePropertyName("Manager");
         serializer.Serialize(writer, value.Manager);
 
@@ -109,6 +112,11 @@ public class TeamConverter : JsonConverter<Team>
                 ClubStats stats = obj["Stats"]?.ToObject<ClubStats>(serializer) ?? new ClubStats();
 
                 team.RestoreTeamState(manager, stats);
+                var numbers = obj["ShirtNumbers"]?.ToObject<List<int>>();
+                if (numbers != null && numbers.Count == team.Players.Count)
+                {
+                    for (int i = 0; i < numbers.Count; i++) team.KitNumbers[team.Players[i]] = numbers[i];
+                }
 
                 // Restore the saved tactic on top of the freshly-built default one.
                 var tacticToken = obj["Tactic"];

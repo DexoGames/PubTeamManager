@@ -38,19 +38,7 @@ public class TacticInfoUI : MonoBehaviour
         foreach (var p in team.StartingPlayers)
             if (p.TacticalIntelligence() < needed) below++;
 
-        string famColour = t.Familiarity >= 60 ? "#6fcf6f" : (t.Familiarity >= 35 ? "#e0c060" : "#e06f6f");
-        string iqColour = covered ? "#6fcf6f" : "#e06f6f";
-
-        // The squad only gets penalised if the AVERAGE falls short — a smart XI covers for a dim player.
-        string iqLine = covered
-            ? $"Squad IQ <color={iqColour}>{avg}</color> ≥ {needed} — the side can handle this complexity"
-            : $"Squad IQ <color={iqColour}>{avg}</color> &lt; {needed} — {below} player(s) will be penalised";
-
-        text.text =
-            $"Familiarity: <color={famColour}>{Mathf.RoundToInt(t.Familiarity)}%</color>\n" +
-            $"Mentality: {MatchSimPageUI.MentalityLabel(t.EffectiveMentality)}\n" +
-            $"Complexity: {t.Complexity} (needs avg Intelligence {needed})\n" +
-            $"{iqLine}\n" +
-            $"Reliances: {t.Instructions.Count(i => i.hasReliance)}";
+        string iq = covered ? $"<color=#9CD498>{avg}</color>" : $"<color=#FFA080>{avg} · {below} at risk</color>";
+        text.text = $"{MatchSimPageUI.MentalityLabel(t.EffectiveMentality)}     Squad IQ {iq} / {needed}     Reliances {t.Instructions.Count(i => i.hasReliance)}";
     }
 }

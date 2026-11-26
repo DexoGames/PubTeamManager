@@ -14,6 +14,10 @@ using Newtonsoft.Json;
 public class CoreSaveState
 {
     public DateTime CurrentDay;
+    public DateTime InterviewEpoch;
+    public RecruitmentState Recruitment;
+    public List<Player> FormerPlayers = new List<Player>();
+    public string LiveSeasonFile;
     public int PlayerTeamId;
 
     /// <summary>Per-type ID allocator counters — re-seed IdManager on load.</summary>
@@ -73,4 +77,16 @@ public class SeasonIndexEntry
         Year = year;
         CompetitionIds = competitionIds ?? new List<int>();
     }
+}
+
+public class RecruitmentState
+{
+    public DateTime Day;
+    public bool Signed;
+    public int Reviewed;
+    public List<int> Candidates = new List<int>();
+    public bool InConversation;
+    public List<InterviewQuestion> Asked = new List<InterviewQuestion>();
+    public List<Person.PersonalityType> Possible = new List<Person.PersonalityType>();
+    public string LastAnswer;
 }

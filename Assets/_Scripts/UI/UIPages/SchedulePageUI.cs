@@ -18,6 +18,7 @@ public class SchedulePageUI : UIPage
     [SerializeField] private GameObject entryPrefab;
     [SerializeField] private TextMeshProUGUI headerText;
 
+
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -39,49 +40,32 @@ public class SchedulePageUI : UIPage
         var entries = ScheduleManager.Instance.GetUpcoming(daysPreview);
         DateTime today = CalenderManager.Instance.CurrentDay;
 
-        headerText.text = $"Schedule — {CalenderManager.ShortDateWordsNoYear(today)}";
+        headerText.text = $"{today:d MMM} – {today.AddDays(daysPreview - 1):d MMM yyyy}";
 
-        foreach (var entry in entries)
+        foreach (ScheduleEntry entry in entries)
         {
-            GameObject entryObj = Instantiate(entryPrefab, entryContainer);
-
-            var texts = entryObj.GetComponentsInChildren<TextMeshProUGUI>();
-            if (texts.Length >= 2)
-            {
-                texts[0].text = CalenderManager.ShortDateWordsNoYear(entry.Date);
-                texts[1].text = GetEntryDescription(entry);
-            }
-            else if (texts.Length >= 1)
-            {
-                texts[0].text = $"{CalenderManager.ShortDateWordsNoYear(entry.Date)} — {GetEntryDescription(entry)}";
-            }
-
-            // Highlight today
-            if (entry.Date.Date == today.Date)
-            {
-                var image = entryObj.GetComponent<Image>();
-                if (image != null)
-                    image.color = new Color(0.9f, 0.9f, 0.6f, 0.3f);
-            }
+            var card = Instantiate(entryPrefab, entryContainer);
+            var view = card.GetComponentInChildren<ScheduleDayUI>();
+            string date = entry.Date.Date == today.Date ? $"Today · {entry.Date:d MMM}" : entry.Date.ToString("ddd d");
+            view.Show(date, ActivityLabel(entry), HomePageUI.Instance.ActivityIcon(entry.Type));
         }
     }
 
-    private string GetEntryDescription(ScheduleEntry entry)
+    static string ActivityLabel(ScheduleEntry entry)
     {
+        if (entry.MatchFixture != null)
+        {
+            Fixture match = entry.MatchFixture;
+            bool home = match.HomeTeam == TeamManager.Instance.MyTeam;
+            return home ? $"{match.AwayTeam.Name} (H)" : $"{match.HomeTeam.Name} (A)";
+        }
         switch (entry.Type)
         {
-            case ScheduleEntryType.Match:
-                return $"Match Day — {entry.Description}";
-            case ScheduleEntryType.Training:
-                return "Training Session";
-            case ScheduleEntryType.Interview:
-                return "Interview Day — Recruitment";
-            case ScheduleEntryType.PubTrip:
-                return "Pub Trip — Team Social";
-            case ScheduleEntryType.RestDay:
-                return "Rest Day";
-            default:
-                return entry.Description ?? "—";
+            case ScheduleEntryType.Interview: return "Interviews";
+            case ScheduleEntryType.Training: return "Training";
+            case ScheduleEntryType.PubTrip: return "Pub trip";
+            case ScheduleEntryType.RestDay: return "";
+            default: return entry.Description;
         }
     }
 }

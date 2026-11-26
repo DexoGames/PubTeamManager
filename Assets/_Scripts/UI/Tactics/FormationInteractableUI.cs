@@ -75,7 +75,9 @@ public class FormationInteractableUI : FormationUI
 
     public void DecideSwap(PositionUI pos, PositionUI closest, float distance)
     {
-        if (distance < 100)
+        bool sentOff = pos.player.SentOff || closest.player.SentOff;
+        bool unavailableSub = pos is BenchPositionUI && !pos.player.CanPlay || closest is BenchPositionUI && !closest.player.CanPlay;
+        if (distance < 100 && !sentOff && !unavailableSub)
         {
             SwapPlayerPositions(currentTeam, pos, closest);
 

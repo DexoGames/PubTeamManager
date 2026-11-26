@@ -26,6 +26,8 @@ public class MatchSimPageUI : UIPage
     [SerializeField] Transform _eventsContainer;
     [SerializeField] MatchEventUI _matchEventPrefab;
 
+    Slider mentalitySlider;
+
     Queue<Highlight> highlights = new Queue<Highlight>();
     /// <summary>Match-screen objects switched off while the team-talk overlay is up (see <see cref="SetMatchContentVisible"/>).</summary>
     readonly List<GameObject> _hiddenForTeamTalk = new List<GameObject>();
@@ -53,6 +55,8 @@ public class MatchSimPageUI : UIPage
 
     private void Awake()
     {
+        mentalitySlider = _mentalityText.GetComponentInParent<Slider>(true);
+
         if (Instance != null && Instance != this)
         {
             Destroy(this.gameObject);
@@ -69,6 +73,9 @@ public class MatchSimPageUI : UIPage
         base.OnShow(fixture);
         Game.ClearContainer(_eventsContainer);
         _fixture = fixture;
+        match = null;
+        highlights.Clear();
+        _isPaused = false;
 
         SetState(State.PreKickoff);
         SetPauseButton();
@@ -87,7 +94,7 @@ public class MatchSimPageUI : UIPage
 
     public void UpdateTimer(int minute)
     {
-        _timerText.text = _fixture.BeenPlayed ? "Full Time" : $"{minute}'";
+        _timerText.text = _state == State.FullTime ? "Full time" : _state == State.HalfTime ? "Half-time" : $"{minute}'";
     }
 
     void SimMatch()
@@ -105,6 +112,7 @@ public class MatchSimPageUI : UIPage
 
         // Allow one half-time team talk this match.
         TeamTalkController.Instance?.ResetForMatch();
+        _teamTalkPanel.ResetForMatch();
     }
 
     // ————————————————————— In-match tactical changes —————————————————————
@@ -117,21 +125,11 @@ public class MatchSimPageUI : UIPage
         Team myTeam = TeamManager.Instance.MyTeam;
         Tactic t = myTeam.Tactic;
 
-        Mentality liveBefore = t.EffectiveMentality;
+        if (_state == State.PreKickoff || _state == State.FullTime) return;
         t.ShiftMentalityInMatch(delta);
+        if (_isPaused) t.ApplyPendingMentality();
         UpdateMentalityUI();
-
-        // During open play the change is only queued — the announcement fires from
-        // ApplyPendingMentalityAndAnnounce once it actually goes live at the next minute. At half-time (or
-        // pre-match) it goes live immediately, but there's no "touchline shout" while the game isn't being
-        // played, so half-time changes are silent — just reflected in the label, no match-event highlight.
-        if (t.EffectiveMentality != liveBefore && !t.IsHalfTime)
-            AnnounceMentalityChange(myTeam, t.EffectiveMentality);
     }
-
-    void AnnounceMentalityChange(Team team, Mentality newMentality) =>
-        PrintEvent(team, $"Touchline shout — switching to a {MentalityLabel(newMentality)} approach.",
-                   match != null ? match.currentMin.Base : 0);
 
     /// <summary>Promotes any queued touchline shout to live and, only if it actually changed something,
     /// announces it as a match event tagged with <paramref name="minute"/> — the minute that just finished
@@ -141,7 +139,7 @@ public class MatchSimPageUI : UIPage
         Team myTeam = TeamManager.Instance.MyTeam;
         Tactic t = myTeam.Tactic;
 
-        if (t.ApplyPendingMentality())
+        if (t.ApplyPendingMentality() && !_isPaused && (_state == State.FirstHalf || _state == State.SecondHalf))
             PrintEvent(myTeam, $"Touchline shout — switching to a {MentalityLabel(t.EffectiveMentality)} approach.", minute);
 
         UpdateMentalityUI();
@@ -152,6 +150,8 @@ public class MatchSimPageUI : UIPage
     void UpdateMentalityUI()
     {
         Tactic t = TeamManager.Instance.MyTeam.Tactic;
+        mentalitySlider.SetValueWithoutNotify(t.PendingMentalityIndex);
+        mentalitySlider.interactable = _state != State.PreKickoff && _state != State.FullTime;
         _mentalityText.text = MentalityLabel(t.PendingMentality);
 
         Color c = _mentalityText.color;
@@ -268,6 +268,7 @@ public class MatchSimPageUI : UIPage
     public void ResumeDisplay()
     {
         UIManager.Instance.ShowNavigationButtons(false);
+        TeamManager.Instance.MyTeam.Tactic.RefreshMatchCache();
         DisplayUI();
         UpdateMatchUI();
         UpdateMentalityUI();
@@ -346,7 +347,7 @@ public class MatchSimPageUI : UIPage
             while (highlights.Count > 0)
             {
                 Highlight h = highlights.Dequeue();
-                PrintEvent(h.Team, h.Describe(), match.currentMin.Base);
+                PrintEvent(h.Team, h.Describe(), h.Minute.Base);
                 yield return new WaitForSeconds(FAST_FORWARD_TIME);
             }
 
@@ -395,11 +396,14 @@ public class MatchSimPageUI : UIPage
 
         SetAdvanceButton();
         UpdateHalfTimePanel();
+        UpdateMentalityUI();
+        if (match != null) UpdateTimer(match.currentMin.Base);
     }
 
     void UpdateHalfTimePanel()
     {
         _halfTimePanel.SetActive(_state == State.HalfTime);
+        _pauseButton.interactable = _state == State.FirstHalf || _state == State.SecondHalf;
     }
 
     void SetAdvanceButton()

@@ -101,6 +101,7 @@ GameObject:
   - component: {fileID: 5747603974938561992}
   - component: {fileID: 8058744326019447496}
   - component: {fileID: 7014939882947635660}
+  - component: {fileID: 7805219541989235653}
   m_Layer: 0
   m_Name: Name
   m_TagString: Untagged
@@ -170,15 +171,15 @@ MonoBehaviour:
       m_Calls: []
   m_text: Smith
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 5573c059dc818419193e72a69937385f, type: 2}
+  m_sharedMaterial: {fileID: -1461287816564118546, guid: 5573c059dc818419193e72a69937385f, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+  m_fontColor: {r: 0.9764706, g: 0.91764706, b: 0.827451, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -262,6 +263,7 @@ GameObject:
   - component: {fileID: 5721330480247140741}
   - component: {fileID: 511639459142048305}
   - component: {fileID: 7591590385698888012}
+  - component: {fileID: 8171994193597863479}
   m_Layer: 0
   m_Name: Name
   m_TagString: Untagged
@@ -331,15 +333,15 @@ MonoBehaviour:
       m_Calls: []
   m_text: Smith
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 5573c059dc818419193e72a69937385f, type: 2}
+  m_sharedMaterial: {fileID: -1461287816564118546, guid: 5573c059dc818419193e72a69937385f, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
     rgba: 4293059298
-  m_fontColor: {r: 0.8867924, g: 0.8867924, b: 0.8867924, a: 1}
+  m_fontColor: {r: 0.9764706, g: 0.91764706, b: 0.827451, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -423,6 +425,7 @@ GameObject:
   - component: {fileID: 4501549180278989857}
   - component: {fileID: 6940213502620978328}
   - component: {fileID: 1345924434152917692}
+  - component: {fileID: 3402929056848614925}
   m_Layer: 0
   m_Name: OtherPositions
   m_TagString: Untagged
@@ -492,15 +495,15 @@ MonoBehaviour:
       m_Calls: []
   m_text: GK, LM, AM, ST, ST
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 5573c059dc818419193e72a69937385f, type: 2}
+  m_sharedMaterial: {fileID: -1461287816564118546, guid: 5573c059dc818419193e72a69937385f, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
     rgba: 4293059298
-  m_fontColor: {r: 0.8867924, g: 0.8867924, b: 0.8867924, a: 1}
+  m_fontColor: {r: 0.9764706, g: 0.91764706, b: 0.827451, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -583,6 +586,7 @@ GameObject:
   - component: {fileID: 5778259127988674924}
   - component: {fileID: 1344852250981584847}
   - component: {fileID: 2673328919658474106}
+  - component: {fileID: 5292086971775797070}
   m_Layer: 0
   m_Name: Fatigue
   m_TagString: Untagged
@@ -652,15 +656,15 @@ MonoBehaviour:
       m_Calls: []
   m_text: 25
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 5573c059dc818419193e72a69937385f, type: 2}
+  m_sharedMaterial: {fileID: -1461287816564118546, guid: 5573c059dc818419193e72a69937385f, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+  m_fontColor: {r: 0.9764706, g: 0.91764706, b: 0.827451, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -821,6 +825,7 @@ GameObject:
   - component: {fileID: 3868902062575956876}
   - component: {fileID: 6090475986881190377}
   - component: {fileID: 1358560510215213970}
+  - component: {fileID: 1136822766039967662}
   m_Layer: 0
   m_Name: Name
   m_TagString: Untagged
@@ -890,15 +895,15 @@ MonoBehaviour:
       m_Calls: []
   m_text: Smith
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 5573c059dc818419193e72a69937385f, type: 2}
+  m_sharedMaterial: {fileID: -1461287816564118546, guid: 5573c059dc818419193e72a69937385f, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+  m_fontColor: {r: 0.9764706, g: 0.91764706, b: 0.827451, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -981,6 +986,7 @@ GameObject:
   - component: {fileID: 7414607409783337473}
   - component: {fileID: 2187038697964592483}
   - component: {fileID: 4847790105713628077}
+  - component: {fileID: 9066260065441552342}
   m_Layer: 0
   m_Name: Position
   m_TagString: Untagged
@@ -1050,15 +1056,15 @@ MonoBehaviour:
       m_Calls: []
   m_text: GK
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 5573c059dc818419193e72a69937385f, type: 2}
+  m_sharedMaterial: {fileID: -1461287816564118546, guid: 5573c059dc818419193e72a69937385f, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+  m_fontColor: {r: 0.9764706, g: 0.91764706, b: 0.827451, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -1168,6 +1174,7 @@ GameObject:
   - component: {fileID: 6242874372323509946}
   - component: {fileID: 8712053887725630557}
   - component: {fileID: 8554460208447769094}
+  - component: {fileID: 6809329002446710896}
   m_Layer: 0
   m_Name: Age
   m_TagString: Untagged
@@ -1237,15 +1244,15 @@ MonoBehaviour:
       m_Calls: []
   m_text: 25
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 5573c059dc818419193e72a69937385f, type: 2}
+  m_sharedMaterial: {fileID: -1461287816564118546, guid: 5573c059dc818419193e72a69937385f, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+  m_fontColor: {r: 0.9764706, g: 0.91764706, b: 0.827451, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -1316,6 +1323,7 @@ GameObject:
   - component: {fileID: 77485382995610202}
   - component: {fileID: 2640052152262115841}
   - component: {fileID: 414894649504124503}
+  - component: {fileID: 4606921135536002074}
   m_Layer: 0
   m_Name: Intelligence
   m_TagString: Untagged
@@ -1385,15 +1393,15 @@ MonoBehaviour:
       m_Calls: []
   m_text: 27
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 5573c059dc818419193e72a69937385f, type: 2}
+  m_sharedMaterial: {fileID: -1461287816564118546, guid: 5573c059dc818419193e72a69937385f, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+  m_fontColor: {r: 0.9764706, g: 0.91764706, b: 0.827451, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -1464,6 +1472,7 @@ GameObject:
   - component: {fileID: 1573141730703031098}
   - component: {fileID: 8045614086918014596}
   - component: {fileID: 4658508331764160480}
+  - component: {fileID: 2417844615432765854}
   m_Layer: 0
   m_Name: Position
   m_TagString: Untagged
@@ -1533,15 +1542,15 @@ MonoBehaviour:
       m_Calls: []
   m_text: CM
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 5573c059dc818419193e72a69937385f, type: 2}
+  m_sharedMaterial: {fileID: -1461287816564118546, guid: 5573c059dc818419193e72a69937385f, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+  m_fontColor: {r: 0.9764706, g: 0.91764706, b: 0.827451, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -1905,6 +1914,7 @@ GameObject:
   - component: {fileID: 8529335034099552086}
   - component: {fileID: 5499454012029582739}
   - component: {fileID: 6452744867519235036}
+  - component: {fileID: 6703841291206938864}
   m_Layer: 0
   m_Name: KitNumber
   m_TagString: Untagged
@@ -1974,15 +1984,15 @@ MonoBehaviour:
       m_Calls: []
   m_text: 27
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 5573c059dc818419193e72a69937385f, type: 2}
+  m_sharedMaterial: {fileID: -1461287816564118546, guid: 5573c059dc818419193e72a69937385f, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+  m_fontColor: {r: 0.9764706, g: 0.91764706, b: 0.827451, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -2283,6 +2293,7 @@ GameObject:
   - component: {fileID: 6852829647257146195}
   - component: {fileID: 2697640723458889065}
   - component: {fileID: 8346048244923041290}
+  - component: {fileID: 4468560326620721736}
   m_Layer: 0
   m_Name: Position
   m_TagString: Untagged
@@ -2352,15 +2363,15 @@ MonoBehaviour:
       m_Calls: []
   m_text: CM
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 5573c059dc818419193e72a69937385f, type: 2}
+  m_sharedMaterial: {fileID: -1461287816564118546, guid: 5573c059dc818419193e72a69937385f, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+  m_fontColor: {r: 0.9764706, g: 0.91764706, b: 0.827451, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -2419,3 +2430,168 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &7805219541989235653
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 441041798203153094}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 104fa4a1cb28f418b9e2c93b30a4f2a6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UIThemeGraphic
+  theme: {fileID: 11400000, guid: 57c9ca8a3b9d04e658e9968aaab277a8, type: 2}
+  role: 7
+  opacity: 1
+--- !u!114 &8171994193597863479
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 823440827984334942}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 104fa4a1cb28f418b9e2c93b30a4f2a6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UIThemeGraphic
+  theme: {fileID: 11400000, guid: 57c9ca8a3b9d04e658e9968aaab277a8, type: 2}
+  role: 7
+  opacity: 1
+--- !u!114 &3402929056848614925
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1068343908494743537}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 104fa4a1cb28f418b9e2c93b30a4f2a6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UIThemeGraphic
+  theme: {fileID: 11400000, guid: 57c9ca8a3b9d04e658e9968aaab277a8, type: 2}
+  role: 7
+  opacity: 1
+--- !u!114 &5292086971775797070
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1234626088688691301}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 104fa4a1cb28f418b9e2c93b30a4f2a6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UIThemeGraphic
+  theme: {fileID: 11400000, guid: 57c9ca8a3b9d04e658e9968aaab277a8, type: 2}
+  role: 7
+  opacity: 1
+--- !u!114 &1136822766039967662
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1568834832075574265}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 104fa4a1cb28f418b9e2c93b30a4f2a6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UIThemeGraphic
+  theme: {fileID: 11400000, guid: 57c9ca8a3b9d04e658e9968aaab277a8, type: 2}
+  role: 7
+  opacity: 1
+--- !u!114 &9066260065441552342
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2026837543529128593}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 104fa4a1cb28f418b9e2c93b30a4f2a6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UIThemeGraphic
+  theme: {fileID: 11400000, guid: 57c9ca8a3b9d04e658e9968aaab277a8, type: 2}
+  role: 7
+  opacity: 1
+--- !u!114 &6809329002446710896
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3150554805562666088}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 104fa4a1cb28f418b9e2c93b30a4f2a6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UIThemeGraphic
+  theme: {fileID: 11400000, guid: 57c9ca8a3b9d04e658e9968aaab277a8, type: 2}
+  role: 7
+  opacity: 1
+--- !u!114 &4606921135536002074
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3763667909581165846}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 104fa4a1cb28f418b9e2c93b30a4f2a6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UIThemeGraphic
+  theme: {fileID: 11400000, guid: 57c9ca8a3b9d04e658e9968aaab277a8, type: 2}
+  role: 7
+  opacity: 1
+--- !u!114 &2417844615432765854
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3921398546743524951}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 104fa4a1cb28f418b9e2c93b30a4f2a6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UIThemeGraphic
+  theme: {fileID: 11400000, guid: 57c9ca8a3b9d04e658e9968aaab277a8, type: 2}
+  role: 7
+  opacity: 1
+--- !u!114 &6703841291206938864
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7951538002168240393}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 104fa4a1cb28f418b9e2c93b30a4f2a6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UIThemeGraphic
+  theme: {fileID: 11400000, guid: 57c9ca8a3b9d04e658e9968aaab277a8, type: 2}
+  role: 7
+  opacity: 1
+--- !u!114 &4468560326620721736
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9000840085022007568}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 104fa4a1cb28f418b9e2c93b30a4f2a6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UIThemeGraphic
+  theme: {fileID: 11400000, guid: 57c9ca8a3b9d04e658e9968aaab277a8, type: 2}
+  role: 7
+  opacity: 1

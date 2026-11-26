@@ -551,7 +551,8 @@ public class Tactic
     public float CurrentStartingIntelligence()
     {
         if (Team == null || Team.Players == null || Team.Players.Count < 11) return 50f;
-        var xi = Team.StartingPlayers;
+        var xi = Team.OnPitchPlayers;
+        if (xi.Count == 0) return 0f;
         float sum = 0f;
         foreach (var p in xi) sum += p.TacticalIntelligence();
         return sum / xi.Count;
@@ -625,7 +626,7 @@ public class Tactic
             Player.Position posI = Formation.Positions[i].ID;
             for (int j = i + 1; j < n; j++)
             {
-                if (!Chemistry.ArePositionsLinked(posI, Formation.Positions[j].ID)) continue;
+                if (!xi[i].CanPlay || !xi[j].CanPlay || !Chemistry.ArePositionsLinked(posI, Formation.Positions[j].ID)) continue;
 
                 ChemistryLevel level = Chemistry.GetLevel(xi[i], xi[j]);
                 if (level == ChemistryLevel.Neutral) continue;

@@ -45,3 +45,8 @@ MonoBehaviour:
   reliances: []
   incompatibleInstructions:
   - {fileID: 11400000, guid: 8153e13b9dc37f34a8a95c1529d4ed33, type: 2}
+  complementaryInstructions:
+  - instruction: {fileID: 11400000, guid: a05273b356ba45647918f02c8837167e, type: 2}
+    perks:
+    - stat: 5
+      value: 3

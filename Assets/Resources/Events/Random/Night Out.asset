@@ -16,7 +16,5 @@ MonoBehaviour:
   discussion: Hey boss, last night was sick!
   odds: 0.278
   noAffected: 3
-  moraleChange: 6
-  bestCaseMorale: 10
-  worseCaseMorale: -5
+  moodChange: 6
   severity: 4

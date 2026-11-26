@@ -34,8 +34,34 @@ public class InterviewManager : MonoBehaviour
         }
     }
 
+    string lastAnswer;
+    public GameObject DialoguePanel => dialogue.gameObject;
+
+    public void CaptureInterview(RecruitmentState state)
+    {
+        state.InConversation = interviewee != null;
+        state.Asked = askedQuestions;
+        state.Possible = NarrowedPersonalities;
+        state.LastAnswer = lastAnswer;
+    }
+
+    public void RestoreInterview(Player player, RecruitmentState state)
+    {
+        StartInterview(player);
+        askedQuestions = state.Asked;
+        NarrowedPersonalities = state.Possible;
+        lastAnswer = state.LastAnswer;
+        if (!string.IsNullOrEmpty(lastAnswer)) dialogue.UpdateDialogue(lastAnswer);
+    }
+
+    public bool HasAsked(InterviewQuestion question)
+    {
+        return askedQuestions.Any(q => q.Type == question.Type && q.TargetStat == question.TargetStat);
+    }
+
     public void StartInterview(Player player)
     {
+        lastAnswer = null;
         interviewee = player;
         askedQuestions.Clear();
 
@@ -84,7 +110,8 @@ public class InterviewManager : MonoBehaviour
                 .ToList();
         }
 
-        dialogue.UpdateDialogue(answer.ResponseText);
+        lastAnswer = answer.ResponseText;
+        dialogue.UpdateDialogue(lastAnswer);
 
         return answer;
     }
@@ -123,7 +150,8 @@ public class InterviewManager : MonoBehaviour
                         .Where(p => Array.IndexOf(answer.PossiblePersonalities, p) >= 0)
                         .ToList();
 
-                dialogue.UpdateDialogue(answer.ResponseText);
+                lastAnswer = answer.ResponseText;
+                dialogue.UpdateDialogue(lastAnswer);
                 RecruitmentPageUI.Instance?.OnQuestionAsked();
             },
             $"Compare {interviewee.FullName} to…");
@@ -141,10 +169,10 @@ public class InterviewManager : MonoBehaviour
     public int QuestionsRemaining => MAX_QUESTIONS - askedQuestions.Count;
 
     /// <summary>Hire the current interviewee — delegates to RecruitmentManager.</summary>
-    public bool HireInterviewee()
+    public bool HireInterviewee(Player outgoing = null)
     {
         if (interviewee == null) return false;
-        bool result = RecruitmentManager.Instance.HirePlayer(interviewee);
+        bool result = RecruitmentManager.Instance.HirePlayerReplacing(interviewee, outgoing);
         if (result) EndInterview();
         return result;
     }

@@ -36,7 +36,6 @@ public class TrainingSession
     public const int DECAY_PER_SESSION = 1;        // Boost lost on untrained stats
     public const int MAX_POSITIONAL_PLAYERS = 5;
 
-    private const float BASE_FAMILIARITY_GAIN = 8f;
 
     // ————————————————————— resolved views —————————————————————
     [JsonIgnore] public Drill Definition => DrillCatalog.Get(this.Drill);
@@ -87,11 +86,11 @@ public class TrainingSession
                 ExecuteBoost(team);
                 break;
             case TrainingType.Tactical:
-                ExecuteTacticFamiliarity(team);
+                team.Tactic?.AdvanceFamiliarity();
                 DecayAll(team);
                 break;
             case TrainingType.Social:
-                ExecuteSocial(team);
+                Socialise(team);
                 DecayAll(team);
                 break;
             case TrainingType.Positional:
@@ -117,19 +116,7 @@ public class TrainingSession
             player.ApplyBoostSession(null, 0, DECAY_PER_SESSION);
     }
 
-    private void ExecuteTacticFamiliarity(Team team)
-    {
-        // Per-player tactical sharpness. Team-wide tactic Familiarity is advanced for ALL training types
-        // in Execute() (a session is a session), so it isn't bumped again here.
-        foreach (var player in team.Players)
-        {
-            float intelligenceMultiplier = player.GetStats().Intelligence / 50f;
-            float gain = BASE_FAMILIARITY_GAIN * intelligenceMultiplier;
-            player.TacticFamiliarity = Mathf.Clamp(player.TacticFamiliarity + gain, 0f, 100f);
-        }
-    }
-
-    private void ExecuteSocial(Team team)
+    public static void Socialise(Team team)
     {
         foreach (var player in team.Players)
         {

@@ -53,13 +53,13 @@ public class FixturesManager : MonoBehaviour
 
     private void HandleLeagueWon(League league, Team champion)
     {
-        int season = CalenderManager.Instance.CurrentDay.Year;
+        int season = CurrentSeasonYear;
         champion.Stats.RecordLeagueWin(league.Name, season);
     }
 
     private void HandleCupWon(Cup cup, Team winner)
     {
-        int season = CalenderManager.Instance.CurrentDay.Year;
+        int season = CurrentSeasonYear;
         winner.Stats.RecordCupWin(cup.Name, season);
     }
 
@@ -172,6 +172,8 @@ public class FixturesManager : MonoBehaviour
         int oldYear = CurrentSeasonYear;
 
         var finishingComps = new List<Competition>(Competitions);
+        if (oldYear != 0 && finishingComps.Count > 0 && !SaveManager.Instance.ArchiveSeason(oldYear, finishingComps)) return;
+
         var currentLeagues = finishingComps.OfType<League>().ToList();
         var currentCup = finishingComps.OfType<Cup>().FirstOrDefault();
 
@@ -206,7 +208,8 @@ public class FixturesManager : MonoBehaviour
         }
 
         DateTime newStartDate = CalenderManager.Instance.CurrentDay;
-        int newYear = newStartDate.Year;
+        int newYear = Math.Max(oldYear + 1, newStartDate.Year);
+        newStartDate = new DateTime(newYear, 8, 1) > newStartDate ? new DateTime(newYear, 8, 1) : newStartDate;
 
         var newLeaguesByName = new Dictionary<string, League>();
         foreach (var oldLeague in currentLeagues)
@@ -240,13 +243,13 @@ public class FixturesManager : MonoBehaviour
 
         if (oldYear != 0 && finishingComps.Count > 0)
         {
-            SaveManager.Instance?.ArchiveSeason(oldYear, finishingComps);
             UnloadSeasonFromMemory(finishingComps);
         }
 
         foreach (var team in allTeams)
         {
             team.Stats.SeasonsPlayed++;
+            foreach (Player player in team.Players) player.YellowCards = 0;
         }
 
         foreach (var newLeague in newLeaguesByName.Values)

@@ -16,7 +16,6 @@ MonoBehaviour:
   discussion: Hey boss, I'm getting a bit confused with your recent tactics.
   odds: 0.2
   noAffected: 1
-  moraleChange: -10
-  bestCaseMorale: 5
-  worseCaseMorale: -15
+  moodChange: -10
   severity: 1
+  concern: 3

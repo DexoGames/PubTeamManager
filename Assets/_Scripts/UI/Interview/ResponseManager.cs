@@ -34,16 +34,21 @@ public class ResponseManager : MonoBehaviour
     /// <summary>(Re)builds the row — call whenever the owning screen opens.</summary>
     public void SpawnButtons()
     {
+        SpawnButtons(null);
+    }
+
+    public void SpawnButtons(Dictionary<Event.Response, string> choices)
+    {
         dialogue.text = "";
         HasPicked = false;
 
         foreach (ResponseButtonUI r in responseButtons) Destroy(r.gameObject);
         responseButtons.Clear();
 
-        foreach (Event.Response response in ResponsesToShow())
+        foreach (Event.Response response in choices == null ? ResponsesToShow() : choices.Keys)
         {
             ResponseButtonUI button = Instantiate(responseButtonPrefab, container);
-            button.Setup(response, this);
+            button.Setup(response, this, choices == null ? null : choices[response]);
             responseButtons.Add(button);
         }
     }

@@ -16,6 +16,8 @@ public class EventsManager : MonoBehaviour
     [SerializeField] EventType loseEvent;
 
     EventType[] randomEvents;
+    Dictionary<ClubConcern, EventType> concerns;
+    EventType keptPromise, brokenPromise;
 
     public void Awake()
     {
@@ -34,7 +36,10 @@ public class EventsManager : MonoBehaviour
         CalenderManager.Instance.NewDay.AddListener(CheckEvents);
         CalenderManager.Instance.NewDay.AddListener(AddRandomEvent);
 
-        randomEvents = Resources.LoadAll<EventType>("Events/Random");
+        randomEvents = Resources.LoadAll<EventType>("Events/Random").Where(t => t.concern == ClubConcern.None).ToArray();
+        concerns = Resources.LoadAll<EventType>("Events").Where(t => t.concern != ClubConcern.None).ToDictionary(t => t.concern);
+        keptPromise = Resources.Load<EventType>("Events/Promise Kept");
+        brokenPromise = Resources.Load<EventType>("Events/Promise Broken");
 
         ReactionTable = CreateReactionTable();
     }
@@ -176,13 +181,13 @@ public class EventsManager : MonoBehaviour
 
     public void AddWinEvent(Team winner, Team loser)
     {
-        Event winEvent = new Event(this.winEvent, TeamManager.Instance.MyTeam.Players.ToList<Person>(), CalenderManager.Instance.CurrentDay, new List<string>{ loser.Name });
+        Event winEvent = new Event(this.winEvent, TeamManager.Instance.MyTeam.Players.Where(p => !p.IsDeceased).ToList<Person>(), CalenderManager.Instance.CurrentDay, new List<string>{ loser.Name });
 
         AddEvent(winEvent);
     }
     public void AddLoseEvent(Team winner, Team loser)
     {
-        Event loseEvent = new Event(this.loseEvent, TeamManager.Instance.MyTeam.Players.ToList<Person>(), CalenderManager.Instance.CurrentDay, new List<string> { winner.Name });
+        Event loseEvent = new Event(this.loseEvent, TeamManager.Instance.MyTeam.Players.Where(p => !p.IsDeceased).ToList<Person>(), CalenderManager.Instance.CurrentDay, new List<string> { winner.Name });
 
         AddEvent(loseEvent);
     }
@@ -193,7 +198,8 @@ public class EventsManager : MonoBehaviour
         if (rand > 1) return;
 
         EventType[] allTypes = randomEvents;
-        Person[] allPlayers = TeamManager.Instance.MyTeam.Players.ToArray();
+        Person[] allPlayers = TeamManager.Instance.MyTeam.Players.Where(p => !p.IsDeceased).ToArray();
+        if (allPlayers.Length == 0) return;
         allPlayers.Shuffle();
 
         EventType randomType = PickRandomEvent(allTypes);
@@ -207,23 +213,42 @@ public class EventsManager : MonoBehaviour
         notification.Setup(randomEvent, randomEvent.affected[0]);
     }
 
+    public void RecordSelection(Team club, Match.TeamStats side, System.DateTime date)
+    {
+        var eligible = new List<Player>(club.Players);
+        eligible.Shuffle();
+        bool opened = false;
+        foreach (Player player in eligible)
+        {
+            if (player.IsDeceased) continue;
+            SelectionHistory memory = player.Selection;
+            bool started = side.lineup.Contains(player.PersonID);
+            memory.Record(started, player.IsAvailable, side.setup, side.complexity > player.TacticalIntelligence() + 10);
+
+            if (memory.Promise != ClubConcern.None && player.IsAvailable)
+            {
+                bool kept = memory.PromiseKept(started, side.complexity);
+                AddEvent(new Event(kept ? keptPromise : brokenPromise, new List<Person> { player }, date));
+                foreach (Player teammate in club.Players)
+                {
+                    if (teammate != player && !teammate.IsDeceased && Chemistry.GetLevel(player, teammate) == ChemistryLevel.InSync)
+                        teammate.Morale.Mood += kept ? 1 : -2;
+                }
+                memory.Promise = ClubConcern.None;
+            }
+
+            if (opened || date < memory.NextDiscussion || !player.IsAvailable) continue;
+            ClubConcern concern = memory.Concern(started, player.Fatigue);
+            if (concern == ClubConcern.None) continue;
+            AddEvent(new Event(concerns[concern], new List<Person> { player }, date));
+            if (concern == ClubConcern.Tactics) memory.DiscussedSetup = side.setup;
+            memory.NextDiscussion = date.AddDays(28);
+            opened = true;
+        }
+    }
+
     public void CheckEvents(System.DateTime date)
     {
-        for(int i = 0; i < Events.Count; i++)
-        {
-            Event e = Events[i];
-
-            int days = (date - e.date).Days;
-            if(days > 7)
-            {
-                Events.Remove(e);
-                e = null;
-                i--;
-            }
-            else
-            {
-                return;
-            }
-        }
+        Events.RemoveAll(e => (date - e.date).Days > 7);
     }
 }

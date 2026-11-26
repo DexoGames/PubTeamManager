@@ -16,7 +16,5 @@ MonoBehaviour:
   discussion: Hey boss, it's a shame that my favourite band broke up.
   odds: 0.112
   noAffected: 1
-  moraleChange: -5
-  bestCaseMorale: -2
-  worseCaseMorale: -10
+  moodChange: -5
   severity: 2

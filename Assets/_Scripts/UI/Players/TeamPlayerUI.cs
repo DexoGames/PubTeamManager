@@ -12,6 +12,6 @@ public class TeamPlayerUI : MonoBehaviour
         PlayerName.text = LinkBuilder.BuildLink(player);
         Position.text = player.Team.Formation.SquadRole(player.Team.GetPlayerIndex(player));
         PlayerName.text += " <size=18>" + player.AddBestPositions() + "</size>";
-        if(!player.IsAvailable) PlayerName.color = Color.red;
+        if (!player.IsAvailable) Position.text = player.AvailabilityStatus;
     }
 }

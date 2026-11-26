@@ -1,4 +1,5 @@
 using System;
+using UnityEngine.EventSystems;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,25 +9,36 @@ using UnityEngine.UI;
 /// <see cref="TeamTalkChatter"/>), and a coloured ±delta flash showing how they took the talk. During the
 /// individual-talk phase the whole box becomes a button that singles that player out.
 /// </summary>
-public class PlayerMoraleBoxUI : MonoBehaviour
+public class PlayerMoraleBoxUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, ISelectHandler, IDeselectHandler
 {
-    [SerializeField] private TextMeshProUGUI nameText;
-    [SerializeField] private Image morale;
-    [SerializeField] private TextMeshProUGUI reactionText;
-    [SerializeField] private Image background;
-    [SerializeField] private TextMeshProUGUI bubbleText;
-    [SerializeField] private Image bubbleBackground;
-    [SerializeField] private Button selectButton;
+    [SerializeField] TextMeshProUGUI nameText;
+    [SerializeField] Image morale;
+    [SerializeField] TextMeshProUGUI reactionText;
+    [SerializeField] Image background;
+    [SerializeField] TextMeshProUGUI bubbleText;
+    [SerializeField] Image bubbleBackground;
+    [SerializeField] Button selectButton;
+    [SerializeField] UITheme theme;
 
-    private Player player;
-    private Action<Player> onSelected;
+    Player player;
+    Action<Player> onSelected;
+
+    public Action<string> Preview;
+    string line;
+    public void OnPointerEnter(PointerEventData data) { Preview?.Invoke(line); }
+    public void OnPointerExit(PointerEventData data) { Preview?.Invoke(""); }
+    public void OnSelect(BaseEventData data) { Preview?.Invoke(line); }
+    public void OnDeselect(BaseEventData data) { Preview?.Invoke(""); }
 
     public Player Player => player;
+
+    Color PanelColor => theme.GetColor(UITheme.Role.Panel);
 
     public void Setup(Player p)
     {
         player = p;
-        nameText.text = LinkBuilder.BuildLink(p);
+        background.color = PanelColor;
+        RefreshRole();
         reactionText.text = "";
 
         ShowBubble("");
@@ -38,6 +50,12 @@ public class PlayerMoraleBoxUI : MonoBehaviour
         RefreshMorale();
     }
 
+    public void RefreshRole()
+    {
+        string role = player.SentOff ? "Sent off" : player.LeftInjured ? "Injured" : player.GetPosition()?.ToString() ?? "Bench";
+        nameText.text = $"<size=75%>{role}</size>\n{player.Surname}";
+    }
+
     public void RefreshMorale()
     {
         morale.sprite = player.GetMoraleSprite();
@@ -47,11 +65,8 @@ public class PlayerMoraleBoxUI : MonoBehaviour
     /// <summary>Speaks a line, or hides the bubble when it's empty — staying silent is itself a signal.</summary>
     public void ShowBubble(string line, Color? tint = null)
     {
-        bool speaking = !string.IsNullOrEmpty(line);
-        bubbleText.text = line;
-        bubbleText.gameObject.SetActive(speaking);
-        bubbleBackground.gameObject.SetActive(speaking);
-        if (speaking && tint.HasValue) bubbleBackground.color = tint.Value;
+        this.line = string.IsNullOrWhiteSpace(line) || line == "…" ? "" : $"{player.Surname} · {line}";
+        bubbleBackground.gameObject.SetActive(false);
     }
 
     public void ShowReaction(PlayerReaction r)
@@ -61,7 +76,7 @@ public class PlayerMoraleBoxUI : MonoBehaviour
 
         reactionText.text = total > 0 ? $"+{total}" : total.ToString();
         reactionText.color = colour;
-        background.color = colour;
+        background.color = Color.Lerp(PanelColor, colour, 0.25f);
         RefreshMorale();
     }
 

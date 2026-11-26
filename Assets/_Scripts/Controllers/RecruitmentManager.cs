@@ -21,7 +21,9 @@ public class RecruitmentManager : MonoBehaviour
     public DateTime InterviewDay { get; private set; } = DateTime.MinValue;
 
     /// <summary>The day a session was already used (one interview session per interview day).</summary>
-    private DateTime sessionUsedDay = DateTime.MinValue;
+    public List<Player> FormerPlayers { get; } = new List<Player>();
+
+    DateTime sessionUsedDay = DateTime.MinValue;
 
     [Header("Debug")]
     [Tooltip("TESTING ONLY — makes EVERY day an interview day with no once-per-day limit, so you can keep " +
@@ -112,10 +114,15 @@ public class RecruitmentManager : MonoBehaviour
     /// </summary>
     public List<Player> StartInterviewSession()
     {
+        if (IsSessionActive && sessionUsedDay == CurrentDay) return CurrentCandidates;
+        if (!CanInterviewToday) return CurrentCandidates;
+        InterviewManager.Instance.EndInterview();
+
         if (debugEndlessInterviews) RefreshPool(); // keep fresh candidates flowing while testing
 
         CurrentCandidates.Clear();
         CurrentCandidateIndex = 0;
+        ReviewedBeforeLoad = 0;
         HasHiredThisSession = false;
         IsSessionActive = true;
 
@@ -135,7 +142,7 @@ public class RecruitmentManager : MonoBehaviour
     /// </summary>
     public Player GetCurrentCandidate()
     {
-        if (!IsSessionActive || CurrentCandidateIndex >= CurrentCandidates.Count)
+        if (!IsSessionActive || sessionUsedDay != CurrentDay || CurrentCandidateIndex >= CurrentCandidates.Count)
             return null;
 
         return CurrentCandidates[CurrentCandidateIndex];
@@ -147,79 +154,80 @@ public class RecruitmentManager : MonoBehaviour
     /// </summary>
     public bool HirePlayer(Player player)
     {
-        if (HasHiredThisSession || player == null) return false;
+        return HirePlayerReplacing(player, null);
+    }
 
-        // Squad cap: you must release a player before signing a new one.
-        if (IsSquadFull)
+    public bool HirePlayerReplacing(Player candidate, Player outgoing)
+    {
+        Team team = TeamManager.Instance.MyTeam;
+        if (candidate == null || candidate != GetCurrentCandidate() || !FreeAgentPool.Contains(candidate)) return false;
+        if (IsSquadFull && outgoing == null) return false;
+        if (outgoing != null && !team.Players.Contains(outgoing)) return false;
+
+        int shirt = 1;
+        int index = team.Players.Count;
+        if (outgoing != null)
         {
-            Debug.Log($"[Recruitment] Squad full ({SquadSize}/{MAX_SQUAD_SIZE}) — release a player before hiring.");
-            return false;
+            index = team.Players.IndexOf(outgoing);
+            shirt = outgoing.GetKitNumber();
+            team.KitNumbers.Remove(outgoing);
+            team.Players.RemoveAt(index);
+            outgoing.Team = null;
+            FormerPlayers.Add(outgoing);
+            TrainingManager.Instance.CurrentSession?.SelectedPlayerIds.Remove(outgoing.PersonID);
         }
 
-        Team myTeam = TeamManager.Instance.MyTeam;
-        player.Team = myTeam;
-        myTeam.Players.Add(player);
-        FreeAgentPool.Remove(player);
-        CurrentCandidates.Remove(player);
+        while (team.KitNumbers.ContainsValue(shirt)) shirt++;
+        team.Players.Insert(index, candidate);
+        team.KitNumbers[candidate] = shirt;
+        candidate.Team = team;
+        FreeAgentPool.Remove(candidate);
+        team.Tactic.RefreshReliances();
         HasHiredThisSession = true;
-        IsSessionActive = false;
-
-        // Free agents are already registered at creation; keep their existing ID.
-        PersonManager.Instance.RegisterExisting(player);
-
-        Debug.Log($"[Recruitment] Hired {player.FirstName} {player.Surname}!");
+        EndSession();
         return true;
     }
 
-    /// <summary>
-    /// Releases an existing squad player to make room, then hires the new one. Used when the squad is
-    /// full and the manager chooses who to drop for the new signing.
-    /// </summary>
-    public bool HirePlayerReplacing(Player newPlayer, Player toRelease)
-    {
-        if (toRelease != null) ReleasePlayer(toRelease, returnToPool: false);
-        return HirePlayer(newPlayer);
-    }
-
-    /// <summary>
-    /// Permanently rejects the current candidate — they are removed forever.
-    /// Advances to the next candidate, or ends session if all 5 rejected.
-    /// </summary>
     public void RejectPlayer(Player player)
     {
-        if (player == null) return;
+        if (player != GetCurrentCandidate() || player == null) return;
 
         FreeAgentPool.Remove(player);
-        Debug.Log($"[Recruitment] Rejected {player.FirstName} {player.Surname} (permanently removed).");
-
-        CurrentCandidateIndex++;
-
-        if (CurrentCandidateIndex >= CurrentCandidates.Count)
-        {
-            // All candidates rejected — session ends
-            IsSessionActive = false;
-            Debug.Log("[Recruitment] All candidates rejected. Session ended.");
-        }
+        SkipCandidate();
     }
 
-    /// <summary>
-    /// Releases a player from the team. Optionally returns them to the free agent pool.
-    /// </summary>
-    public void ReleasePlayer(Player player, bool returnToPool = false)
+    public void SkipCandidate()
     {
-        Team myTeam = TeamManager.Instance.MyTeam;
-        myTeam.Players.Remove(player);
+        CurrentCandidateIndex++;
+        if (CurrentCandidateIndex >= CurrentCandidates.Count) EndSession();
+    }
 
-        if (myTeam.KitNumbers.ContainsKey(player))
-            myTeam.KitNumbers.Remove(player);
-
-        if (returnToPool)
+    public RecruitmentState CaptureState()
+    {
+        var state = new RecruitmentState { Day = sessionUsedDay, Signed = HasHiredThisSession };
+        if (GetCurrentCandidate() != null)
         {
-            player.Team = null;
-            FreeAgentPool.Add(player);
+            state.Reviewed = ReviewedBeforeLoad + CurrentCandidateIndex;
+            state.Candidates = CurrentCandidates.Skip(CurrentCandidateIndex).Select(p => p.PersonID).ToList();
+            InterviewManager.Instance.CaptureInterview(state);
         }
+        return state;
+    }
 
-        Debug.Log($"[Recruitment] Released {player.FirstName} {player.Surname}.");
+    public int ReviewedBeforeLoad { get; private set; }
+
+    public void RestoreSession(RecruitmentState state)
+    {
+        if (state == null) return;
+        sessionUsedDay = state.Day;
+        HasHiredThisSession = state.Signed;
+        if (sessionUsedDay != CurrentDay || state.Candidates.Count == 0) return;
+
+        CurrentCandidates = state.Candidates.Select(PersonManager.Instance.GetPlayer).Where(FreeAgentPool.Contains).ToList();
+        CurrentCandidateIndex = 0;
+        ReviewedBeforeLoad = state.Reviewed;
+        IsSessionActive = CurrentCandidates.Count > 0;
+        if (state.InConversation && IsSessionActive) InterviewManager.Instance.RestoreInterview(GetCurrentCandidate(), state);
     }
 
     /// <summary>

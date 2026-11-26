@@ -13,10 +13,8 @@ MonoBehaviour:
   m_Name: Kids
   m_EditorClassIdentifier: 
   description: <1> forgot to pick up their kids from school
-  discussion: 
+  discussion: I forgot the school run. My head was still at training.
   odds: 0.074
   noAffected: 1
-  moraleChange: -5
-  bestCaseMorale: 0
-  worseCaseMorale: -10
+  moodChange: -5
   severity: 3

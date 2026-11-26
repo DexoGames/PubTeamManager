@@ -17,8 +17,8 @@ public class ScheduleManager : MonoBehaviour
 
     // Fixed anchor for the interview cadence. Set once so that regenerating the rolling window each
     // day keeps interviews on stable dates (anchoring to "today" would make them recede every advance).
-    private DateTime interviewEpoch;
-    private bool epochSet;
+    public DateTime InterviewEpoch { get; set; }
+
 
     public event Action OnTrainingDay;
     public event Action OnInterviewDay;
@@ -45,16 +45,14 @@ public class ScheduleManager : MonoBehaviour
     {
         schedule.Clear();
 
-        if (!epochSet)
-        {
-            interviewEpoch = startDate.Date;
-            epochSet = true;
-        }
+        if (InterviewEpoch == default) InterviewEpoch = startDate.Date;
 
         Team myTeam = TeamManager.Instance.MyTeam;
-        var fixtures = FixturesManager.Instance.GetUpcomingFixturesForTeam(myTeam, SCHEDULE_AHEAD_DAYS);
-
         DateTime start = startDate.Date;
+        DateTime historyStart = start.AddDays(-INTERVIEW_INTERVAL);
+        var fixtures = FixturesManager.Instance.GetAllFixtures()
+            .Where(f => f.InvolvesTeam(myTeam.TeamId) && f.Date >= historyStart && f.Date <= start.AddDays(SCHEDULE_AHEAD_DAYS));
+
         DateTime end = start.AddDays(SCHEDULE_AHEAD_DAYS);
 
         // 1. Matches — fixed dates, highest priority.
@@ -73,13 +71,13 @@ public class ScheduleManager : MonoBehaviour
         //    fixed matches it's identical on every daily regeneration → the date never wanders; and the past-date
         //    skip is keyed on the PLACED day, not the raw cadence day, so a shifted interview never vanishes before
         //    you reach it. Start one cadence before the window so an occurrence shifted into 'today' isn't missed.
-        DateTime target = interviewEpoch.AddDays(INTERVIEW_INTERVAL);
-        while (target.AddDays(INTERVIEW_INTERVAL) <= start) target = target.AddDays(INTERVIEW_INTERVAL);
+        DateTime target = InterviewEpoch.AddDays(INTERVIEW_INTERVAL);
+        while (target.AddDays(INTERVIEW_INTERVAL) <= historyStart) target = target.AddDays(INTERVIEW_INTERVAL);
         for (; target < end; target = target.AddDays(INTERVIEW_INTERVAL))
         {
             DateTime placed = target.Date;
             while (placed < end && schedule.ContainsKey(placed)) placed = placed.AddDays(1); // only matches occupy days here
-            if (placed >= start && placed < end)
+            if (placed >= historyStart && placed < end)
                 schedule[placed] = new ScheduleEntry(placed, ScheduleEntryType.Interview, "Interview Day");
         }
 
@@ -88,7 +86,7 @@ public class ScheduleManager : MonoBehaviour
             PlaceActivity(matchDay.AddDays(1), end, ScheduleEntryType.PubTrip, "Pub Trip");
 
         // 4. Training — once per week, preferring Wednesday, shifted on a clash.
-        for (DateTime weekStart = start; weekStart < end; weekStart = weekStart.AddDays(7))
+        for (DateTime weekStart = historyStart; weekStart < end; weekStart = weekStart.AddDays(7))
             PlaceActivity(PreferredWeekday(weekStart, DayOfWeek.Wednesday), end, ScheduleEntryType.Training, "Training Day");
 
         // 5. Everything else is a rest day.
@@ -188,6 +186,9 @@ public class ScheduleManager : MonoBehaviour
                 break;
             case ScheduleEntryType.Training:
                 OnTrainingDay?.Invoke();
+                break;
+            case ScheduleEntryType.PubTrip:
+                TrainingSession.Socialise(TeamManager.Instance.MyTeam);
                 break;
             case ScheduleEntryType.Interview:
                 OnInterviewDay?.Invoke();

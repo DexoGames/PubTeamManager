@@ -1,5 +1,8 @@
 # Match Simulation + Contextual Events — Future Plan
 
+For the current scene wiring, implemented career and match flows, and outstanding play checks, see [Career and match flows](CAREER_AND_MATCH_BUILD.md). The descriptions below record the earlier design and build state.
+
+
 Status: design only. None of the systems in this file should be considered implemented by the player-stat/phase
 rework. This is the recommended direction for the next prompt/pass.
 

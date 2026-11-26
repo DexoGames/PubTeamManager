@@ -16,5 +16,5 @@ MonoBehaviour:
   discussion: Sorry boss, I've really messed up.
   odds: 0.193
   noAffected: 1
-  moraleChange: -15
+  moodChange: -15
   severity: 1

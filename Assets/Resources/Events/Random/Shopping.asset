@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Shopping
   m_EditorClassIdentifier: 
   description: <1> forgot to bring their reusable bag when shopping
-  discussion: 
+  discussion: Left the bags at home again. Dropped the shopping halfway to the car.
   odds: 0.309
   noAffected: 1
-  moraleChange: -2
+  moodChange: -2
   severity: 3

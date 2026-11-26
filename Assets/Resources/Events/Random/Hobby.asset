@@ -13,10 +13,8 @@ MonoBehaviour:
   m_Name: Hobby
   m_EditorClassIdentifier: 
   description: <1> got a new hobby
-  discussion: 
+  discussion: Tried something new after work. Nice to have something else to look forward to.
   odds: 0.155
   noAffected: 1
-  moraleChange: 4
-  bestCaseMorale: 8
-  worseCaseMorale: -5
+  moodChange: 4
   severity: 4

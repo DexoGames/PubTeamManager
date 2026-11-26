@@ -162,7 +162,7 @@ public class Person
     [JsonIgnore] public int AgeDays => (CalenderManager.Instance.CurrentDay - DateOfBirth).Days;
     [JsonIgnore] public int AgeYears => (int)((CalenderManager.Instance.CurrentDay - DateOfBirth).Days / 365.25f);
 
-    public int RatingOffset { get; private set; }
+    [JsonProperty] public int RatingOffset { get; private set; }
 
 
     public string GenerateFirstName()

@@ -36,6 +36,7 @@ public class ComplexitySlider : TacticStatSlider
         Tactic t = CurrentTactic;
         bool tooHigh = t.CurrentStartingIntelligence() < t.IntelligenceThreshold;
 
+        statName.text = $"Complexity  {t.Complexity}";
         Fill.color = tooHigh ? tooHighColor : okColor;
         squadIqTooLowWarning.SetActive(tooHigh);
     }

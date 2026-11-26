@@ -16,6 +16,6 @@ MonoBehaviour:
   discussion: Hey boss, I'm sorry about that loss to <w1>
   odds: 0.2
   noAffected: 100
-  moraleChange: -5
+  moodChange: -5
   severity: 1
   tag: 0

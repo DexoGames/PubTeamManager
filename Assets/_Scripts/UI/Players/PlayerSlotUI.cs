@@ -18,11 +18,12 @@ public class PlayerSlotUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI subLabel;
     [SerializeField] private string emptyText = "+ Add player";
 
-    private int playerId = -1;
-    private Func<IEnumerable<Player>> candidateProvider;
-    private Func<Player, string> describe;
-    private Action onChanged;
-    private string title = "Select a player";
+    int playerId = -1;
+    Func<IEnumerable<Player>> candidateProvider;
+    Func<Player, string> describe;
+    Func<Player, PlayerPickerColumnValue> extraColumn;
+    Action onChanged;
+    string title = "Select a player";
 
     public int PlayerId => playerId;
     public bool IsEmpty => playerId < 0;
@@ -32,12 +33,14 @@ public class PlayerSlotUI : MonoBehaviour
     /// minus those already in other slots). <paramref name="changed"/> is called after a pick or clear.
     /// </summary>
     public void Setup(Func<IEnumerable<Player>> candidates, Action changed,
-                      string pickerTitle = "Select a player", Func<Player, string> describer = null)
+                      string pickerTitle = "Select a player", Func<Player, string> describer = null,
+                      Func<Player, PlayerPickerColumnValue> column = null)
     {
         candidateProvider = candidates;
         onChanged = changed;
         title = pickerTitle;
         describe = describer;
+        extraColumn = column;
 
         slotButton.onClick.RemoveListener(OnSlotClicked);
         slotButton.onClick.AddListener(OnSlotClicked);
@@ -63,13 +66,13 @@ public class PlayerSlotUI : MonoBehaviour
         onChanged?.Invoke();
     }
 
-    private void OnSlotClicked()
+    void OnSlotClicked()
     {
-        if (!IsEmpty) return; // a filled slot is cleared via the X, not re-picked
-        PlayerPickerPopup.Show(candidateProvider(), OnPicked, title, describe);
+        if (!IsEmpty) return;
+        PlayerPickerPopup.Show(candidateProvider(), OnPicked, title, describe, extraColumn: extraColumn);
     }
 
-    private void OnPicked(Player p)
+    void OnPicked(Player p)
     {
         playerId = p.PersonID;
         Refresh();

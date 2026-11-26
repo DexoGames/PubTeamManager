@@ -1,5 +1,8 @@
 # Recruitment & Interview — wiring reference
 
+For the current scene wiring, implemented career and match flows, and outstanding play checks, see [Career and match flows](CAREER_AND_MATCH_BUILD.md). The descriptions below record the earlier design and build state.
+
+
 **Status: wired.** `DialogueUI` (on `Dialogue.prefab`) has all five fields assigned, `InterviewManager ▸ dialogue`
 points at it, all seven `RecruitmentPageUI` fields are assigned, the four action buttons are hooked, and the nav
 button calls `UIManager.ShowRecruitment`.

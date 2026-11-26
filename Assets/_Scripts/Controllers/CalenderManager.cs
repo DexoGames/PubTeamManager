@@ -25,7 +25,7 @@ public class CalenderManager : MonoBehaviour
         }
 
         CurrentDay = new DateTime(2024, 8, 1);
-        dateText.text = CurrentDay.Date.ToShortDateString();
+        dateText.text = CurrentDay.ToString("d MMM yy");
     }
 
 
@@ -37,7 +37,7 @@ public class CalenderManager : MonoBehaviour
     public void SetCurrentDay(DateTime date)
     {
         CurrentDay = date;
-        dateText.text = CurrentDay.Date.ToShortDateString();
+        dateText.text = CurrentDay.ToString("d MMM yy");
     }
 
     [SerializeField] TextMeshProUGUI dateText;
@@ -106,7 +106,7 @@ public class CalenderManager : MonoBehaviour
         if (advanceResponses > 0) return;
 
         CurrentDay = CurrentDay.AddDays(1);
-        dateText.text = CurrentDay.Date.ToShortDateString();
+        dateText.text = CurrentDay.ToString("d MMM yy");
         advanceResponses = advanceListeners;
         NewDay.Invoke(CurrentDay);
     }

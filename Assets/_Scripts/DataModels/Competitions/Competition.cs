@@ -46,6 +46,14 @@ public abstract class Competition
         GenerateFixtures();
     }
 
+    public Competition CopyForArchive(int playerClub)
+    {
+        var archive = (Competition)MemberwiseClone();
+        archive.IsComplete = true;
+        archive.Fixtures = Fixtures.ConvertAll(f => f.InvolvesTeam(playerClub) ? f : f.CopyForArchive());
+        return archive;
+    }
+
     public virtual void GenerateFixtures()
     {
         FixturesManager.Instance.RegisterFixtures(Fixtures);

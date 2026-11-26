@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Puddle
   m_EditorClassIdentifier: 
   description: <1> accidentally stepped in a deep puddle
-  discussion: 
+  discussion: Straight through my shoes, boss. Still got wet socks.
   odds: 0.338
   noAffected: 1
-  moraleChange: -3
+  moodChange: -3
   severity: 3

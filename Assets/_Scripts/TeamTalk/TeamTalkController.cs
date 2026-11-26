@@ -9,28 +9,16 @@ using UnityEngine;
 /// rule): a mistimed tone flattens the room, and individual talks are scarce — under the deliberate ambiguity of the
 /// dressing-room chatter (<see cref="TeamTalkChatter"/>) you'll sometimes spend one on a player who was fine.
 ///
-/// The older minigame path (<see cref="CreateRandom"/>/<see cref="ApplyResult"/>) is kept dormant.
 /// </summary>
 public class TeamTalkController : MonoBehaviour
 {
     public static TeamTalkController Instance { get; private set; }
-
-    [Header("Reward tuning")]
-    [Tooltip("Mood swing from a perfect team talk (a flop subtracts).")]
-    [SerializeField] private int maxMoodSwing = 10;
-    [Tooltip("Passion swing from a perfect team talk (a flop subtracts).")]
-    [SerializeField] private int maxPassionSwing = 8;
-    [Tooltip("Scores below this are a flop and DENT morale.")]
-    [SerializeField, Range(0f, 1f)] private float flopThreshold = 0.4f;
 
     [Header("Individual talks")]
     [Tooltip("How many players you may single out for a private word AFTER the squad tone, each match.")]
     [SerializeField] private int maxIndividualTalks = 2;
     [Tooltip("A personal word is a stronger slump-lifter than the blanket talk — multiplies the recovery chance.")]
     [SerializeField, Range(1f, 2f)] private float individualRecoveryMultiplier = 1.3f;
-
-    /// <summary>The active minigame, if one is in progress.</summary>
-    public TeamTalkMinigame Current { get; private set; }
 
     /// <summary>True once the squad team talk has been used this match (only one allowed).</summary>
     public bool Used { get; private set; }
@@ -50,18 +38,10 @@ public class TeamTalkController : MonoBehaviour
         else Instance = this;
     }
 
-    /// <summary>Picks a random microgame for the player to attempt.</summary>
-    public TeamTalkMinigame CreateRandom()
-    {
-        Current = Random.value < 0.5f ? (TeamTalkMinigame)new GerrymanderGame() : new BalanceGame();
-        return Current;
-    }
-
     /// <summary>Resets the one-per-match flags — call at kickoff.</summary>
     public void ResetForMatch()
     {
         Used = false;
-        Current = null;
         IndividualTalksUsed = 0;
     }
 
@@ -80,7 +60,7 @@ public class TeamTalkController : MonoBehaviour
         if (table == null) return reactions;
 
         foreach (var p in me.Players)
-            reactions.Add(React(p, response, severity, 1f));
+            if (!p.IsDeceased) reactions.Add(React(p, response, severity, 1f));
 
         Used = true;
         return reactions;
@@ -126,42 +106,4 @@ public class TeamTalkController : MonoBehaviour
         };
     }
 
-    /// <summary>
-    /// Applies the morale swing for a finished game across the squad and marks the talk used.
-    /// Returns a short summary line for the UI.
-    /// </summary>
-    public string ApplyResult(TeamTalkMinigame game)
-    {
-        if (game == null) return "";
-
-        float score = game.IsComplete ? game.Score : 0f;
-        Used = true;
-        Current = null;
-
-        // Map score onto a swing: at/above flopThreshold it's positive (up to max); below it goes negative.
-        float t = (score - flopThreshold) / Mathf.Max(0.0001f, 1f - flopThreshold);
-        t = Mathf.Clamp(t, -1f, 1f);
-
-        int mood = Mathf.RoundToInt(maxMoodSwing * t);
-        int passion = Mathf.RoundToInt(maxPassionSwing * t);
-
-        foreach (var p in TeamManager.Instance.MyTeam.Players)
-        {
-            p.Morale.Mood = Mathf.Clamp(p.Morale.Mood + mood, 0, 100);
-            p.Morale.Passion = Mathf.Clamp(p.Morale.Passion + passion, 0, 100);
-        }
-
-        return Summarise(score, mood);
-    }
-
-    private string Summarise(float score, int mood)
-    {
-        string verdict;
-        if (score >= 0.85f) verdict = "The lads are buzzing — brilliant team talk!";
-        else if (score >= flopThreshold) verdict = "A solid word — the squad looks lifted.";
-        else verdict = "That fell flat — the dressing room looks deflated.";
-
-        string delta = mood >= 0 ? $"+{mood}" : mood.ToString();
-        return $"{verdict} (Mood {delta})";
-    }
 }

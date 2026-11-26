@@ -16,6 +16,6 @@ MonoBehaviour:
   discussion: Hey boss! That was a good win against <w1>.
   odds: 0.2
   noAffected: 100
-  moraleChange: 4
+  moodChange: 4
   severity: 5
   tag: 0

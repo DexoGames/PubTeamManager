@@ -13,10 +13,8 @@ MonoBehaviour:
   m_Name: Good Work Day
   m_EditorClassIdentifier: 
   description: <1> had a good day at work
-  discussion: 
+  discussion: Got a thank-you from the boss at work today. I needed that.
   odds: 0.269
   noAffected: 1
-  moraleChange: 6
-  bestCaseMorale: 10
-  worseCaseMorale: -5
+  moodChange: 6
   severity: 4

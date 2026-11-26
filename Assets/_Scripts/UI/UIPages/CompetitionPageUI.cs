@@ -35,6 +35,11 @@ public class CompetitionPageUI : UIPage
         SetupFixturesPanel();
     }
 
+    protected override void OnShow()
+    {
+        OnShow(TeamManager.Instance.MyTeam.GetMainLeague());
+    }
+
     protected override void OnShow(Competition competition)
     {
         this.competition = competition;

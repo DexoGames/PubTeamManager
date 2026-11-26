@@ -17,7 +17,5 @@ MonoBehaviour:
     dinner with me. I know a really nice place near the pub.
   odds: 0.01
   noAffected: 1
-  moraleChange: 0
-  bestCaseMorale: 10
-  worseCaseMorale: -10
+  moodChange: 0
   severity: 5

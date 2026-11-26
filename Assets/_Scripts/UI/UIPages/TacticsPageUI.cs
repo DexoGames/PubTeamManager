@@ -50,7 +50,7 @@ public class TacticsPageUI : UIPage
     /// <summary>Persist tactic changes when the player navigates away from the tactics page.</summary>
     protected override void OnHide()
     {
-        SaveManager.Instance.SaveCore();
+        if (team != null && !team.Tactic.InMatch) SaveManager.Instance.SaveCore();
     }
 
     /// <summary>Called by MatchSimPageUI before opening this page at half-time, to show the Resume button.</summary>

@@ -93,10 +93,14 @@ public class Match
         public List<Shot> shots;
         public List<Foul> fouls;
         public float possession;
+        public int wideActions;
+        public int turnovers;
 
         /// <summary>PersonIDs of the starting XI. Captured at FinaliseResult so archived
         /// (slimmed) matches can still show who played even after fouls/possession are dropped.</summary>
         public List<int> lineup;
+        public string setup;
+        public int complexity;
 
         /// <summary>The keeper who played, captured at FinaliseResult. The single source of truth for clean-sheet
         /// and goals-conceded attribution — independent of how many shots were faced and kept through archiving.</summary>
@@ -122,17 +126,31 @@ public class Match
     {
         this.home = home;
         this.away = away;
-        result = new Result(home, away);
+        ClearPlayerMatchMorale();
+        var kickoff = new Result(home, away);
+        kickoff.home.lineup = home.OnPitchPlayers.ConvertAll(p => p.PersonID);
+        kickoff.away.lineup = away.OnPitchPlayers.ConvertAll(p => p.PersonID);
+        kickoff.home.keeper = home.Goalkeeper;
+        kickoff.away.keeper = away.Goalkeeper;
+        if (home.IsHumanControlled) CaptureSetup(ref kickoff.home, home);
+        if (away.IsHumanControlled) CaptureSetup(ref kickoff.away, away);
+        result = kickoff;
         this.trackHighlights = trackHighlights;
 
         // Cache each side's starting-XI intelligence + chemistry once for this match.
         home.Tactic?.RefreshMatchCache();
         away.Tactic?.RefreshMatchCache();
 
-        // Start with clean per-match morale state (no leftover slumps/blunders from a previous game).
-        ClearPlayerMatchMorale();
 
         Engine = new MatchEngine(this);
+    }
+
+    static void CaptureSetup(ref TeamStats side, Team team)
+    {
+        var instructions = team.Tactic.Instructions.ConvertAll(i => i.name);
+        instructions.Sort(System.StringComparer.Ordinal);
+        side.setup = team.Formation.name + "/" + string.Join("/", instructions);
+        side.complexity = team.Tactic.Complexity;
     }
 
     public Result SimulateMatch()
@@ -158,7 +176,7 @@ public class Match
     private static void StepTeamMorale(Team team, bool secondHalf)
     {
         if (team == null || team.Players == null || team.Players.Count < 11) return;
-        foreach (var p in team.StartingPlayers)
+        foreach (var p in team.OnPitchPlayers)
             MoraleEffects.StepMatchMinute(p, secondHalf);
     }
 
@@ -172,7 +190,7 @@ public class Match
     private static void ClearTeamMorale(Team team)
     {
         if (team == null || team.Players == null) return;
-        foreach (var p in team.Players) { p.InSlump = false; p.MoraleBlunder = false; }
+        foreach (var p in team.Players) { p.InSlump = false; p.MoraleBlunder = false; p.SentOff = false; p.LeftInjured = false; }
     }
 
     /// <summary>
@@ -211,6 +229,21 @@ public class Match
     public bool HalfConditions(Half half)
     {
         return currentMin.Base <= DecideEndMinute(half) && currentMin.Stoppage < Random.Range(1, 8);
+    }
+
+    public void RecordAction(Team team, bool wide, bool turnover)
+    {
+        Result updated = result;
+        if (team == home) CountAction(ref updated.home, wide, turnover);
+        else CountAction(ref updated.away, wide, turnover);
+        result = updated;
+    }
+
+    static void CountAction(ref TeamStats side, bool wide, bool turnover)
+    {
+        side.possession++;
+        if (wide) side.wideActions++;
+        if (turnover) side.turnovers++;
     }
 
     public void AddHighlight(Highlight highlight)

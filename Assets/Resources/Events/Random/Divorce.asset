@@ -16,7 +16,5 @@ MonoBehaviour:
   discussion: I've gotten a divorce with the missus.
   odds: 0.082
   noAffected: 1
-  moraleChange: -15
-  bestCaseMorale: 0
-  worseCaseMorale: -40
+  moodChange: -15
   severity: 0

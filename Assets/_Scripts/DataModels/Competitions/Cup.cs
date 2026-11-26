@@ -67,6 +67,7 @@ public class Cup : Competition, ISaveable
             roundFixtures.Add(fixture);
         }
 
+        FixturesManager.Instance.RegisterFixtures(roundFixtures);
         roundList.Add(roundFixtures);
         Rounds = roundList.ToArray();
     }
@@ -74,7 +75,7 @@ public class Cup : Competition, ISaveable
     public override void GenerateFixtures()
     {
         GenerateRound(new List<Team>(Teams), startDate);
-        base.GenerateFixtures();
+
     }
 
     public bool CanGenerateNextRound()
@@ -105,7 +106,8 @@ public class Cup : Competition, ISaveable
             else
             {
                 // Draw in a cup match — resolve via extra time simulation
-                winner = ResolveDrawnCupMatch(fixture);
+                fixture.DecidingTeamId = ResolveDrawnCupMatch(fixture).TeamId;
+                winner = fixture.GetWinner();
                 winners.Add(winner);
             }
         }
@@ -134,7 +136,7 @@ public class Cup : Competition, ISaveable
     /// Resolves a drawn cup match by simulating a deciding contest.
     /// Uses a simple coin-flip weighted by team strength as a penalty shootout proxy.
     /// </summary>
-    private Team ResolveDrawnCupMatch(Fixture fixture)
+    internal static Team ResolveDrawnCupMatch(Fixture fixture)
     {
         // Weighted coin flip based on team control stats as penalty proxy
         float homeStrength = fixture.HomeTeam.Control + fixture.HomeTeam.Threat;

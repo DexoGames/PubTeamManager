@@ -1,5 +1,8 @@
 # Stat Leaderboard Widgets
 
+For the current scene wiring, implemented career and match flows, and outstanding play checks, see [Career and match flows](CAREER_AND_MATCH_BUILD.md). The descriptions below record the earlier design and build state.
+
+
 Top-N stat lists (goals, assists, shots, saves, cards) shown like the league table — ranked rows with clickable
 player/team links.
 

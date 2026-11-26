@@ -16,5 +16,5 @@ MonoBehaviour:
   discussion: Hey boss! Me and my partner have a new addition to the family!
   odds: 0.07
   noAffected: 1
-  moraleChange: 20
+  moodChange: 20
   severity: 6

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -104,6 +105,13 @@ public class TacticGridLayout : MonoBehaviour
         UpdateAllTogglesInteractability();
     }
 
+    static PlayerPickerColumnValue DescribeReliance(Player player, PlayerStat[] stats)
+    {
+        Player.Stats effectiveStats = player.GetStats();
+        int average = Mathf.RoundToInt((float)stats.Average(stat => effectiveStats.GetStat(stat)));
+        return new PlayerPickerColumnValue($"{average} skill avg.");
+    }
+
     void ToggleClick(TacticsToggle clickedToggle)
     {
         TacticInstruction instr = clickedToggle.instruction;
@@ -119,6 +127,11 @@ public class TacticGridLayout : MonoBehaviour
             // A reliance instruction needs a player chosen before it's committed.
             if (instr.hasReliance)
             {
+                PlayerStat[] stats = instr.reliance.stats;
+                Func<Player, PlayerPickerColumnValue> column = stats?.Length > 0
+                    ? player => DescribeReliance(player, stats)
+                    : null;
+
                 bool opened = PlayerPickerPopup.Show(
                     team.Tactic.EligibleReliancePlayers(instr),   // only players in the reliance's position groups
                     picked =>
@@ -128,8 +141,7 @@ public class TacticGridLayout : MonoBehaviour
                         AfterToggleChange();
                     },
                     $"{instr.tacticName} — rely on which player?",
-                    describe: null,
-                    onCancelled: () => clickedToggle.SetSilent(false)); // didn't pick → revert, don't add
+                    onCancelled: () => clickedToggle.SetSilent(false), extraColumn: column); // didn't pick → revert, don't add
                 if (opened) return; // wait for the picker
                 // Picker prefab unavailable → fall through and add with an auto-bound player (match start).
             }

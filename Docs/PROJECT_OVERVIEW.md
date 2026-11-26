@@ -1,5 +1,8 @@
 # Pub Team Manager — Project Overview
 
+For the current scene wiring, implemented career and match flows, and outstanding play checks, see [Career and match flows](CAREER_AND_MATCH_BUILD.md). The descriptions below record the earlier design and build state.
+
+
 A Unity football (soccer) management game where the player manages a team based on a real-world UK
 pub. The fantasy hook: every "club" is a real pub loaded from a CSV of UK pubs, and the league
 structure, players, and matches are all procedurally generated around the player's chosen pub

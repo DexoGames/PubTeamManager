@@ -42,5 +42,6 @@ public class FamiliaritySlider : MonoBehaviour
     private void SetValue()
     {
         slider.value = TeamManager.Instance.MyTeam.Tactic.Familiarity;
+        label.text = $"Familiarity  {slider.value:0}%";
     }
 }

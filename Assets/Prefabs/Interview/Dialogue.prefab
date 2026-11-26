@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 6014523956991925720}
   - component: {fileID: 978872506024666266}
   - component: {fileID: 5614242196612642224}
+  - component: {fileID: 1170967511652555676}
   m_Layer: 5
   m_Name: Contents
   m_TagString: Untagged
@@ -68,15 +69,15 @@ MonoBehaviour:
   m_text: Hello Boss! I'm gonna yap about stuff to fill the page, it will be great
     and fun and cool and epic!!!
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 5573c059dc818419193e72a69937385f, type: 2}
+  m_sharedMaterial: {fileID: -1461287816564118546, guid: 5573c059dc818419193e72a69937385f, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+  m_fontColor: {r: 0.9764706, g: 0.91764706, b: 0.827451, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -147,6 +148,7 @@ GameObject:
   - component: {fileID: 8865183726058810915}
   - component: {fileID: 1381925708101711455}
   - component: {fileID: 197474164497762186}
+  - component: {fileID: 2924379598972132213}
   m_Layer: 5
   m_Name: Name
   m_TagString: Untagged
@@ -203,15 +205,15 @@ MonoBehaviour:
       m_Calls: []
   m_text: Name Lol
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 5573c059dc818419193e72a69937385f, type: 2}
+  m_sharedMaterial: {fileID: -1461287816564118546, guid: 5573c059dc818419193e72a69937385f, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+  m_fontColor: {r: 0.9764706, g: 0.91764706, b: 0.827451, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -293,6 +295,7 @@ GameObject:
   - component: {fileID: 3042194648083447739}
   - component: {fileID: 161433639515877533}
   - component: {fileID: 7727982298917583964}
+  - component: {fileID: 6894645763580305781}
   m_Layer: 5
   m_Name: ExtraInfo
   m_TagString: Untagged
@@ -349,15 +352,15 @@ MonoBehaviour:
       m_Calls: []
   m_text: The player seemed to poop his pants
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 5573c059dc818419193e72a69937385f, type: 2}
+  m_sharedMaterial: {fileID: -1461287816564118546, guid: 5573c059dc818419193e72a69937385f, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+  m_fontColor: {r: 0.9764706, g: 0.91764706, b: 0.827451, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -503,6 +506,7 @@ GameObject:
   - component: {fileID: 981508526716720866}
   - component: {fileID: 6073553238856814527}
   - component: {fileID: 3150014820033350360}
+  - component: {fileID: 3551080316336614815}
   m_Layer: 5
   m_Name: Description
   m_TagString: Untagged
@@ -559,15 +563,15 @@ MonoBehaviour:
       m_Calls: []
   m_text: Description
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 5573c059dc818419193e72a69937385f, type: 2}
+  m_sharedMaterial: {fileID: -1461287816564118546, guid: 5573c059dc818419193e72a69937385f, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+  m_fontColor: {r: 0.9764706, g: 0.91764706, b: 0.827451, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -843,3 +847,63 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 7906782702690677768, guid: 5926b6f0a31ed6a40b26fd8529037d41, type: 3}
   m_PrefabInstance: {fileID: 3810693086748007689}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1170967511652555676
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2526631745473215543}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 104fa4a1cb28f418b9e2c93b30a4f2a6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UIThemeGraphic
+  theme: {fileID: 11400000, guid: 57c9ca8a3b9d04e658e9968aaab277a8, type: 2}
+  role: 7
+  opacity: 1
+--- !u!114 &2924379598972132213
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2674196690925728537}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 104fa4a1cb28f418b9e2c93b30a4f2a6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UIThemeGraphic
+  theme: {fileID: 11400000, guid: 57c9ca8a3b9d04e658e9968aaab277a8, type: 2}
+  role: 7
+  opacity: 1
+--- !u!114 &6894645763580305781
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2701894891138566454}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 104fa4a1cb28f418b9e2c93b30a4f2a6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UIThemeGraphic
+  theme: {fileID: 11400000, guid: 57c9ca8a3b9d04e658e9968aaab277a8, type: 2}
+  role: 7
+  opacity: 1
+--- !u!114 &3551080316336614815
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4160615923751945534}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 104fa4a1cb28f418b9e2c93b30a4f2a6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UIThemeGraphic
+  theme: {fileID: 11400000, guid: 57c9ca8a3b9d04e658e9968aaab277a8, type: 2}
+  role: 7
+  opacity: 1

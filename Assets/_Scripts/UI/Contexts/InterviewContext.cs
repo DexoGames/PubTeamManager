@@ -8,11 +8,9 @@ public class InterviewContext : IDialogueContext
     public Person Person { get; private set; }
     public Player Player => Person as Player;
 
-    public string PersonName => Person is Player player 
-        ? LinkBuilder.BuildLink(player) 
-        : Person.FullName;
+    public string PersonName => Person.FullName;
 
-    public string Description => $"Interview with {Person.FullName}";
+    public string Description => "";
     
     public string InitialDialogue => GetInitialDialogue();
 

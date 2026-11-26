@@ -16,7 +16,5 @@ MonoBehaviour:
   discussion: You know what else is massive??
   odds: 0.05
   noAffected: 1
-  moraleChange: 30
-  bestCaseMorale: 40
-  worseCaseMorale: 10
+  moodChange: 30
   severity: 4

@@ -34,7 +34,11 @@ public class PlayerDetailsUI : UIPage
         Game.ClearContainer(statsContainer);
 
         playerText.text = player.FullName;
-        teamName.text = $"Plays For {LinkBuilder.BuildLink(player.Team)}";
+        teamName.text = player.Team != null ? LinkBuilder.BuildLink(player.Team) : "Free agent";
+        height.gameObject.SetActive(true);
+        statTitle.gameObject.SetActive(true);
+        positionStrengths.gameObject.SetActive(player.Team != null);
+        morale.gameObject.SetActive(true);
         personality.text = $"{player.Personality.ToString()}";
         height.text = $"{Player.CmToFeet(player.HeightToCm())}";
 
@@ -45,9 +49,11 @@ public class PlayerDetailsUI : UIPage
         }
         bestPosition.text = bestPosition.text.Remove(bestPosition.text.Length - 2);
 
+        if (!player.IsAvailable) bestPosition.text += $" · {player.AvailabilityStatus}";
         PopulateStats(player);
+        ShowChemistry(player);
 
-        positionStrengths.SetPositionStrengths(player, player.Team);
+        if (player.Team != null) positionStrengths.SetPositionStrengths(player, player.Team);
         playerEvents.ShowEvents(new() { player });
         morale.Setup(player);
     }
@@ -58,11 +64,30 @@ public class PlayerDetailsUI : UIPage
 
         playerText.text = manager.FullName;
         teamName.text = $"Manages {LinkBuilder.BuildLink(manager.Team)}";
+        positionStrengths.gameObject.SetActive(false);
+        morale.gameObject.SetActive(false);
+        playerEvents.ShowEvents(new List<Player>());
         height.gameObject.SetActive(false);
         statTitle.gameObject.SetActive(false);
         personality.text = $"Personality: {manager.Personality.ToString()}";
 
         bestPosition.text = "";
+    }
+
+    void ShowChemistry(Player player)
+    {
+        var position = player.GetPosition();
+        if (!position.HasValue) return;
+
+        var links = new List<string>();
+        foreach (Player teammate in player.Team.StartingPlayers)
+        {
+            var other = teammate.GetPosition();
+            if (player == teammate || !other.HasValue || !Chemistry.ArePositionsLinked(position.Value, other.Value)) continue;
+            ChemistryLevel level = Chemistry.GetLevel(player, teammate);
+            if (level != ChemistryLevel.Neutral) links.Add($"{teammate.Surname} ({Chemistry.Label(level)})");
+        }
+        if (links.Count > 0) bestPosition.text += "\nChemistry · " + string.Join(", ", links);
     }
 
     void PopulateStats(Player player)

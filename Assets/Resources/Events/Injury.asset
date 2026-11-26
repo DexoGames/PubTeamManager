@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   tag: 1
   description: <1> has been injured.
-  discussion: 
+  discussion: How long do you reckon before I can get back on the pitch?
   odds: 0.05
   noAffected: 1
   moodChange: -10

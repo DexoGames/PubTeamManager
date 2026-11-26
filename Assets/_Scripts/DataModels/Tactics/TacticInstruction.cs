@@ -34,18 +34,6 @@ public class TacticInstruction : ScriptableObject
              "instructions if you want each to perk the other.")]
     public ComplementaryInstruction[] complementaryInstructions;
 
-    public void Apply(TacticStats stats)
-    {
-        foreach (var statMod in statModifications)
-            stats.ModifyStat(statMod.stat, statMod.value);
-
-        foreach (var dependency in dependencies)
-            stats.AddTeamDependency(dependency);
-
-        foreach (var dependency in tacticDependencies)
-            stats.AddTacticDependency(dependency);
-    }
-
     [Serializable]
     public struct StatModification
     {

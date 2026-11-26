@@ -1,5 +1,8 @@
 # Completeness Audit — code vs. scene vs. docs
 
+For the current scene wiring, implemented career and match flows, and outstanding play checks, see [Career and match flows](CAREER_AND_MATCH_BUILD.md). The descriptions below record the earlier design and build state.
+
+
 **What's described somewhere but not actually finished.** Cross-checks three sources against each other:
 
 1. **Code** — every script under `Assets/_Scripts`.

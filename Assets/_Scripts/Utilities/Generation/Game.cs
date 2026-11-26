@@ -91,6 +91,8 @@ public class Game : MonoBehaviour
         public int home;
         public int away;
 
+        public override string ToString() => $"{home}–{away}";
+
         public Score(int h, int a)
         {
             home = h;

@@ -14,6 +14,8 @@ public class HomePageUI : UIPage
 
     [SerializeField] private DayTimelineWidget dayTimeline;
 
+    public Sprite ActivityIcon(ScheduleEntryType activity) => dayTimeline.IconFor(activity);
+
     private DateTime lastShownDay;
     private bool hasShownBefore;
 

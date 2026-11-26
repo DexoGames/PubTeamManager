@@ -56,3 +56,8 @@ MonoBehaviour:
   incompatibleInstructions:
   - {fileID: 11400000, guid: a05273b356ba45647918f02c8837167e, type: 2}
   - {fileID: 11400000, guid: af24ce5b5687db448a379d7eabbac38f, type: 2}
+  complementaryInstructions:
+  - instruction: {fileID: 11400000, guid: 3702491123a7f924d9a26fdde6983e33, type: 2}
+    perks:
+    - stat: 3
+      value: 3

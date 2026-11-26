@@ -13,10 +13,8 @@ MonoBehaviour:
   m_Name: Inflation
   m_EditorClassIdentifier: 
   description: They increased the price of the meal deal
-  discussion: 
+  discussion: Even my usual lunch costs more now. It all adds up.
   odds: 0.105
   noAffected: 100
-  moraleChange: -5
-  bestCaseMorale: 0
-  worseCaseMorale: -10
+  moodChange: -5
   severity: 3

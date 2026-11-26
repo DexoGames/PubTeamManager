@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Phone Charging
   m_EditorClassIdentifier: 
   description: <1> forgot to charge his phone overnight
-  discussion: 
+  discussion: My phone died and I slept straight through my alarm.
   odds: 0.272
   noAffected: 1
-  moraleChange: -2
+  moodChange: -2
   severity: 3

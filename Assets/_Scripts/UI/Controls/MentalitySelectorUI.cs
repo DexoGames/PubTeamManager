@@ -37,7 +37,7 @@ public class MentalitySelectorUI : MonoBehaviour
         t.RecalculateStats();
         UpdateLabel();
 
-        var page = FindFirstObjectByType<TacticsPageUI>();
+        var page = TacticsPageUI.Instance;
         if (page != null) page.OnTacticChange?.Invoke();
     }
 

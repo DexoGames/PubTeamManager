@@ -12,11 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 936c9e56825d37b4f980b971014020ab, type: 3}
   m_Name: Death
   m_EditorClassIdentifier: 
-  description: <1> died.
-  discussion: 
+  description: The club remembers <w1>.
+  discussion: Feels strange turning up without <w1> here.
   odds: 0.001
   noAffected: 100
-  moraleChange: -20
-  bestCaseMorale: -15
-  worseCaseMorale: -50
+  moodChange: 0
   severity: 0

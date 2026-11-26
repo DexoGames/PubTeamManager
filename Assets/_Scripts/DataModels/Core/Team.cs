@@ -21,6 +21,8 @@ public class Team : ScriptableObject
     public List<Player> Attackers => Players.FindAll(player => player.IsPositionIn(Player.Position.ST, Player.Position.LW, Player.Position.RW, Player.Position.AM));
     public Player Goalkeeper => Players.Find(player => player.IsPositionIn(Player.Position.GK));
     public List<Player> WidePlayers => Players.FindAll(player => player.IsPositionIn(Player.Position.LB, Player.Position.RB, Player.Position.LM, Player.Position.RM, Player.Position.LW, Player.Position.RW));
+    public List<Player> OnPitchPlayers => StartingPlayers.FindAll(p => p.CanPlay);
+
     public List<Player> StartingPlayers => Players.GetRange(0, 11);
     public List<Player> Substitutes => Players.GetRange(11, Players.Count - 11);
 
@@ -224,7 +226,7 @@ public class Team : ScriptableObject
     }
     public League GetMainLeague()
     {
-        return (League)GetAllCompetitions().OrderBy(c => c.Priority).FirstOrDefault();
+        return GetAllCompetitions().OfType<League>().OrderBy(c => c.Priority).FirstOrDefault();
     }
     public Fixture GetUpcomingFixture()
     {

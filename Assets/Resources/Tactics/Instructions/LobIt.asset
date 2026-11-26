@@ -36,5 +36,9 @@ MonoBehaviour:
     strength: -1
   tacticDependencies: []
   reliances: []
-  incompatibleInstructions:
-  - {fileID: 11400000, guid: 761ada6956ee83e4cb2dbc2cca60a701, type: 2}
+  incompatibleInstructions: []
+  complementaryInstructions:
+  - instruction: {fileID: 11400000, guid: f8938aeec9867d34f81c3a62eb397dc3, type: 2}
+    perks:
+    - stat: 6
+      value: 3

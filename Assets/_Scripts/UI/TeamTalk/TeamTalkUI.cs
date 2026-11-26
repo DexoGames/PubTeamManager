@@ -43,11 +43,26 @@ public class TeamTalkUI : MonoBehaviour
     private Expectation expectation;
     private Player individualTarget;
 
+    bool prepared;
+
+    public void ResetForMatch()
+    {
+        prepared = false;
+    }
+
     public void Open()
     {
         gameObject.SetActive(true);
         // Take over the whole match screen — the squad grid needs the full width for a 25-man squad.
         MatchSimPageUI.Instance.SetMatchContentVisible(false);
+
+        if (prepared)
+        {
+            foreach (var pair in boxes) pair.Value.RefreshRole();
+            return;
+        }
+        prepared = true;
+        UpdateTalksRemaining();
 
         goalDifference = MatchSimPageUI.Instance.CurrentGoalDifferenceForMyTeam();
         severity = TeamTalkReactions.SeverityFromScore(goalDifference);
@@ -64,8 +79,8 @@ public class TeamTalkUI : MonoBehaviour
         individualResponseManager.OnResponseChosen.AddListener(DeliverIndividual);
         individualPanel.SetActive(false);
 
-        situationText.text = "Half-time — " + TeamTalkReactions.SituationText(goalDifference, severity)
-                           + " · " + TeamTalkChatter.ExpectationText(expectation);
+        situationText.text = goalDifference == 0 ? "Level" : goalDifference > 0 ? $"{goalDifference} ahead" : $"{-goalDifference} behind";
+        responseManager.gameObject.SetActive(true);
         flavourText.text = "";
         overallText.text = "";
 
@@ -91,8 +106,10 @@ public class TeamTalkUI : MonoBehaviour
 
         foreach (Player p in TeamManager.Instance.MyTeam.Players)
         {
+            if (p.IsDeceased) continue;
             PlayerMoraleBoxUI box = Instantiate(boxPrefab, boxContainer);
             box.Setup(p);
+            box.Preview = line => flavourText.text = line;
             boxes[p] = box;
         }
     }
@@ -101,7 +118,7 @@ public class TeamTalkUI : MonoBehaviour
     {
         if (TeamTalkController.Instance.Used) return;
 
-        flavourText.text = TeamTalkReactions.Flavour(response);
+        flavourText.text = "";
 
         List<PlayerReaction> reactions = TeamTalkController.Instance.DeliverTalk(response, severity);
         foreach (var r in reactions)
@@ -112,7 +129,7 @@ public class TeamTalkUI : MonoBehaviour
                                TeamTalkReactions.ReactionColour(r.reaction));
             }
 
-        overallText.text = TeamTalkReactions.Summarise(reactions);
+        overallText.text = "";
         RefreshState(); // used is now true → resumes the individual phase
     }
 
@@ -168,7 +185,7 @@ public class TeamTalkUI : MonoBehaviour
         int remaining = TeamTalkController.Instance.MaxIndividualTalks - TeamTalkController.Instance.IndividualTalksUsed;
         talksRemainingText.text = TeamTalkController.Instance.Used
             ? $"Private words left: {remaining}"
-            : "Deliver a team talk first";
+            : "";
     }
 
     // ————————————————————— shared context builders —————————————————————
@@ -203,12 +220,10 @@ public class TeamTalkUI : MonoBehaviour
         // Reopening a talk you've already given rebuilds a fresh row, so re-lock it — and resume the individual phase.
         if (used)
         {
-            responseManager.SetInteractable(false);
+            responseManager.gameObject.SetActive(false);
             EnterIndividualPhase();
         }
 
-        titleText.text = used ? "Team Talk — delivered" : "Half-Time Team Talk";
-        if (used && string.IsNullOrEmpty(overallText.text))
-            overallText.text = "You've had your say — now single out who needs a word.";
+        titleText.text = used ? "Private talks" : "Team talk";
     }
 }

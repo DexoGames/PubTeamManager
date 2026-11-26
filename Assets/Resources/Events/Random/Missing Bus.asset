@@ -13,10 +13,8 @@ MonoBehaviour:
   m_Name: Missing Bus
   m_EditorClassIdentifier: 
   description: <1> missed the bus
-  discussion: 
+  discussion: Missed the last bus and walked home in the rain.
   odds: 0.2
   noAffected: 1
-  moraleChange: -3
-  bestCaseMorale: 0
-  worseCaseMorale: -5
+  moodChange: -3
   severity: 3

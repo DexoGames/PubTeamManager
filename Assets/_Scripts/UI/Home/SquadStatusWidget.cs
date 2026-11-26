@@ -1,46 +1,46 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
-/// <summary>
-/// Home-screen squad-status widget: flags players who are fatigued or low on morale (with
-/// clickable name links), plus placeholders for injuries/suspensions (no system yet).
-/// Renders into a single rich-text TMP block — attach a LinkHandler to that text so the
-/// player links are clickable. A UIObject (auto-refreshes on show).
-/// </summary>
 public class SquadStatusWidget : UIObject
 {
-    [SerializeField] private TextMeshProUGUI statusText;
-    [SerializeField] private int fatigueThreshold = 70;
-    [SerializeField] private float lowMoraleDistance = 45f;
-    [SerializeField] private int maxNamesPerLine = 4;
+    [SerializeField] Button[] indicators;
+    [SerializeField] TextMeshProUGUI details;
+    [SerializeField] UITheme theme;
+    [SerializeField] int fatigueThreshold = 70;
+    [SerializeField] float lowMoraleDistance = 45f;
 
-    public override void Setup() => Refresh();
-
-    public void Refresh()
+    public override void Setup()
     {
-        Team team = TeamManager.Instance.MyTeam;
+        var squad = TeamManager.Instance.MyTeam.Players;
+        var groups = new (string Label, List<Player> Players, Func<Player, PlayerPickerColumnValue> Column)[]
+        {
+            ("Fatigue", squad.FindAll(player => !player.IsDeceased && player.Fatigue >= fatigueThreshold),
+                player => new PlayerPickerColumnValue($"{player.Fatigue}%")),
+            ("Low morale", squad.FindAll(player => !player.IsDeceased && player.Morale.DistanceToIdeal() >= lowMoraleDistance),
+                PlayerPickerColumnValue.FromMorale),
+            ("Injured", squad.FindAll(player => player.IsInjured),
+                player => new PlayerPickerColumnValue($"Back {player.InjuredUntil:d MMM}")),
+            ("Suspended", squad.FindAll(player => player.IsSuspended),
+                player => new PlayerPickerColumnValue(player.MatchesSuspended == 1 ? "1 match" : $"{player.MatchesSuspended} matches"))
+        };
 
-        var fatigued = team.Players.Where(p => p.Fatigue >= fatigueThreshold).ToList();
-        var lowMorale = team.Players.Where(p => p.Morale.DistanceToIdeal() >= lowMoraleDistance).ToList();
-
-        var sb = new StringBuilder();
-        sb.AppendLine("<b>Squad Status</b>");
-        sb.AppendLine(Line("Fatigued", fatigued));
-        sb.AppendLine(Line("Low morale", lowMorale));
-        sb.Append("Injured: 0    Suspended: 0"); // hooks for future systems
-
-        statusText.text = sb.ToString();
-    }
-
-    private string Line(string label, List<Player> players)
-    {
-        if (players.Count == 0) return $"{label}: none";
-
-        string names = string.Join(", ", players.Take(maxNamesPerLine).Select(p => LinkBuilder.BuildLink(p)));
-        string more = players.Count > maxNamesPerLine ? $" +{players.Count - maxNamesPerLine}" : "";
-        return $"{label} ({players.Count}): {names}{more}";
+        details.text = groups.All(group => group.Players.Count == 0) ? "Squad ready" : "";
+        for (int i = 0; i < indicators.Length; i++)
+        {
+            Button button = indicators[i];
+            var group = groups[i];
+            UITheme.Role countRole = group.Players.Count == 0 ? UITheme.Role.MutedText : UITheme.Role.Brass;
+            string colour = ColorUtility.ToHtmlStringRGB(theme.GetColor(countRole));
+            button.GetComponentInChildren<TextMeshProUGUI>().text =
+                $"<color=#{colour}><b>{group.Players.Count}</b></color>\n<size=72%>{group.Label}</size>";
+            button.onClick.RemoveAllListeners();
+            button.interactable = group.Players.Count > 0;
+            button.onClick.AddListener(() => PlayerPickerPopup.Show(group.Players,
+                player => UIManager.Instance.ShowPlayerDetails(player.PersonID), group.Label, extraColumn: group.Column));
+        }
     }
 }

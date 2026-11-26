@@ -13,7 +13,7 @@ public class TacticStatSlider : MonoBehaviour
     public Color color;
 
     protected Slider slider;
-    private TextMeshProUGUI statName;
+    protected TextMeshProUGUI statName;
 
     protected virtual void OnEnable()
     {

@@ -88,7 +88,7 @@ public class Event
         desc = Regex.Replace(desc, @"<w(\d+)>", match =>
         {
             int index = int.Parse(match.Groups[1].Value) - 1;
-            return (index >= 0 && index < customWords.Count) ? customWords[index] : match.Value;
+            return (customWords != null && index >= 0 && index < customWords.Count) ? customWords[index] : match.Value;
         });
 
         return desc;

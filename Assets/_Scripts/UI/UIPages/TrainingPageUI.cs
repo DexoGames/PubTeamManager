@@ -20,6 +20,8 @@ public class TrainingPageUI : UIPage
     [SerializeField] private GameObject optionButtonPrefab;
     [SerializeField] private TextMeshProUGUI headerText;
 
+    RectTransform boostFill;
+
     [Header("Info panel")]
     [SerializeField] private TextMeshProUGUI drillNameText;
     [SerializeField] private TextMeshProUGUI typeText;
@@ -69,6 +71,12 @@ public class TrainingPageUI : UIPage
     protected override void OnShow()
     {
         base.OnShow();
+        if (!boostFill)
+        {
+            var track = Instantiate(Resources.Load<RectTransform>("UI/TrainingBoost"), affectedStatsText.transform.parent);
+            boostFill = (RectTransform)track.GetChild(0);
+        }
+
         RestoreFromCurrentSession();
         RefreshOptions();
         BuildPositionDropdown();
@@ -103,7 +111,7 @@ public class TrainingPageUI : UIPage
         drillButtonImages.Clear();
         drillBaseColors.Clear();
 
-        headerText.text = "Choose Training Session";
+        headerText.text = "Training";
 
         foreach (var drill in TrainingManager.Instance.GetDrills())
         {
@@ -116,6 +124,7 @@ public class TrainingPageUI : UIPage
 
             Color baseColor = TypeColor(drill.Type);
             Image image = buttonObj.GetComponentInChildren<Image>();
+            baseColor = Color.Lerp(new Color(0.68f, 0.71f, 0.72f), baseColor, 0.34f);
             image.color = baseColor;
             drillButtonImages[drill.Id] = image;
             drillBaseColors[drill.Id] = baseColor;
@@ -146,12 +155,13 @@ public class TrainingPageUI : UIPage
 
     private void UpdateInfoPanel()
     {
+        boostFill.parent.gameObject.SetActive(false);
         if (!selectedDrill.HasValue)
         {
             drillNameText.text = "Select a drill";
             typeText.text = "";
             affectedStatsText.text = "";
-            effectText.text = "Pick a training drill to see what it does.";
+            effectText.text = "";
             UpdateNextSession();
             return;
         }
@@ -164,12 +174,12 @@ public class TrainingPageUI : UIPage
         typeBadge.color = TypeColor(drill.Type);
 
         affectedStatsText.text = drill.AffectedStats.Length > 0
-            ? "Affects: " + string.Join(", ", drill.AffectedStats) + SquadBoostSuffix(drill.AffectedStats)
+            ? string.Join(", ", drill.AffectedStats) + SquadBoostSuffix(drill.AffectedStats)
             : "";
 
         // Build a transient session just to reuse its description logic.
         var preview = BuildSelectedSession();
-        effectText.text = drill.Description + "\n\n" + preview.GetEffectivenessDescription();
+        effectText.text = drill.IsBoostDrill ? "+1 each session   ·   Other boosts −1" : preview.GetEffectivenessDescription();
 
         UpdateNextSession();
     }
@@ -186,26 +196,29 @@ public class TrainingPageUI : UIPage
                 total += p.GetBoost(s);
 
         float avg = total / (team.Players.Count * stats.Length);
-        return $"   (squad Boost +{avg:F1}/{Player.MAX_BOOST})";
+        boostFill.parent.gameObject.SetActive(true);
+        boostFill.anchorMax = new Vector2(avg / Player.MAX_BOOST, 1f);
+        return $"   {avg:F1}/{Player.MAX_BOOST}";
+
     }
 
     private void UpdateNextSession()
     {
         DateTime? next = ScheduleManager.Instance.GetNextTrainingDay();
         nextSessionText.text = next.HasValue
-            ? $"Next session: {next.Value:ddd dd MMM}"
+            ? $"Next · {next.Value:ddd d MMM}"
             : "Next session: not scheduled";
     }
 
     private void UpdateCurrentlySet()
     {
         var session = TrainingManager.Instance.CurrentSession;
-        if (session == null) { currentlySetText.text = "Currently training: none"; return; }
+        if (session == null) { currentlySetText.text = "No drill assigned"; return; }
 
         string extra = session.Type == TrainingType.Positional && session.TargetPosition.HasValue
             ? $" ({Player.LongPosition(session.TargetPosition.Value)}, {session.SelectedPlayerIds?.Count ?? 0} players)"
             : "";
-        currentlySetText.text = $"Currently training: {session.Name}{extra}";
+        currentlySetText.text = $"Active · {session.Name}{extra}";
     }
 
     // ————————————————————— positional sub-panel —————————————————————
@@ -251,7 +264,7 @@ public class TrainingPageUI : UIPage
         foreach (PlayerSlotUI slot in playerSlots) slot.Refresh();
     }
 
-    private void SetupSlots()
+    void SetupSlots()
     {
         int max = Mathf.Min(playerSlots.Length, TrainingSession.MAX_POSITIONAL_PLAYERS);
         for (int i = 0; i < playerSlots.Length; i++)
@@ -262,7 +275,8 @@ public class TrainingPageUI : UIPage
             slot.gameObject.SetActive(i < max);
             if (i >= max) continue;
 
-            slot.Setup(CandidatesForPicking, OnSlotsChanged, "Add player to train", SlotDescriber);
+            slot.Setup(CandidatesForPicking, OnSlotsChanged, "Add player to train", SlotDescriber,
+                player => new PlayerPickerColumnValue($"{player.Fatigue}% fatigue"));
             slot.SetPlayerSilent(i < selectedPlayerIds.Count ? selectedPlayerIds[i] : -1);
         }
     }

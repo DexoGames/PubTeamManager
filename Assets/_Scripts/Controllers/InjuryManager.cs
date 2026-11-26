@@ -54,7 +54,14 @@ public class InjuryManager : MonoBehaviour
         if (me == null) return;
 
         // 1. Heal anyone whose lay-off has elapsed.
-        foreach (var p in me.Players) p.TickInjuryRecovery(date);
+        foreach (Team team in TeamManager.Instance.GetAllTeams())
+        {
+            foreach (Player player in team.Players)
+            {
+                player.TickInjuryRecovery(date);
+                player.RecoverOvernight();
+            }
+        }
 
         // 2. Roll for an off-pitch misfortune.
         RollOffPitchMisfortune(me, date);
@@ -102,16 +109,13 @@ public class InjuryManager : MonoBehaviour
     /// </summary>
     public void ProcessMatchConsequences(Fixture fixture)
     {
-        Team me = TeamManager.Instance != null ? TeamManager.Instance.MyTeam : null;
-        if (me == null || fixture == null) return;
-        if (!fixture.InvolvesTeam(me.TeamId)) return;
+        ApplyConsequences(fixture.HomeTeam, fixture.Result.home, fixture.Result.away, fixture.Date);
+        ApplyConsequences(fixture.AwayTeam, fixture.Result.away, fixture.Result.home, fixture.Date);
+    }
 
-        DateTime today = CalenderManager.Instance != null ? CalenderManager.Instance.CurrentDay : DateTime.MinValue;
-
-        bool meHome = fixture.HomeTeam == me;
-        Match.TeamStats myStats = meHome ? fixture.Result.home : fixture.Result.away;
-        Match.TeamStats oppStats = meHome ? fixture.Result.away : fixture.Result.home;
-
+    void ApplyConsequences(Team me, Match.TeamStats myStats, Match.TeamStats oppStats, DateTime today)
+    {
+        bool showNews = me == TeamManager.Instance.MyTeam;
         // 1. Serve one match of any existing suspension (the banned players sat this one out).
         foreach (var p in me.Players) p.ServeOneSuspensionMatch();
 
@@ -124,13 +128,13 @@ public class InjuryManager : MonoBehaviour
 
                 if (foul.card == Card.Yellow)
                 {
-                    if (foul.offender.AddYellowCard())
+                    if (foul.offender.AddYellowCard() && showNews)
                         AddNews($"{foul.offender.FullName} is suspended after picking up {Player.YELLOW_SUSPENSION_THRESHOLD} yellow cards.");
                 }
                 else if (foul.card == Card.Red || foul.card == Card.RedAndSuspension)
                 {
                     foul.offender.ApplyRedCard();
-                    AddNews($"{foul.offender.FullName} is sent off and will be suspended.");
+                    if (showNews) AddNews($"{foul.offender.FullName} is sent off and will be suspended.");
                 }
             }
         }
@@ -146,13 +150,13 @@ public class InjuryManager : MonoBehaviour
                 if (foul.injuryType == InjuryType.Death)
                 {
                     foul.victim.ApplyInjury(InjuryType.Death, today);
-                    AnnounceDeath(foul.victim);
+                    if (showNews) AnnounceDeath(foul.victim);
                     ApplyInjuryMorale(me, foul.victim, InjuryType.Death);
                 }
                 else
                 {
                     foul.victim.ApplyInjury(foul.injuryType, today);
-                    AnnounceInjury(foul.victim, foul.injuryType, false);
+                    if (showNews) AnnounceInjury(foul.victim, foul.injuryType, false);
                     ApplyInjuryMorale(me, foul.victim, foul.injuryType);
                 }
             }
@@ -174,16 +178,18 @@ public class InjuryManager : MonoBehaviour
     private void AnnounceDeath(Player victim)
     {
         AddNews($"Tragic news: {victim.FullName} has passed away. The club is in mourning.");
-        RaiseEvent(deathEvent, victim);
+        Player teammate = victim.Team.Players.Find(p => !p.IsDeceased);
+        if (teammate != null) RaiseEvent(deathEvent, teammate, victim.FullName);
     }
 
     /// <summary>Routes news through the morale inbox + a notification when the EventType is assigned.</summary>
-    private void RaiseEvent(EventType type, Player about)
+    private void RaiseEvent(EventType type, Player about, string subject = null)
     {
         if (type == null || EventsManager.Instance == null) return;
 
         var evt = new Event(type, new List<Person> { about },
-                            CalenderManager.Instance != null ? CalenderManager.Instance.CurrentDay : DateTime.MinValue);
+                            CalenderManager.Instance != null ? CalenderManager.Instance.CurrentDay : DateTime.MinValue,
+                            subject == null ? null : new List<string> { subject });
         EventsManager.Instance.AddEvent(evt);
 
         if (notificationPrefab != null && HomePageUI.Instance != null)

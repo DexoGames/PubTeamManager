@@ -20,7 +20,7 @@ public class ResponseButtonUI : MonoBehaviour
 
     public Event.Response Response => response;
 
-    public void Setup(Event.Response response, ResponseManager manager)
+    public void Setup(Event.Response response, ResponseManager manager, string label = null)
     {
         text = GetComponentInChildren<TextMeshProUGUI>();
         button = GetComponent<Button>();
@@ -28,7 +28,7 @@ public class ResponseButtonUI : MonoBehaviour
         this.response = response;
         this.manager = manager;
 
-        text.text = response.ToString();
+        text.text = label ?? response.ToString();
         baseColour = button.image.color;
         button.interactable = true;
     }

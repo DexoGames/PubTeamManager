@@ -37,33 +37,45 @@ public class DiscussionPageUI : UIPage
 
         discussionContext = new DiscussionContext(@event, person);
         dialogue.Setup(discussionContext);
-        responseManager.SpawnButtons();
-    }
-    protected override void OnShow(Player player)
-    {
-        base.OnShow(player);
-
-        this.person = player;
-
-        // For showing without an event, we need to handle this differently
-        // This case might need an interview context instead
-        if (thisEvent != null)
+        string promise = PromiseLabel(@event.type.concern);
+        if (promise == null) responseManager.SpawnButtons();
+        else responseManager.SpawnButtons(new Dictionary<Event.Response, string>
         {
-            discussionContext = new DiscussionContext(thisEvent, person);
-            dialogue.Setup(discussionContext);
+            { Event.Response.Encourage, promise },
+            { Event.Response.Deflect, "Make no promise" }
+        });
+    }
+
+    static string PromiseLabel(ClubConcern concern)
+    {
+        switch (concern)
+        {
+            case ClubConcern.PlayingTime: return "Start next match";
+            case ClubConcern.Workload: return "Rest next match";
+            case ClubConcern.Tactics: return "Simplify next match";
+            default: return null;
         }
-        responseManager.SpawnButtons();
     }
 
     public void Response(Event.Response response)
     {
+        if (!EventsManager.Instance.Events.Contains(thisEvent)) return;
+
+        bool promised = thisEvent.type.concern != ClubConcern.None && response == Event.Response.Encourage;
+        if (promised)
+        {
+            var player = (Player)person;
+            player.Selection.Promise = thisEvent.type.concern;
+            player.Selection.PromisedComplexity = player.Team.Tactic.Complexity;
+        }
+
         Event.Reaction reaction = EventsManager.Instance.ReactionTable[(response, person.Personality)];
         reaction = Event.ReactionSeverityChange(response, reaction, thisEvent.type.severity);
 
         (int, int) moraleChange = person.NewMorale(thisEvent.type.moodChange, reaction, thisEvent.type.severity);
         dialogue.UpdateDialogue(ReactionToDialogue(reaction));
 
-        dialogue.UpdateExtraInfo(InfoAboutResponse(moraleChange));
+        dialogue.UpdateExtraInfo(promised ? "Promise agreed · " + PromiseLabel(thisEvent.type.concern) : InfoAboutResponse(moraleChange));
 
         EventsManager.Instance.Events.Remove(thisEvent);
 

@@ -18,11 +18,13 @@ public class TabController : UIObject
     [Header("Tabs List")]
     public List<Tab> tabs;
 
-    [Header("Optional Highlight")]
+    [SerializeField] UITheme theme;
+
+    [Header("Fallback Colors")]
     public Color normalColor = Color.white;
     public Color selectedColor = Color.green;
 
-    private int currentIndex = 0;
+    int currentIndex;
 
     [HideInInspector]
     public IntEvent OnSwitch;
@@ -30,7 +32,7 @@ public class TabController : UIObject
     public override void Setup()
     {
         OnSwitch.RemoveAllListeners();
-        OnSwitch.AddListener(FindFirstObjectByType<TacticsPageUI>().SetSizes);
+        OnSwitch.AddListener(TacticsPageUI.Instance.SetSizes);
 
         for (int i = 0; i < tabs.Count; i++)
         {
@@ -43,15 +45,15 @@ public class TabController : UIObject
 
     public void SwitchTab(int index)
     {
+        Color normal = theme != null ? theme.GetColor(UITheme.Role.Oak) : normalColor;
+        Color selected = theme != null ? theme.GetColor(UITheme.Role.Felt) : selectedColor;
+
         for (int i = 0; i < tabs.Count; i++)
         {
             bool isActive = i == index;
             tabs[i].tabPanel.SetActive(isActive);
 
-            if (tabs[i].tabButton.TryGetComponent(out Image img))
-            {
-                img.color = isActive ? selectedColor : normalColor;
-            }
+            if (tabs[i].tabButton.TryGetComponent(out Image image)) image.color = isActive ? selected : normal;
         }
 
         currentIndex = index;

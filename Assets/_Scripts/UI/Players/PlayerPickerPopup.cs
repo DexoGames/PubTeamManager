@@ -10,27 +10,28 @@ using UnityEngine.UI;
 /// invokes your callback with the chosen player (or the cancel callback if dismissed), then destroys itself.
 /// No pre-placed scene object needed. Shared by reliance instructions and the training player slots.
 /// </summary>
+[RequireComponent(typeof(Canvas), typeof(GraphicRaycaster))]
 public class PlayerPickerPopup : MonoBehaviour
 {
     /// <summary>Where the prefab lives, under a <c>Resources</c> folder (no extension). Must be a Canvas (or
     /// hold one) so it renders when instantiated standalone — e.g. Assets/Resources/UI/PlayerPickerPopup.prefab.</summary>
-    private const string PrefabResourcePath = "UI/PlayerPickerPopup";
+    const string PrefabResourcePath = "UI/PlayerPickerPopUp";
 
-    [SerializeField] private Transform listContainer;     // scroll-view content the rows spawn under
-    [SerializeField] private PlayerPickerRow rowPrefab;
-    [SerializeField] private TextMeshProUGUI titleText;
-    [SerializeField] private Button cancelButton;
+    [SerializeField] Transform listContainer;
+    [SerializeField] PlayerPickerRow rowPrefab;
+    [SerializeField] TextMeshProUGUI titleText;
+    [SerializeField] Button cancelButton;
 
-    private Action<Player> onPicked;
-    private Action onCancelled;
+    Action<Player> onPicked;
+    Action onCancelled;
 
     /// <summary>
     /// Instantiates the picker prefab and shows it. <paramref name="describe"/> optionally supplies a secondary
-    /// line per candidate (else best positions are shown). Returns false if the prefab couldn't be loaded.
+    /// line per candidate. <paramref name="extraColumn"/> supplies a separate text or icon cell for each row.
     /// </summary>
     public static bool Show(IEnumerable<Player> candidates, Action<Player> onPicked,
                             string title = "Select a player", Func<Player, string> describe = null,
-                            Action onCancelled = null)
+                            Action onCancelled = null, Func<Player, PlayerPickerColumnValue> extraColumn = null)
     {
         PlayerPickerPopup prefab = Resources.Load<PlayerPickerPopup>(PrefabResourcePath);
         if (prefab == null)
@@ -39,31 +40,22 @@ public class PlayerPickerPopup : MonoBehaviour
             return false;
         }
 
-        PlayerPickerPopup popup = Instantiate(prefab);
+        Canvas root = HomePageUI.Instance.GetComponentInParent<Canvas>().rootCanvas;
+        PlayerPickerPopup popup = Instantiate(prefab, root.transform, false);
         popup.gameObject.SetActive(true);
 
-        // Parent under the root canvas (so it inherits the UI scaling), then force it to render AND receive
-        // input ABOVE everything else — page content (e.g. the draggable formation cards) often lives on its
-        // own sub-canvas that would otherwise sort on top of the popup and steal its clicks.
-        Canvas root = FindFirstObjectByType<Canvas>().rootCanvas;
-        popup.transform.SetParent(root.transform, false);
-        popup.transform.SetAsLastSibling();
-
-        Canvas popupCanvas = popup.GetComponent<Canvas>();
-        popupCanvas.overrideSorting = true;
-        popupCanvas.sortingOrder = short.MaxValue;                 // 32767 — above all page canvases
-
-        popup.Populate(candidates, onPicked, title, describe, onCancelled);
+        popup.Populate(candidates, onPicked, title, describe, onCancelled, extraColumn);
         return true;
     }
 
-    private void Awake()
+    void Awake()
     {
         cancelButton.onClick.AddListener(Cancel);
     }
 
-    private void Populate(IEnumerable<Player> candidates, Action<Player> onPicked,
-                          string title, Func<Player, string> describe, Action onCancelled)
+    void Populate(IEnumerable<Player> candidates, Action<Player> onPicked,
+                  string title, Func<Player, string> describe, Action onCancelled,
+                  Func<Player, PlayerPickerColumnValue> extraColumn)
     {
         this.onPicked = onPicked;
         this.onCancelled = onCancelled;
@@ -72,32 +64,30 @@ public class PlayerPickerPopup : MonoBehaviour
 
         foreach (Transform child in listContainer) Destroy(child.gameObject);
 
-        foreach (Player p in candidates)
+        foreach (Player player in candidates)
         {
-            Player captured = p;
             PlayerPickerRow row = Instantiate(rowPrefab, listContainer);
-            string sub = describe != null ? describe(p)
-                       : p.GetPosition().HasValue ? p.GetPosition().ToString() : "SUB";
-            row.Setup(captured, sub, () => Pick(captured));
+            string subtitle = describe != null ? describe(player) : player.GetPosition()?.ToString() ?? "SUB";
+            row.Setup(player, subtitle, () => Pick(player), extraColumn?.Invoke(player));
         }
     }
 
-    private void Pick(Player p)
+    void Pick(Player player)
     {
-        Action<Player> cb = onPicked;
+        Action<Player> callback = onPicked;
         Close();
-        cb?.Invoke(p);
+        callback?.Invoke(player);
     }
 
     /// <summary>Hook for the cancel/backdrop button — closes without picking.</summary>
     public void Cancel()
     {
-        Action cb = onCancelled;
+        Action callback = onCancelled;
         Close();
-        cb?.Invoke();
+        callback?.Invoke();
     }
 
-    private void Close()
+    void Close()
     {
         onPicked = null;
         onCancelled = null;

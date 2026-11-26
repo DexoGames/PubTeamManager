@@ -8,213 +8,140 @@ public class RecruitmentPageUI : UIPage
 {
     public static RecruitmentPageUI Instance { get; private set; }
 
-    [SerializeField] private TextMeshProUGUI headerText;
-    [SerializeField] private TextMeshProUGUI candidateInfoText;
-    [SerializeField] private TextMeshProUGUI questionsRemainingText;
-    [SerializeField] private Button interviewButton;
-    [SerializeField] private Button hireButton;
-    [SerializeField] private Button rejectButton;
-    [SerializeField] private Button skipButton;
+    [SerializeField] TextMeshProUGUI headerText, candidateInfoText, questionsRemainingText;
+    [SerializeField] Button interviewButton, hireButton, rejectButton, skipButton;
+    [SerializeField] TMP_Dropdown questionMenu;
+    [SerializeField] TextMeshProUGUI interviewLabel;
+    [SerializeField] PlayerStat[] statQuestions;
 
-    [SerializeField] private Transform questionContainer;
-    [SerializeField] private InterviewQuestionButton questionButtonPrefab;
-    [Tooltip("Which stats may be asked about, in display order. Leave EMPTY to offer every stat.")]
-    [SerializeField] private PlayerStat[] statQuestions;
+    readonly List<InterviewQuestion> questions = new List<InterviewQuestion>();
 
-    private List<Player> candidates;
-    private int currentIndex = 0;
-    private bool interviewStarted = false;
+    RecruitmentManager Recruitment => RecruitmentManager.Instance;
+    InterviewManager Interview => InterviewManager.Instance;
 
-    private readonly List<InterviewQuestionButton> questionButtons = new();
-
-    private void Awake()
+    void Awake()
     {
-        if (Instance != null && Instance != this)
-            Destroy(this.gameObject);
-        else
-            Instance = this;
+        Instance = this;
     }
 
     protected override void OnShow()
     {
-        base.OnShow();
-        BuildQuestionButtons();
-        StartSession();
+        Refresh();
     }
 
-
-    private void BuildQuestionButtons()
+    void Refresh(string result = null)
     {
-        Game.ClearContainer(questionContainer);
-        questionButtons.Clear();
+        Player candidate = Recruitment.GetCurrentCandidate();
+        bool interviewing = candidate != null && Interview.GetInterviewee() == candidate;
+        bool canStart = candidate != null || Recruitment.CanInterviewToday;
 
-        foreach (InterviewQuestion question in QuestionsToOffer())
-        {
-            InterviewQuestionButton button = Instantiate(questionButtonPrefab, questionContainer);
-            button.SetQuestion(question);
-            questionButtons.Add(button);
-        }
+        headerText.text = candidate == null ? "Recruitment" : $"Candidate {Recruitment.ReviewedBeforeLoad + Recruitment.CurrentCandidateIndex + 1} of {Recruitment.ReviewedBeforeLoad + Recruitment.CurrentCandidates.Count}";
+        candidateInfoText.text = result ?? (candidate != null ? candidate.FullName : SessionStatus());
+        candidateInfoText.gameObject.SetActive(!interviewing);
+        Interview.DialoguePanel.SetActive(interviewing);
 
-        RefreshQuestionButtons();
+        questionsRemainingText.gameObject.SetActive(interviewing);
+        questionMenu.gameObject.SetActive(interviewing && Interview.QuestionsRemaining > 0);
+        if (interviewing) RefreshQuestions();
+
+        interviewButton.gameObject.SetActive(canStart && (!interviewing || Interview.QuestionsRemaining > 0));
+        interviewLabel.text = interviewing ? "Ask" : "Interview";
+        hireButton.gameObject.SetActive(interviewing);
+        rejectButton.gameObject.SetActive(interviewing);
+        skipButton.gameObject.SetActive(candidate != null && !interviewing);
     }
 
-    private IEnumerable<InterviewQuestion> QuestionsToOffer()
+    string SessionStatus()
     {
-        var questions = new List<InterviewQuestion>();
+        if (Recruitment.CanInterviewToday) return "Five candidates available · One signing";
+        if (Recruitment.IsInterviewDay) return "Interviews finished for today.";
+
+        var date = ScheduleManager.Instance.GetNextDay(ScheduleEntryType.Interview);
+        return date.HasValue ? $"Next interviews · {date.Value:ddd d MMM}" : "No interviews scheduled.";
+    }
+
+    void RefreshQuestions()
+    {
+        questions.Clear();
         questions.AddRange(InterviewManager.GetGeneralQuestions());
         questions.AddRange(InterviewManager.GetPersonalityQuestions());
         questions.Add(new InterviewQuestion(InterviewQuestionType.CompareToPlayer));
+        questions.AddRange(statQuestions.Length == 0 ? InterviewManager.GetStatQuestions()
+            : statQuestions.Select(stat => new InterviewQuestion(InterviewQuestionType.AskAboutStat, stat)));
+        questions.RemoveAll(Interview.HasAsked);
 
-        questions.AddRange(statQuestions.Length > 0
-            ? statQuestions.Select(s => new InterviewQuestion(InterviewQuestionType.AskAboutStat, s))
-            : InterviewManager.GetStatQuestions());
-
-        return questions;
-    }
-
-    private void RefreshQuestionButtons()
-    {
-        foreach (InterviewQuestionButton button in questionButtons)
-            button.RefreshInteractable();
-    }
-
-    private void StartSession()
-    {
-        if (!RecruitmentManager.Instance.CanInterviewToday)
-        {
-            headerText.text = "No Interviews Today";
-            candidateInfoText.text = RecruitmentManager.Instance.IsInterviewDay
-                ? "You've already held your interviews today. Come back on the next interview day."
-                : "Interviews are only held on scheduled interview days." + NextInterviewDaySuffix();
-            questionsRemainingText.text = "";
-            SetButtonsActive(false);
-            return;
-        }
-
-        RecruitmentManager.Instance.StartInterviewSession();
-        candidates = RecruitmentManager.Instance.CurrentCandidates;
-        currentIndex = 0;
-        interviewStarted = false;
-
-        headerText.text = $"Interview Day — {candidates.Count} Candidates";
-
-        ShowCurrentCandidate();
-    }
-
-    private string NextInterviewDaySuffix()
-    {
-        System.DateTime? next = ScheduleManager.Instance.GetNextDay(ScheduleEntryType.Interview);
-        return next.HasValue ? $"\n\nNext interview day: {next.Value:ddd dd MMM}" : "\n\nCheck your calendar.";
-    }
-
-    private void ShowCurrentCandidate()
-    {
-        if (currentIndex >= candidates.Count)
-        {
-            candidateInfoText.text = "All candidates reviewed. Session complete.";
-            EndInterview();
-            SetButtonsActive(false);
-            return;
-        }
-
-        Player candidate = candidates[currentIndex];
-        interviewStarted = false;
-
-        candidateInfoText.text = $"<b>{candidate.FullName}</b>\n" +
-            $"Candidate {currentIndex + 1} of {candidates.Count}\n\n" +
-            $"Start an interview to learn more about this player.";
-        questionsRemainingText.text = "";
-
-        interviewButton.gameObject.SetActive(true);
-        hireButton.gameObject.SetActive(false);
-        rejectButton.gameObject.SetActive(false);
-        skipButton.gameObject.SetActive(true);
-
-        RefreshQuestionButtons();
+        questionMenu.ClearOptions();
+        questionMenu.AddOptions(questions.Select(q => q.QuestionText).ToList());
+        questionMenu.SetValueWithoutNotify(0);
+        string clue = Interview.NarrowedPersonalities.Count < 10 ? "\n" + string.Join(" / ", Interview.NarrowedPersonalities) : "";
+        questionsRemainingText.text = $"{Interview.QuestionsRemaining} questions left{clue}";
     }
 
     public void OnInterviewClicked()
     {
-        Player candidate = candidates[currentIndex];
-        InterviewManager.Instance.StartInterview(candidate);
-        interviewStarted = true;
-
-        candidateInfoText.text = $"<b>Interviewing: {candidate.FullName}</b>\n\nUse the dialogue panel to ask questions.";
-        UpdateQuestionsRemaining();
-
-        interviewButton.gameObject.SetActive(false);
-        hireButton.gameObject.SetActive(true);
-        rejectButton.gameObject.SetActive(true);
-    }
-
-    public void OnHireClicked()
-    {
-        if (!interviewStarted) return;
-
-        if (RecruitmentManager.Instance.IsSquadFull)
+        Player candidate = Recruitment.GetCurrentCandidate();
+        if (candidate == null)
         {
-            candidateInfoText.text =
-                $"<b>Squad full ({RecruitmentManager.Instance.SquadSize}/{RecruitmentManager.MAX_SQUAD_SIZE}).</b>\n" +
-                $"Release a player from your squad before signing {candidates[currentIndex].FullName}.\n" +
-                "(Open your squad and release someone, then press Hire again.)";
-            return;
+            if (!Recruitment.CanInterviewToday) return;
+            Recruitment.StartInterviewSession();
+            candidate = Recruitment.GetCurrentCandidate();
+            if (candidate == null) { Refresh(); return; }
         }
 
-        if (InterviewManager.Instance.HireInterviewee())
+        if (Interview.GetInterviewee() != candidate)
         {
-            candidateInfoText.text = $"<b>{candidates[currentIndex].FullName}</b> has been signed!\n\nSession complete — only one hire per session.";
-            interviewStarted = false;
-            SetButtonsActive(false);
-            RefreshQuestionButtons();
-            Debug.Log($"[Recruitment UI] Hired {candidates[currentIndex].FullName}");
+            Interview.StartInterview(candidate);
         }
-    }
+        else
+        {
+            InterviewQuestion question = questions[questionMenu.value];
+            if (question.Type == InterviewQuestionType.CompareToPlayer)
+            {
+                Interview.AskComparison();
+                return;
+            }
+            Interview.AskQuestion(question);
+        }
 
-    public void OnRejectClicked()
-    {
-        if (!interviewStarted) return;
-
-        InterviewManager.Instance.RejectInterviewee();
-        Debug.Log($"[Recruitment UI] Rejected {candidates[currentIndex].FullName}");
-        AdvanceToNextCandidate();
-    }
-
-    public void OnSkipClicked()
-    {
-        EndInterview();
-        AdvanceToNextCandidate();
-    }
-
-    private void EndInterview()
-    {
-        interviewStarted = false;
-        InterviewManager.Instance.EndInterview();
-    }
-
-    private void AdvanceToNextCandidate()
-    {
-        currentIndex++;
-        ShowCurrentCandidate();
+        OnQuestionAsked();
     }
 
     public void OnQuestionAsked()
     {
-        UpdateQuestionsRemaining();
-        RefreshQuestionButtons();
+        Refresh();
+        SaveManager.Instance.SaveCore();
     }
 
-    private void UpdateQuestionsRemaining()
+    public void OnHireClicked()
     {
-        int remaining = InterviewManager.Instance.QuestionsRemaining;
-        string personality = InterviewManager.Instance.NarrowedPersonalitiesText();
-        questionsRemainingText.text = $"Questions remaining: {remaining}\nPersonality: {personality}";
+        Player candidate = Recruitment.GetCurrentCandidate();
+        if (candidate == null || candidate != Interview.GetInterviewee()) return;
+        if (Recruitment.IsSquadFull)
+        {
+            PlayerPickerPopup.Show(TeamManager.Instance.MyTeam.Players, outgoing => Sign(candidate, outgoing),
+                $"Release a player to sign {candidate.Surname}", player => player.AvailabilityStatus, extraColumn: PlayerPickerColumnValue.FromMorale);
+            return;
+        }
+        Sign(candidate, null);
     }
 
-    private void SetButtonsActive(bool active)
+    void Sign(Player candidate, Player outgoing)
     {
-        interviewButton.gameObject.SetActive(active);
-        hireButton.gameObject.SetActive(active);
-        rejectButton.gameObject.SetActive(active);
-        skipButton.gameObject.SetActive(active);
+        if (candidate != Interview.GetInterviewee() || !Interview.HireInterviewee(outgoing)) return;
+        Refresh($"{candidate.FullName} signed.");
+        SaveManager.Instance.SaveCore();
+    }
+
+    public void OnRejectClicked()
+    {
+        Interview.RejectInterviewee();
+        OnQuestionAsked();
+    }
+
+    public void OnSkipClicked()
+    {
+        Interview.EndInterview();
+        Recruitment.SkipCandidate();
+        OnQuestionAsked();
     }
 }

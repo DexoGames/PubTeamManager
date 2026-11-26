@@ -24,7 +24,23 @@ public class SaveManager : MonoBehaviour
     private const string SAVE_EXTENSION = ".json";
 
     /// <summary>The slot the live game reads/writes (archival writes here too).</summary>
-    private string activeSlot = DEFAULT_SLOT;
+    string activeSlot = DEFAULT_SLOT;
+    string liveSeasonFile;
+
+    static void WriteAtomically(string path, string contents, string backup = null)
+    {
+        string pending = path + ".pending";
+        File.WriteAllText(pending, contents);
+        if (File.Exists(path)) File.Replace(pending, path, backup);
+        else File.Move(pending, path);
+    }
+
+    public void PreserveCareer()
+    {
+        string directory = GetSlotDir(activeSlot);
+        if (Directory.Exists(directory))
+            Directory.Move(directory, directory + "-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss") + "-" + Guid.NewGuid().ToString("N").Substring(0, 6));
+    }
 
     private void Awake()
     {
@@ -65,11 +81,17 @@ public class SaveManager : MonoBehaviour
             EnsureSlotDir(slotName);
             var settings = GetSerializerSettings();
 
-            CoreSaveState core = CollectCoreState();
-            File.WriteAllText(GetCorePath(slotName), JsonConvert.SerializeObject(core, settings));
-
             int year = FixturesManager.Instance.CurrentSeasonYear;
-            WriteSeasonFile(slotName, year, FixturesManager.Instance.GetCurrentSeasonCompetitions(), settings);
+            string first = $"live_{year}_a.json";
+            string destination = liveSeasonFile == first ? $"live_{year}_b.json" : first;
+            var season = new SeasonSaveState { Year = year, Competitions = FixturesManager.Instance.GetCurrentSeasonCompetitions() };
+            WriteAtomically(Path.Combine(GetSlotDir(slotName), destination), JsonConvert.SerializeObject(season, settings));
+
+            CoreSaveState core = CollectCoreState();
+            core.LiveSeasonFile = destination;
+            string path = GetCorePath(slotName);
+            WriteAtomically(path, JsonConvert.SerializeObject(core, settings), path + ".bak");
+            liveSeasonFile = destination;
 
             Debug.Log($"[Save] Saved core + season {year} → {GetSlotDir(slotName)} (Teams:{core.Teams.Count}, FreeAgents:{core.FreeAgents.Count}, Seasons on disk:{core.Seasons.Count})");
         }
@@ -85,7 +107,16 @@ public class SaveManager : MonoBehaviour
         slotName = slotName ?? DEFAULT_SLOT;
         activeSlot = slotName;
 
-        string corePath = GetCorePath(slotName);
+        string path = GetCorePath(slotName);
+        if (TryLoad(slotName, path)) return true;
+        if (!TryLoad(slotName, path + ".bak")) return false;
+        // Keep the verified manifest in place before the next save rotates its backup.
+        WriteAtomically(path, File.ReadAllText(path + ".bak"));
+        return true;
+    }
+
+    bool TryLoad(string slotName, string corePath)
+    {
         if (!File.Exists(corePath))
         {
             Debug.LogWarning($"[Save] No save found at {corePath}");
@@ -106,11 +137,15 @@ public class SaveManager : MonoBehaviour
             RestoreCoreState(core);
 
             // 2. Current season's competitions.
-            SeasonSaveState season = ReadSeasonFile(slotName, core.CurrentSeasonYear, settings);
-            if (season != null)
-                RestoreSeason(season);
-            else
-                Debug.LogWarning($"[Save] Current season file (year {core.CurrentSeasonYear}) missing — no competitions loaded.");
+            liveSeasonFile = core.LiveSeasonFile;
+            string seasonPath = string.IsNullOrEmpty(liveSeasonFile)
+                ? GetSeasonPath(slotName, core.CurrentSeasonYear)
+                : Path.Combine(GetSlotDir(slotName), Path.GetFileName(liveSeasonFile));
+            var season = JsonConvert.DeserializeObject<SeasonSaveState>(File.ReadAllText(seasonPath), settings);
+            if (season == null || season.Year != core.CurrentSeasonYear || season.Competitions.Count == 0)
+                throw new InvalidDataException("The current season is incomplete.");
+
+            RestoreSeason(season);
 
             // 3. Wiring that depends on competitions being present.
             FinishRestore(core);
@@ -125,7 +160,7 @@ public class SaveManager : MonoBehaviour
         }
     }
 
-    public bool HasSave(string slotName = null) => File.Exists(GetCorePath(slotName ?? DEFAULT_SLOT));
+    public bool HasSave(string slotName = null) => Directory.Exists(GetSlotDir(slotName ?? DEFAULT_SLOT));
 
     public void AutoSave() => Save(DEFAULT_SLOT);
 
@@ -141,7 +176,7 @@ public class SaveManager : MonoBehaviour
         if (!IsGameInProgress()) return;
 
         // Keep core + season consistent: if no season file exists yet, do a full save instead.
-        if (!File.Exists(GetSeasonPath(slotName, FixturesManager.Instance.CurrentSeasonYear)))
+        if (string.IsNullOrEmpty(liveSeasonFile) || !File.Exists(Path.Combine(GetSlotDir(slotName), liveSeasonFile)))
         {
             Save(slotName);
             return;
@@ -151,7 +186,8 @@ public class SaveManager : MonoBehaviour
         {
             EnsureSlotDir(slotName);
             CoreSaveState core = CollectCoreState();
-            File.WriteAllText(GetCorePath(slotName), JsonConvert.SerializeObject(core, GetSerializerSettings()));
+            string path = GetCorePath(slotName);
+            WriteAtomically(path, JsonConvert.SerializeObject(core, GetSerializerSettings()), path + ".bak");
             Debug.Log($"[Save] Core saved → {GetSlotDir(slotName)}");
         }
         catch (Exception e)
@@ -188,31 +224,20 @@ public class SaveManager : MonoBehaviour
     /// slimmed (fouls/possession dropped; score, scorers and starting XIs kept). The player's
     /// own matches keep full detail.
     /// </summary>
-    public void ArchiveSeason(int year, List<Competition> comps)
+    public bool ArchiveSeason(int year, List<Competition> comps)
     {
-        if (comps == null) return;
-
         try
         {
-            int playerTeamId = TeamManager.Instance.MyTeam.TeamId;
-
-            foreach (var comp in comps)
-            {
-                if (comp.Fixtures == null) continue;
-                foreach (var fx in comp.Fixtures)
-                {
-                    if (fx.BeenPlayed && !fx.InvolvesTeam(playerTeamId))
-                        fx.SlimForArchive();
-                }
-            }
-
+            int club = TeamManager.Instance.MyTeam.TeamId;
+            var archive = comps.ConvertAll(competition => competition.CopyForArchive(club));
             EnsureSlotDir(activeSlot);
-            WriteSeasonFile(activeSlot, year, comps, GetSerializerSettings());
-            Debug.Log($"[Save] Archived season {year} ({comps.Count} comps) → {GetSeasonPath(activeSlot, year)}");
+            WriteSeasonFile(activeSlot, year, archive, GetSerializerSettings());
+            return true;
         }
         catch (Exception e)
         {
-            Debug.LogError($"[Save] Failed to archive season {year}: {e.Message}\n{e.StackTrace}");
+            Debug.LogError($"[Save] Failed to archive season {year}: {e.Message}");
+            return false;
         }
     }
 
@@ -244,7 +269,7 @@ public class SaveManager : MonoBehaviour
     private void WriteSeasonFile(string slot, int year, List<Competition> comps, JsonSerializerSettings settings)
     {
         var season = new SeasonSaveState { Year = year, Competitions = comps ?? new List<Competition>() };
-        File.WriteAllText(GetSeasonPath(slot, year), JsonConvert.SerializeObject(season, settings));
+        WriteAtomically(GetSeasonPath(slot, year), JsonConvert.SerializeObject(season, settings));
     }
 
     private SeasonSaveState ReadSeasonFile(string slot, int year, JsonSerializerSettings settings)
@@ -261,6 +286,10 @@ public class SaveManager : MonoBehaviour
         return new CoreSaveState
         {
             CurrentDay = CalenderManager.Instance.CurrentDay,
+            InterviewEpoch = ScheduleManager.Instance.InterviewEpoch,
+            Recruitment = RecruitmentManager.Instance.CaptureState(),
+            FormerPlayers = RecruitmentManager.Instance.FormerPlayers,
+            LiveSeasonFile = liveSeasonFile,
             PlayerTeamId = TeamManager.Instance.MyTeam.TeamId,
             NextPersonId = IdManager.Instance.NextPersonId,
             NextTeamId = IdManager.Instance.NextTeamId,
@@ -298,6 +327,10 @@ public class SaveManager : MonoBehaviour
         if (RecruitmentManager.Instance != null && core.FreeAgents != null)
             RecruitmentManager.Instance.RestoreFreeAgentsFromState(core.FreeAgents);
 
+        RecruitmentManager.Instance.FormerPlayers.Clear();
+        RecruitmentManager.Instance.FormerPlayers.AddRange(core.FormerPlayers);
+        foreach (Player player in core.FormerPlayers) PersonManager.Instance.RegisterExisting(player);
+
         if (EventsManager.Instance != null && core.Events != null)
         {
             EventsManager.Instance.Events = core.Events;
@@ -326,8 +359,7 @@ public class SaveManager : MonoBehaviour
             if (comp is League league)
             {
                 league.OnAfterDeserialize();
-                if (!league.IsComplete)
-                    activeLeagues[league.Name] = league;
+                activeLeagues[league.Name] = league;
             }
             else if (comp is Cup cup)
             {
@@ -369,6 +401,7 @@ public class SaveManager : MonoBehaviour
     {
         if (ScheduleManager.Instance != null)
         {
+            ScheduleManager.Instance.InterviewEpoch = core.InterviewEpoch == default ? new DateTime(2024, 8, 1) : core.InterviewEpoch;
             ScheduleManager.Instance.GenerateSchedule(core.CurrentDay);
             ScheduleManager.Instance.OnTrainingDay += () => TrainingManager.Instance?.ExecuteTraining();
             ScheduleManager.Instance.OnInterviewDay += () => RecruitmentManager.Instance?.NotifyInterviewDay();
@@ -378,6 +411,7 @@ public class SaveManager : MonoBehaviour
                 RecruitmentManager.Instance?.NotifyInterviewDay();
         }
 
+        RecruitmentManager.Instance.RestoreSession(core.Recruitment);
         Debug.Log("[Save] Full restore complete.");
     }
 }
